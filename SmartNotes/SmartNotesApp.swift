@@ -17,11 +17,6 @@ struct SmartNotesApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if useDebugMode {
-                // Use the completely isolated debug environment
-                EmergencyDebugMode()
-                    .environmentObject(dataManager)
-            } else {
                 // Normal app flow with debug button overlay
                 MainView()
                     .environmentObject(dataManager)
@@ -48,7 +43,6 @@ struct SmartNotesApp: App {
             }
         }
     }
-}
 
 // Main view that uses the DataManager
 struct MainView: View {
