@@ -30,8 +30,8 @@ struct CanvasView: UIViewRepresentable {
         // Enable pencil interactions
         canvasView.allowsFingerDrawing = true
 
-        // Show the tool picker
-        if let window = UIApplication.shared.windows.first {
+        // Show the tool picker - using the more modern API
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
             toolPicker.setVisible(true, forFirstResponder: canvasView)
             toolPicker.addObserver(canvasView)
             canvasView.becomeFirstResponder()

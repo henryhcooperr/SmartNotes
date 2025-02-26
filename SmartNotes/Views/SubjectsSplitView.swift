@@ -24,12 +24,16 @@ struct SubjectsSplitView: View {
     @State private var newSubjectName = ""
     @State private var newSubjectColor = "blue"
     
+    // Flag to prevent loops
+    @State private var isInitialSelection = true
+    
     // Available color options
     let colorOptions = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "gray"]
     
     init(subjects: Binding<[Subject]>, onSubjectChange: @escaping (Subject) -> Void) {
         self._subjects = subjects
         self.onSubjectChange = onSubjectChange
+        print("📘 SubjectsSplitView initialized")
     }
     
     var body: some View {
@@ -42,6 +46,16 @@ struct SubjectsSplitView: View {
         }
         .sheet(isPresented: $isAddingNewSubject) {
             addSubjectView
+        }
+        .onAppear {
+            print("📘 SubjectsSplitView appeared")
+            
+            // Only set initial selection once
+            if isInitialSelection && subjects.count > 0 && selectedSubject == nil {
+                selectedSubject = subjects[0]
+                isInitialSelection = false
+                print("📘 Set initial subject selection to: \(subjects[0].name)")
+            }
         }
     }
     
@@ -94,9 +108,6 @@ struct SubjectsSplitView: View {
                     
                     NavigationStack {
                         NotePreviewsGrid(subject: subjectBinding)
-                            .onChange(of: subjects[index]) { newValue in
-                                onSubjectChange(newValue)
-                            }
                     }
                 } else {
                     Text("Subject not found")
@@ -115,15 +126,6 @@ struct SubjectsSplitView: View {
     
     private func deleteSubjects(at offsets: IndexSet) {
         subjects.remove(atOffsets: offsets)
-    }
-    
-    /// We need a binding to the selectedSubject in the array,
-    /// so changes in child views can update the original array.
-    private func binding(for subject: Subject) -> Binding<Subject>? {
-        guard let index = subjects.firstIndex(where: { $0.id == subject.id }) else {
-            return nil
-        }
-        return $subjects[index]
     }
     
     // View for adding a new subject
@@ -156,8 +158,9 @@ struct SubjectsSplitView: View {
                     subjects.append(newSubject)
                     isAddingNewSubject = false
                     newSubjectName = ""
-                    // Select the newly created subject
+                    // Select the newly created subject and save once
                     selectedSubject = newSubject
+                    onSubjectChange(newSubject)
                 }
                 .disabled(newSubjectName.isEmpty)
             )

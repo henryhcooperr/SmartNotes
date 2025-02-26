@@ -12,10 +12,40 @@ struct SmartNotesApp: App {
     // Create a shared instance of DataManager that will be used throughout the app
     @StateObject private var dataManager = DataManager()
     
+    // Set to true to enter debug mode
+    private let useDebugMode = false
+    
     var body: some Scene {
         WindowGroup {
-            MainView()
-                .environmentObject(dataManager) // Make dataManager available to all views
+            if useDebugMode {
+                // Use the completely isolated debug environment
+                EmergencyDebugMode()
+                    .environmentObject(dataManager)
+            } else {
+                // Normal app flow with debug button overlay
+                MainView()
+                    .environmentObject(dataManager)
+                    .overlay(
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Button {
+                                    // This would normally trigger showing the debug mode
+                                    // but we'll implement that separately
+                                } label: {
+                                    Text("DEBUG")
+                                        .font(.caption)
+                                        .padding(8)
+                                        .background(Color.red)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(8)
+                                }
+                                .padding()
+                            }
+                        }
+                    )
+            }
         }
     }
 }

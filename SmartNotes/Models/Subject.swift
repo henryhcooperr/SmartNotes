@@ -13,6 +13,7 @@ struct Subject: Identifiable, Codable, Hashable {
     var name: String
     var notes: [Note]
     var colorName: String
+    var lastModified: Date = Date()  // Add last modified date for tracking changes
     
     // Derived property: convert colorName to an actual SwiftUI Color
     var color: Color {
@@ -24,24 +25,22 @@ struct Subject: Identifiable, Codable, Hashable {
         case "blue":     return .blue
         case "purple":   return .purple
         case "pink":     return .pink
-        // Add more custom colors as you like
         default:         return .gray
         }
     }
     
-    // Implement Hashable manually
+    // Implement Hashable manually - simplified to just compare IDs
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
     
+    // Simplified equality check that only compares IDs
     static func == (lhs: Subject, rhs: Subject) -> Bool {
         return lhs.id == rhs.id
     }
     
-    mutating func updateNote(_ note: Note) {
-        if let index = notes.firstIndex(where: { $0.id == note.id }) {
-            notes[index] = note
-            print("Note updated: \(note.title)")
-        }
+    // Helper method to touch the subject, marking it as modified
+    mutating func touch() {
+        self.lastModified = Date()
     }
 }

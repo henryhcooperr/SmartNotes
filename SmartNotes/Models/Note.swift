@@ -13,24 +13,35 @@ struct Note: Identifiable, Codable, Hashable {
     var title: String
     var drawingData: Data
     var dateCreated: Date = Date()
+    var lastModified: Date = Date()
     
-    // Implement Hashable manually because Data may not conform to Hashable properly
+    // Simplified hash function that only uses ID
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
     
+    // Simplified equality check
     static func == (lhs: Note, rhs: Note) -> Bool {
         return lhs.id == rhs.id
     }
 }
 
-// Helper to convert PKDrawing <-> Data
+// Simple helper for PKDrawing conversion
 extension PKDrawing {
     func toData() -> Data {
-        return self.dataRepresentation()
+        do {
+            return try self.dataRepresentation()
+        } catch {
+            print("Error converting PKDrawing to data: \(error)")
+            return Data()
+        }
     }
     
     static func fromData(_ data: Data) -> PKDrawing {
+        if data.isEmpty {
+            return PKDrawing()
+        }
+        
         do {
             return try PKDrawing(data: data)
         } catch {
