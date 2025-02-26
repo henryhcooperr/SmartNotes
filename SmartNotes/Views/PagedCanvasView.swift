@@ -37,9 +37,11 @@ struct PagedCanvasView: UIViewRepresentable {
         var updateCounter = 0
         var templateLayers: [CALayer] = []
         
-        // Add properties to track template changes
         var lastTemplateType: CanvasTemplate.TemplateType?
         var lastTemplateSpacing: CGFloat?
+        var lastTemplateLineWidth: CGFloat?
+        var lastTemplateColorHex: String?
+        
         
         init(parent: PagedCanvasView) {
             self.parent = parent
@@ -146,112 +148,14 @@ struct PagedCanvasView: UIViewRepresentable {
         
         // Apply the selected template to the canvas background
         func applyTemplate() {
-            // Remove existing template layers
-            for layer in templateLayers {
-                layer.removeFromSuperlayer()
-            }
-            templateLayers.removeAll()
-            
-            // If no template is selected, we're done
-            if parent.template.type == .none {
-                return
-            }
-            
-            guard let canvasView = self.canvasView else { return }
-            
-            // Get template parameters
-            let spacing = parent.template.spacing
-            let lineWidth = parent.template.lineWidth
-            let color = parent.template.color.cgColor
-            
-            // Draw template for each page
-            for pageIndex in 0..<parent.numberOfPages {
-                let pageRect = CGRect(
-                    x: 0,
-                    y: CGFloat(pageIndex) * (parent.pageSize.height + parent.pageSpacing),
-                    width: canvasView.frame.width,
-                    height: parent.pageSize.height
-                )
-                
-                // Create a template layer for this page
-                let templateLayer = CALayer()
-                templateLayer.frame = pageRect
-                
-                switch parent.template.type {
-                case .lined:
-                    // Create lines
-                    for y in stride(from: spacing, to: pageRect.height, by: spacing) {
-                        let lineLayer = CAShapeLayer()
-                        lineLayer.strokeColor = color
-                        lineLayer.lineWidth = lineWidth
-                        
-                        let path = UIBezierPath()
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: pageRect.width, y: y))
-                        lineLayer.path = path.cgPath
-                        
-                        templateLayer.addSublayer(lineLayer)
-                    }
-                    
-                case .graph:
-                    // Create horizontal lines
-                    for y in stride(from: spacing, to: pageRect.height, by: spacing) {
-                        let lineLayer = CAShapeLayer()
-                        lineLayer.strokeColor = color
-                        lineLayer.lineWidth = lineWidth
-                        
-                        let path = UIBezierPath()
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: pageRect.width, y: y))
-                        lineLayer.path = path.cgPath
-                        
-                        templateLayer.addSublayer(lineLayer)
-                    }
-                    
-                    // Create vertical lines
-                    for x in stride(from: spacing, to: pageRect.width, by: spacing) {
-                        let lineLayer = CAShapeLayer()
-                        lineLayer.strokeColor = color
-                        lineLayer.lineWidth = lineWidth
-                        
-                        let path = UIBezierPath()
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x, y: pageRect.height))
-                        lineLayer.path = path.cgPath
-                        
-                        templateLayer.addSublayer(lineLayer)
-                    }
-                    
-                case .dotted:
-                    // Create dot pattern
-                    for y in stride(from: spacing, to: pageRect.height, by: spacing) {
-                        for x in stride(from: spacing, to: pageRect.width, by: spacing) {
-                            let dotLayer = CAShapeLayer()
-                            dotLayer.fillColor = color
-                            
-                            let dotSize = lineWidth * 2
-                            let dotRect = CGRect(
-                                x: x - dotSize/2,
-                                y: y - dotSize/2,
-                                width: dotSize,
-                                height: dotSize
-                            )
-                            
-                            let path = UIBezierPath(ovalIn: dotRect)
-                            dotLayer.path = path.cgPath
-                            
-                            templateLayer.addSublayer(dotLayer)
-                        }
-                    }
-                    
-                case .none:
-                    break // No template
-                }
-                
-                // Add the template layer to the view
-                canvasView.layer.insertSublayer(templateLayer, at: 0)
-                templateLayers.append(templateLayer)
-            }
+            // Simply delegate to the renderer
+            TemplateRenderer.applyTemplateToCanvas(
+                canvasView,
+                template: parent.template,
+                pageSize: parent.pageSize,
+                numberOfPages: parent.numberOfPages,
+                pageSpacing: parent.pageSpacing
+            )
         }
     }
     
@@ -327,11 +231,12 @@ struct PagedCanvasView: UIViewRepresentable {
     }
     
     func updateUIView(_ scrollView: UIScrollView, context: Context) {
-        // Only update when necessary to avoid loops
-        if !context.coordinator.isInitialLoad &&
-           context.coordinator.canvasView.drawing != drawing {
+        let coordinator = context.coordinator
+        
+        // Only update drawing when necessary to avoid loops
+        if !coordinator.isInitialLoad && coordinator.canvasView.drawing != drawing {
             print("📐 Updating canvas drawing from binding")
-            context.coordinator.canvasView.drawing = drawing
+            coordinator.canvasView.drawing = drawing
         }
         
         // Recalculate scroll view content size
@@ -340,7 +245,7 @@ struct PagedCanvasView: UIViewRepresentable {
         
         // Update canvas size
         let canvasWidth = min(UIScreen.main.bounds.width - (horizontalPadding * 2), pageSize.width)
-        context.coordinator.canvasView.frame = CGRect(
+        coordinator.canvasView.frame = CGRect(
             x: (scrollView.frame.width - canvasWidth) / 2,
             y: 0,
             width: canvasWidth,
@@ -348,24 +253,38 @@ struct PagedCanvasView: UIViewRepresentable {
         )
         
         // Only update page dividers occasionally to improve performance
-        if context.coordinator.updateCounter % 5 == 0 {
+        if coordinator.updateCounter % 5 == 0 {
             // Clear and re-add page dividers
             clearPageDividers(from: scrollView)
             addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: numberOfPages)
         }
         
-        // Apply template if it hasn't been applied yet or has changed
-        let coordinator = context.coordinator
-        let templateChanged = coordinator.lastTemplateType != template.type ||
-                             coordinator.lastTemplateSpacing != template.spacing
-        
-        if templateChanged {
-            coordinator.applyTemplate()
+        // Handle template changes or first render
+        if template.type != coordinator.lastTemplateType ||
+           template.spacing != coordinator.lastTemplateSpacing ||
+           template.lineWidth != coordinator.lastTemplateLineWidth ||
+           template.colorHex != coordinator.lastTemplateColorHex ||
+           coordinator.updateCounter == 0 {
+            
+            print("📐 Template changed or first render - applying template")
+            
+            // Use our new template renderer
+            TemplateRenderer.applyTemplateToCanvas(
+                coordinator.canvasView,
+                template: template,
+                pageSize: pageSize,
+                numberOfPages: numberOfPages,
+                pageSpacing: pageSpacing
+            )
+            
+            // Update stored values
             coordinator.lastTemplateType = template.type
             coordinator.lastTemplateSpacing = template.spacing
+            coordinator.lastTemplateLineWidth = template.lineWidth
+            coordinator.lastTemplateColorHex = template.colorHex
         }
         
-        context.coordinator.updateCounter += 1
+        coordinator.updateCounter += 1
     }
     
     // Method to clear existing page dividers
