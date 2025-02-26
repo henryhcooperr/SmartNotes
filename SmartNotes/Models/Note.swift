@@ -29,12 +29,7 @@ struct Note: Identifiable, Codable, Hashable {
 // Simple helper for PKDrawing conversion
 extension PKDrawing {
     func toData() -> Data {
-        do {
-            return try self.dataRepresentation()
-        } catch {
-            print("Error converting PKDrawing to data: \(error)")
-            return Data()
-        }
+        return self.dataRepresentation()
     }
     
     static func fromData(_ data: Data) -> PKDrawing {

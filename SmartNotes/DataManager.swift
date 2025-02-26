@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import UIKit
+import PencilKit
 
 class DataManager: ObservableObject {
     @Published var subjects: [Subject] = []
@@ -42,26 +43,65 @@ class DataManager: ObservableObject {
     
     func loadData() {
         print("📊 DataManager loading data")
-        if let data = UserDefaults.standard.data(forKey: saveKey) {
-            if let decoded = try? JSONDecoder().decode([Subject].self, from: data) {
+        do {
+            if let data = UserDefaults.standard.data(forKey: saveKey) {
+                let decoded = try JSONDecoder().decode([Subject].self, from: data)
                 print("📊 Successfully decoded \(decoded.count) subjects")
+                
+                // Additional validation of drawing data
+                for subject in decoded {
+                    for note in subject.notes {
+                        if !note.drawingData.isEmpty {
+                            do {
+                                _ = try PKDrawing(data: note.drawingData)
+                                print("✅ Valid drawing data for note: \(note.id)")
+                            } catch {
+                                print("❌ Invalid drawing data for note: \(note.id)")
+                            }
+                        }
+                    }
+                }
+                    
                 self.subjects = decoded
-                return
             } else {
-                print("📊 Failed to decode data")
+                print("📊 No data found in UserDefaults")
+                setupDefaultSubjects()
             }
-        } else {
-            print("📊 No data found in UserDefaults")
+        } catch {
+            print("📊 Decoding error: \(error)")
+            setupDefaultSubjects()
         }
-        
-        // Default subjects if no data exists
-        print("📊 Creating default subjects")
-        self.subjects = [
-            Subject(name: "Math", notes: [], colorName: "blue"),
-            Subject(name: "History", notes: [], colorName: "red"),
-            Subject(name: "Science", notes: [], colorName: "green")
-        ]
     }
+
+        private func setupDefaultSubjects() {
+            print("📊 Creating default subjects")
+            self.subjects = [
+                Subject(name: "Math", notes: [], colorName: "blue"),
+                Subject(name: "History", notes: [], colorName: "red"),
+                Subject(name: "Science", notes: [], colorName: "green")
+            ]
+        }
+
+        func saveData() {
+            print("📊 DataManager saving data with \(subjects.count) subjects")
+            
+            DispatchQueue.global(qos: .background).async { [weak self] in
+                guard let self = self else { return }
+                
+                do {
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = .prettyPrinted // Optional: for debugging
+                    let encoded = try encoder.encode(self.subjects)
+                    
+                    DispatchQueue.main.async {
+                        UserDefaults.standard.set(encoded, forKey: self.saveKey)
+                        print("📊 Data saved successfully to UserDefaults")
+                    }
+                } catch {
+                    print("📊 Failed to encode subjects: \(error)")
+                }
+            }
+        }
     
     // Schedule data saving with much longer debounce (3 seconds) to avoid UI freezing
     private func scheduleSave() {
@@ -78,42 +118,6 @@ class DataManager: ObservableObject {
         }
     }
     
-    func saveData() {
-        // Check if already saving
-        if isSaving {
-            pendingSaveNeeded = true
-            print("📊 Save already in progress, will save again when complete")
-            return
-        }
-        
-        print("📊 DataManager saving data with \(subjects.count) subjects")
-        isSaving = true
-        
-        DispatchQueue.global(qos: .background).async { [weak self] in
-            guard let self = self else { return }
-            
-            if let encoded = try? JSONEncoder().encode(self.subjects) {
-                UserDefaults.standard.set(encoded, forKey: self.saveKey)
-                print("📊 Data saved successfully to UserDefaults")
-                
-                DispatchQueue.main.async {
-                    self.isSaving = false
-                    
-                    // If another save was requested while saving, schedule it now
-                    if self.pendingSaveNeeded {
-                        print("📊 Processing pending save request")
-                        self.pendingSaveNeeded = false
-                        self.scheduleSave()
-                    }
-                }
-            } else {
-                print("📊 Failed to encode subjects for saving")
-                DispatchQueue.main.async {
-                    self.isSaving = false
-                }
-            }
-        }
-    }
     
     @objc func saveDataImmediately() {
         print("📊 Saving data immediately")

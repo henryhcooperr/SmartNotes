@@ -10,6 +10,9 @@ import PencilKit
 
 struct NoteDetailView: View {
     @Binding var note: Note
+    @EnvironmentObject var dataManager: DataManager
+    let subjectID: UUID
+    
     @State private var pkDrawing = PKDrawing()
     @State private var localTitle: String
     @State private var showExportOptions = false
@@ -19,11 +22,11 @@ struct NoteDetailView: View {
     @State private var isInitialLoad = true
     
     // Initialize the local title with the note's title
-    init(note: Binding<Note>) {
-        self._note = note
-        self._localTitle = State(initialValue: note.wrappedValue.title)
-        print("📝 NoteDetailView initializing for note: \(note.wrappedValue.title)")
-    }
+    init(note: Binding<Note>, subjectID: UUID) {
+            self._note = note
+            self.subjectID = subjectID
+            self._localTitle = State(initialValue: note.wrappedValue.title)
+        }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -139,6 +142,9 @@ struct NoteDetailView: View {
         note.title = localTitle
         saveDrawingData(pkDrawing)
         note.lastModified = Date()
+        
+        // Assuming you have access to DataManager and subjectID
+        dataManager.updateNote(in: subjectID, note: note)
     }
     
     private func exportToPDF() {

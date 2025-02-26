@@ -14,7 +14,7 @@ struct NotePreviewCard: View {
     var body: some View {
         NavigationLink(destination: {
             // Destination is a detail note view
-            NoteDetailView(note: $note)
+            NoteDetailView(note: $note, subjectID: subject.id)
         }) {
             cardContents
         }
@@ -23,21 +23,34 @@ struct NotePreviewCard: View {
     
     private var cardContents: some View {
         VStack(alignment: .leading) {
-            // Placeholder for the note "thumbnail"
-            Rectangle()
-                .fill(Color.secondary.opacity(0.2))
-                .frame(height: 100)
+            let thumbnailImage = ThumbnailGenerator.generateThumbnail(from: note)
+            
+            // Debug: Print image size and check if it's valid
+            if thumbnailImage.size.width > 0 && thumbnailImage.size.height > 0 {
+                Image(uiImage: thumbnailImage)
+                    .resizable()
+                    .scaledToFit() // Changed from .fill to .fit
+                    .frame(height: 100)
+                    .background(Color.white)
+                    .overlay(
+                        Rectangle()
+                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
+            } else {
+                // Fallback placeholder if thumbnail generation fails
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 100)
+            }
             
             Text(note.title.isEmpty ? "Untitled Note" : note.title)
                 .font(.headline)
                 .lineLimit(1)
             
-            // Format the date
             Text(note.dateCreated, format: .dateTime.month().day().year())
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
-            // Subject tag
             Text(subject.name)
                 .font(.caption2)
                 .fontWeight(.bold)
@@ -47,6 +60,7 @@ struct NotePreviewCard: View {
                 .background(subject.color)
                 .cornerRadius(6)
         }
+        
         .padding()
         .background(Color(.systemBackground))
         .cornerRadius(10)
