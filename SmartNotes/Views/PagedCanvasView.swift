@@ -16,8 +16,10 @@ struct PagedCanvasView: UIViewRepresentable {
     // Configuration options
     let pageSize = CGSize(width: 612, height: 792) // Standard US Letter size (8.5" x 11" at 72 DPI)
     let pageSpacing: CGFloat = 20
-    let numberOfPages: Int = 3 // Reduced from 5 to improve performance
     let horizontalPadding: CGFloat = 20
+    
+    // Initial number of pages - we'll grow this dynamically
+    @State private var numberOfPages: Int = 2
     
     // Tool picker for PencilKit
     let toolPicker = PKToolPicker()
@@ -29,7 +31,7 @@ struct PagedCanvasView: UIViewRepresentable {
         var scrollView: UIScrollView!
         var lastUpdate = Date()
         var isInitialLoad = true
-        var updateCounter = 0 // Moved from struct to coordinator
+        var updateCounter = 0
         
         init(parent: PagedCanvasView) {
             self.parent = parent
@@ -62,6 +64,73 @@ struct PagedCanvasView: UIViewRepresentable {
             
             // Update the binding
             parent.drawing = canvasView.drawing
+            
+            // Check if we need to add a new page
+            checkAndAddNewPageIfNeeded()
+        }
+        
+        // New method to check if drawing extends to the last page and add a new page if needed
+        func checkAndAddNewPageIfNeeded() {
+            // Get the strokes from the drawing
+            let strokes = canvasView.drawing.strokes
+            
+            // Calculate the bottom of the last page
+            let lastPageBottom = CGFloat(parent.numberOfPages) * (parent.pageSize.height + parent.pageSpacing) - parent.pageSpacing
+            
+            // Check if any stroke extends below the bottom of the second-to-last page
+            let secondToLastPageBottom = lastPageBottom - (parent.pageSize.height + parent.pageSpacing)
+            
+            for stroke in strokes {
+                // Get the bounds of the stroke
+                let strokeBounds = stroke.renderBounds
+                
+                // If the stroke extends below the second-to-last page bottom,
+                // we'll add a new page
+                if strokeBounds.maxY > secondToLastPageBottom {
+                    // Only add a page if we're currently on the last page
+                    if parent.numberOfPages <= Int(strokeBounds.maxY / (parent.pageSize.height + parent.pageSpacing)) + 1 {
+                        print("📐 Drawing extends to last page, adding a new page")
+                        
+                        // Update the page count via the parent
+                        DispatchQueue.main.async {
+                            // Add one more page
+                            self.parent.numberOfPages += 1
+                            
+                            // Update the scroll view and canvas
+                            self.updateContentSizeAndDividers()
+                        }
+                        
+                        // Break after deciding to add a page
+                        break
+                    }
+                }
+            }
+        }
+        
+        // Method to update the content size and page dividers
+        func updateContentSizeAndDividers() {
+            guard let scrollView = self.scrollView, let canvasView = self.canvasView else { return }
+            
+            // Calculate total content height
+            let totalHeight = CGFloat(parent.numberOfPages) * (parent.pageSize.height + parent.pageSpacing) - parent.pageSpacing
+            
+            // Update scroll view content size
+            scrollView.contentSize = CGSize(width: scrollView.frame.width, height: totalHeight)
+            
+            // Update canvas view frame
+            let canvasWidth = min(UIScreen.main.bounds.width - (parent.horizontalPadding * 2), parent.pageSize.width)
+            canvasView.frame = CGRect(
+                x: (scrollView.frame.width - canvasWidth) / 2,
+                y: 0,
+                width: canvasWidth,
+                height: totalHeight
+            )
+            
+            // Update page dividers
+            parent.clearPageDividers(from: scrollView)
+            parent.addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: parent.numberOfPages)
+            
+            print("📐 Updated content size to \(totalHeight) points tall for \(parent.numberOfPages) pages")
         }
     }
     
@@ -82,7 +151,7 @@ struct PagedCanvasView: UIViewRepresentable {
         scrollView.alwaysBounceVertical = true
         context.coordinator.scrollView = scrollView
         
-        // Create canvas view with enough height for all pages
+        // Create canvas view with enough height for initial pages
         let canvasView = PKCanvasView()
         canvasView.backgroundColor = .white
         canvasView.drawingPolicy = .anyInput
@@ -117,7 +186,7 @@ struct PagedCanvasView: UIViewRepresentable {
         }
         
         // Add page dividers
-        addPageDividers(to: scrollView, canvasWidth: canvasWidth)
+        addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: numberOfPages)
         
         // Load drawing after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -158,29 +227,49 @@ struct PagedCanvasView: UIViewRepresentable {
         // Only update page dividers occasionally to improve performance
         if context.coordinator.updateCounter % 5 == 0 {
             // Clear and re-add page dividers
-            for view in scrollView.subviews where view is UIView && view.tag == 999 {
-                view.removeFromSuperview()
-            }
-            addPageDividers(to: scrollView, canvasWidth: canvasWidth)
+            clearPageDividers(from: scrollView)
+            addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: numberOfPages)
         }
         context.coordinator.updateCounter += 1
     }
     
-    private func addPageDividers(to scrollView: UIScrollView, canvasWidth: CGFloat) {
+    // Method to clear existing page dividers
+    func clearPageDividers(from scrollView: UIScrollView) {
+        for view in scrollView.subviews where view.tag == 999 {
+            view.removeFromSuperview()
+        }
+    }
+    
+    func addPageDividers(to scrollView: UIScrollView, canvasWidth: CGFloat, numberOfPages: Int) {
         // Add visual indicators for page breaks
         for i in 1..<numberOfPages {
             let yPosition = pageSize.height * CGFloat(i) + (pageSpacing * CGFloat(i - 1))
             
-            // Add a line to indicate page break
-            let lineView = UIView()
-            lineView.backgroundColor = UIColor.systemGray5
-            lineView.frame = CGRect(
+            // Create a container view for proper positioning
+            let containerView = UIView()
+            containerView.frame = CGRect(
                 x: (scrollView.frame.width - canvasWidth) / 2,
                 y: yPosition,
                 width: canvasWidth,
                 height: pageSpacing
             )
-            lineView.tag = 999 // Tag for identification
+            containerView.backgroundColor = .clear
+            containerView.tag = 999 // Tag for identification
+            
+            // Add a dashed line in the middle of the page spacing
+            let lineLayer = CAShapeLayer()
+            lineLayer.strokeColor = UIColor.systemGray4.cgColor
+            lineLayer.lineDashPattern = [4, 4] // 4 points line, 4 points gap
+            lineLayer.lineWidth = 1
+            
+            // Create a path for the dashed line
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: 0, y: pageSpacing / 2))
+            path.addLine(to: CGPoint(x: canvasWidth, y: pageSpacing / 2))
+            lineLayer.path = path.cgPath
+            
+            // Add the dashed line to the container
+            containerView.layer.addSublayer(lineLayer)
             
             // Add page number label
             let pageLabel = UILabel()
@@ -189,13 +278,15 @@ struct PagedCanvasView: UIViewRepresentable {
             pageLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
             pageLabel.sizeToFit()
             pageLabel.center = CGPoint(
-                x: scrollView.frame.width / 2,
-                y: yPosition + pageSpacing / 2
+                x: canvasWidth / 2,
+                y: pageSpacing / 2
             )
-            pageLabel.tag = 999 // Tag for identification
             
-            scrollView.addSubview(lineView)
-            scrollView.addSubview(pageLabel)
+            // Add the label to the container
+            containerView.addSubview(pageLabel)
+            
+            // Add the container to the scroll view
+            scrollView.addSubview(containerView)
         }
     }
     
