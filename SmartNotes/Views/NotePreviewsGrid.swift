@@ -56,23 +56,55 @@ struct NotePreviewsGrid: View {
     }
     
     private func noteCardView(for index: Int) -> some View {
-        VStack(alignment: .leading) {
-            // Generate and display thumbnail of the note's drawing
-            Rectangle()
-                .fill(Color.secondary.opacity(0.2))
-                .frame(height: 100)
-            
-            Text(subject.notes[index].title.isEmpty ? "Untitled Note" : subject.notes[index].title)
+        let note = subject.notes[index]
+
+        // Compute the forced-first-page thumbnail
+        let thumbnailImage: UIImage = {
+            // 1. If there's no drawing data, return an empty UIImage
+            guard !note.drawingData.isEmpty else { return UIImage() }
+
+            // 2. Attempt to load a PKDrawing
+            guard let loadedDrawing = try? PKDrawing(data: note.drawingData),
+                  !loadedDrawing.strokes.isEmpty else {
+                return UIImage()
+            }
+
+            // 3. Force a letter-size rectangle (8.5" x 11" at 72DPI)
+            let firstPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+
+            // 4. Scale it down to fit a ~100pt height
+            let scale: CGFloat = 0.15
+
+            // 5. Render a UIImage from that forced rectangle
+            return loadedDrawing.image(from: firstPageRect, scale: scale)
+        }()
+
+        // Side effect print outside the view builder
+        let _ = print("Thumbnail size = \(thumbnailImage.size)")
+
+        return VStack(alignment: .leading) {
+            // Show the thumbnail if valid
+            if thumbnailImage.size.width > 0 && thumbnailImage.size.height > 0 {
+                Image(uiImage: thumbnailImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 100)
+            } else {
+                // Fallback placeholder
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 100)
+            }
+
+            Text(note.title.isEmpty ? "Untitled Note" : note.title)
                 .font(.headline)
                 .lineLimit(1)
-                .foregroundColor(.primary)  // Ensure text is visible on both light/dark mode
-            
-            // Format the date
-            Text(subject.notes[index].dateCreated, format: .dateTime.month().day().year())
+                .foregroundColor(.primary)
+
+            Text(note.dateCreated, format: .dateTime.month().day().year())
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-            
-            // Subject tag
+
             Text(subject.name)
                 .font(.caption2)
                 .fontWeight(.bold)

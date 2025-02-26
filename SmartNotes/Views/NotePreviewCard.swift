@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PencilKit
 
 struct NotePreviewCard: View {
     @Binding var note: Note
@@ -22,14 +23,17 @@ struct NotePreviewCard: View {
     }
     
     private var cardContents: some View {
-        VStack(alignment: .leading) {
-            let thumbnailImage = ThumbnailGenerator.generateThumbnail(from: note)
-            
-            // Debug: Print image size and check if it's valid
+        // Compute the thumbnail first
+        let thumbnailImage = forcedFirstPageThumbnail
+        
+        // Print in a side-effect expression (rather than inline in the View builder)
+        let _ = print("Thumbnail size = \(thumbnailImage.size)")
+        
+        return VStack(alignment: .leading) {
             if thumbnailImage.size.width > 0 && thumbnailImage.size.height > 0 {
                 Image(uiImage: thumbnailImage)
                     .resizable()
-                    .scaledToFit() // Changed from .fill to .fit
+                    .scaledToFit()
                     .frame(height: 100)
                     .background(Color.white)
                     .overlay(
@@ -37,7 +41,6 @@ struct NotePreviewCard: View {
                             .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                     )
             } else {
-                // Fallback placeholder if thumbnail generation fails
                 Rectangle()
                     .fill(Color.secondary.opacity(0.2))
                     .frame(height: 100)
@@ -60,10 +63,30 @@ struct NotePreviewCard: View {
                 .background(subject.color)
                 .cornerRadius(6)
         }
-        
         .padding()
         .background(Color(.systemBackground))
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
+    }
+
+    // MARK: - Computed Property: forcedFirstPageThumbnail
+    private var forcedFirstPageThumbnail: UIImage {
+        // 1. If there's no drawing data, return an empty UIImage
+        guard !note.drawingData.isEmpty else { return UIImage() }
+        
+        // 2. Attempt to load a PKDrawing
+        guard let loadedDrawing = try? PKDrawing(data: note.drawingData),
+              !loadedDrawing.strokes.isEmpty else {
+            return UIImage()
+        }
+        
+        // 3. Force the "first page" rectangle (8.5" x 11" at 72DPI)
+        let firstPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+        
+        // 4. Figure out an appropriate scale
+        let scale: CGFloat = 0.15 // Adjust as desired to fit your card height
+        
+        // 5. Render a UIImage from that forced rectangle
+        return loadedDrawing.image(from: firstPageRect, scale: scale)
     }
 }
