@@ -13,11 +13,14 @@ struct PagedCanvasView: UIViewRepresentable {
     // Binding to store the PKDrawing
     @Binding var drawing: PKDrawing
     
+    // Binding for the template
+    @Binding var template: CanvasTemplate
+    
     // Configuration options
     let pageSize = CGSize(width: 612, height: 792) // Standard US Letter size (8.5" x 11" at 72 DPI)
     let pageSpacing: CGFloat = 20
     let horizontalPadding: CGFloat = 20
-    
+
     // Initial number of pages - we'll grow this dynamically
     @State private var numberOfPages: Int = 2
     
@@ -32,6 +35,11 @@ struct PagedCanvasView: UIViewRepresentable {
         var lastUpdate = Date()
         var isInitialLoad = true
         var updateCounter = 0
+        var templateLayers: [CALayer] = []
+        
+        // Add properties to track template changes
+        var lastTemplateType: CanvasTemplate.TemplateType?
+        var lastTemplateSpacing: CGFloat?
         
         init(parent: PagedCanvasView) {
             self.parent = parent
@@ -130,7 +138,120 @@ struct PagedCanvasView: UIViewRepresentable {
             parent.clearPageDividers(from: scrollView)
             parent.addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: parent.numberOfPages)
             
+            // Update template rendering
+            applyTemplate()
+            
             print("📐 Updated content size to \(totalHeight) points tall for \(parent.numberOfPages) pages")
+        }
+        
+        // Apply the selected template to the canvas background
+        func applyTemplate() {
+            // Remove existing template layers
+            for layer in templateLayers {
+                layer.removeFromSuperlayer()
+            }
+            templateLayers.removeAll()
+            
+            // If no template is selected, we're done
+            if parent.template.type == .none {
+                return
+            }
+            
+            guard let canvasView = self.canvasView else { return }
+            
+            // Get template parameters
+            let spacing = parent.template.spacing
+            let lineWidth = parent.template.lineWidth
+            let color = parent.template.color.cgColor
+            
+            // Draw template for each page
+            for pageIndex in 0..<parent.numberOfPages {
+                let pageRect = CGRect(
+                    x: 0,
+                    y: CGFloat(pageIndex) * (parent.pageSize.height + parent.pageSpacing),
+                    width: canvasView.frame.width,
+                    height: parent.pageSize.height
+                )
+                
+                // Create a template layer for this page
+                let templateLayer = CALayer()
+                templateLayer.frame = pageRect
+                
+                switch parent.template.type {
+                case .lined:
+                    // Create lines
+                    for y in stride(from: spacing, to: pageRect.height, by: spacing) {
+                        let lineLayer = CAShapeLayer()
+                        lineLayer.strokeColor = color
+                        lineLayer.lineWidth = lineWidth
+                        
+                        let path = UIBezierPath()
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: pageRect.width, y: y))
+                        lineLayer.path = path.cgPath
+                        
+                        templateLayer.addSublayer(lineLayer)
+                    }
+                    
+                case .graph:
+                    // Create horizontal lines
+                    for y in stride(from: spacing, to: pageRect.height, by: spacing) {
+                        let lineLayer = CAShapeLayer()
+                        lineLayer.strokeColor = color
+                        lineLayer.lineWidth = lineWidth
+                        
+                        let path = UIBezierPath()
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: pageRect.width, y: y))
+                        lineLayer.path = path.cgPath
+                        
+                        templateLayer.addSublayer(lineLayer)
+                    }
+                    
+                    // Create vertical lines
+                    for x in stride(from: spacing, to: pageRect.width, by: spacing) {
+                        let lineLayer = CAShapeLayer()
+                        lineLayer.strokeColor = color
+                        lineLayer.lineWidth = lineWidth
+                        
+                        let path = UIBezierPath()
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: pageRect.height))
+                        lineLayer.path = path.cgPath
+                        
+                        templateLayer.addSublayer(lineLayer)
+                    }
+                    
+                case .dotted:
+                    // Create dot pattern
+                    for y in stride(from: spacing, to: pageRect.height, by: spacing) {
+                        for x in stride(from: spacing, to: pageRect.width, by: spacing) {
+                            let dotLayer = CAShapeLayer()
+                            dotLayer.fillColor = color
+                            
+                            let dotSize = lineWidth * 2
+                            let dotRect = CGRect(
+                                x: x - dotSize/2,
+                                y: y - dotSize/2,
+                                width: dotSize,
+                                height: dotSize
+                            )
+                            
+                            let path = UIBezierPath(ovalIn: dotRect)
+                            dotLayer.path = path.cgPath
+                            
+                            templateLayer.addSublayer(dotLayer)
+                        }
+                    }
+                    
+                case .none:
+                    break // No template
+                }
+                
+                // Add the template layer to the view
+                canvasView.layer.insertSublayer(templateLayer, at: 0)
+                templateLayers.append(templateLayer)
+            }
         }
     }
     
@@ -156,7 +277,6 @@ struct PagedCanvasView: UIViewRepresentable {
         canvasView.backgroundColor = .white
         canvasView.drawingPolicy = .anyInput
         canvasView.tool = PKInkingTool(.pen, color: .black, width: 2)
-        canvasView.allowsFingerDrawing = true
         canvasView.delegate = context.coordinator
         context.coordinator.canvasView = canvasView
         
@@ -179,7 +299,7 @@ struct PagedCanvasView: UIViewRepresentable {
         scrollView.addSubview(canvasView)
         
         // Show the tool picker using the modern scene API
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+        if UIApplication.shared.connectedScenes.first is UIWindowScene {
             toolPicker.setVisible(true, forFirstResponder: canvasView)
             toolPicker.addObserver(canvasView)
             canvasView.becomeFirstResponder()
@@ -192,6 +312,9 @@ struct PagedCanvasView: UIViewRepresentable {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             print("📐 Setting initial drawing")
             canvasView.drawing = drawing
+            
+            // Apply template
+            context.coordinator.applyTemplate()
             
             // Mark initialization as complete after a delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -230,6 +353,18 @@ struct PagedCanvasView: UIViewRepresentable {
             clearPageDividers(from: scrollView)
             addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: numberOfPages)
         }
+        
+        // Apply template if it hasn't been applied yet or has changed
+        let coordinator = context.coordinator
+        let templateChanged = coordinator.lastTemplateType != template.type ||
+                             coordinator.lastTemplateSpacing != template.spacing
+        
+        if templateChanged {
+            coordinator.applyTemplate()
+            coordinator.lastTemplateType = template.type
+            coordinator.lastTemplateSpacing = template.spacing
+        }
+        
         context.coordinator.updateCounter += 1
     }
     

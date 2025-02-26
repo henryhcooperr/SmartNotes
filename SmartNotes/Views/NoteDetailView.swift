@@ -23,10 +23,10 @@ struct NoteDetailView: View {
     
     // Initialize the local title with the note's title
     init(note: Binding<Note>, subjectID: UUID) {
-            self._note = note
-            self.subjectID = subjectID
-            self._localTitle = State(initialValue: note.wrappedValue.title)
-        }
+        self._note = note
+        self.subjectID = subjectID
+        self._localTitle = State(initialValue: note.wrappedValue.title)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -47,8 +47,8 @@ struct NoteDetailView: View {
             Divider()
                 .padding(.horizontal)
             
-            // Use the PagedCanvasView with our drawing binding
-            PagedCanvasView(drawing: $pkDrawing)
+            // Use the TemplateCanvasView with our drawing binding
+            TemplateCanvasView(drawing: $pkDrawing)
                 .onAppear {
                     // Load drawing data when view appears - with safety delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -69,6 +69,18 @@ struct NoteDetailView: View {
                 Button("Done") {
                     saveChanges()
                     presentationMode.wrappedValue.dismiss()
+                }
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    // Show template settings
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("ShowTemplateSettings"),
+                        object: nil
+                    )
+                }) {
+                    Image(systemName: "ellipsis")
                 }
             }
             
@@ -148,8 +160,17 @@ struct NoteDetailView: View {
     }
     
     private func exportToPDF() {
+        // Create a temporary template for getting page rects
+        // We need to pass a binding, so we'll create a temporary state here
+        let emptyTemplate = CanvasTemplate.none
+        var templateBinding = emptyTemplate
+        let binding = Binding(
+            get: { templateBinding },
+            set: { templateBinding = $0 }
+        )
+        
         // Get page rects from a PagedCanvasView instance
-        let pageRects = PagedCanvasView(drawing: $pkDrawing).getPageRects()
+        let pageRects = PagedCanvasView(drawing: $pkDrawing, template: binding).getPageRects()
         
         // Export to PDF
         if let pdfURL = PDFExporter.exportNoteToPDF(note: note, pageRects: pageRects) {
