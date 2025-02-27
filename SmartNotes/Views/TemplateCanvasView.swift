@@ -28,10 +28,28 @@ struct TemplateCanvasView: View {
             numberOfPages: $numberOfPages
         )
         .sheet(isPresented: $showingTemplateSettings) {
+            // This onDismiss closure will be called when the sheet is dismissed
+            // Force refresh template when sheet closes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshTemplate"),
+                    object: nil
+                )
+            }
+        } content: {
             TemplateSettingsView(template: $template)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowTemplateSettings"))) { _ in
             showingTemplateSettings = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshTemplate"))) { _ in
+            // Force reapplication of template when RefreshTemplate notification is received
+            print("📝 Refreshing template from notification")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ForceApplyTemplate"),
+                object: nil,
+                userInfo: ["template": template]
+            )
         }
         // Add listener for forcing tool picker visibility
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ForceToolPickerVisible"))) { _ in
@@ -55,6 +73,14 @@ struct TemplateCanvasView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         template = savedTemplate
                         isInitialRenderComplete = true
+                        
+                        // Force template refresh after loading
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("RefreshTemplate"),
+                                object: nil
+                            )
+                        }
                     }
                 } catch {
                     print("📝 Error loading template: \(error)")
@@ -72,6 +98,14 @@ struct TemplateCanvasView: View {
                     let data = try JSONEncoder().encode(newTemplate)
                     UserDefaults.standard.set(data, forKey: templateKey)
                     print("📝 Saved template: \(newTemplate.type.rawValue) for note: \(noteID.uuidString)")
+                    
+                    // Force template refresh whenever template changes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("RefreshTemplate"),
+                            object: nil
+                        )
+                    }
                 } catch {
                     print("📝 Error saving template: \(error)")
                 }
@@ -110,9 +144,46 @@ struct SafeCanvasView: UIViewRepresentable {
         var isInitialLoad = true
         var lastTemplate: CanvasTemplate?
         var toolPicker: PKToolPicker?
+        // Observer tokens
+        var templateObserver: NSObjectProtocol?
+        var toolPickerObserver: NSObjectProtocol?
         
         init(_ parent: SafeCanvasView) {
             self.parent = parent
+            super.init()
+            
+            // Set up notification observers
+            self.templateObserver = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("ForceApplyTemplate"),
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                print("🖌️ Force apply template notification received")
+                DispatchQueue.main.async {
+                    self?.applyTemplate()
+                }
+            }
+            
+            self.toolPickerObserver = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("CanvasForceFirstResponder"),
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                print("🔧 Forcing tool picker visibility from notification")
+                DispatchQueue.main.async {
+                    self?.ensureToolPickerVisible()
+                }
+            }
+        }
+        
+        deinit {
+            // Clean up observers
+            if let observer = templateObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            if let observer = toolPickerObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
         }
         
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
@@ -268,6 +339,11 @@ struct SafeCanvasView: UIViewRepresentable {
             centerZoomingView(in: scrollView)
         }
         
+        // Support for handling mouse wheel events
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            print("📐 Scroll view began dragging")
+        }
+        
         // Center the zooming canvas
         private func centerZoomingView(in scrollView: UIScrollView) {
             guard let canvasView = canvasView else { return }
@@ -299,6 +375,12 @@ struct SafeCanvasView: UIViewRepresentable {
         scrollView.minimumZoomScale = 0.5
         scrollView.maximumZoomScale = 3.0
         scrollView.contentInsetAdjustmentBehavior = .automatic
+        
+        // Enable mouse wheel scrolling support
+        scrollView.panGestureRecognizer.allowedTouchTypes = [UITouch.TouchType.direct.rawValue as NSNumber,
+                                                           UITouch.TouchType.indirect.rawValue as NSNumber]
+        scrollView.isScrollEnabled = true
+        
         context.coordinator.mainScrollView = scrollView
         
         // Create the canvas view to fill the available space
@@ -308,6 +390,12 @@ struct SafeCanvasView: UIViewRepresentable {
         canvasView.backgroundColor = .white
         canvasView.alwaysBounceVertical = true
         canvasView.allowsFingerDrawing = true  // Allow finger drawing explicitly
+        
+        // Configure touch handling for the canvas
+        // PKCanvasView doesn't have allowedTouchTypes property
+        // Instead we'll make sure the canvas responds to all input types
+        canvasView.drawingPolicy = .anyInput
+        
         context.coordinator.canvasView = canvasView
         
         // Calculate initial content height
@@ -346,16 +434,6 @@ struct SafeCanvasView: UIViewRepresentable {
                 context.coordinator.isInitialLoad = false
                 print("📝 Canvas ready with tool picker visible")
             }
-        }
-        
-        // Add observation for forced tool picker visibility
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("CanvasForceFirstResponder"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            print("🔧 Forcing tool picker visibility from notification")
-            context.coordinator.ensureToolPickerVisible()
         }
         
         return scrollView
@@ -427,6 +505,15 @@ struct SafeCanvasView: UIViewRepresentable {
             
             scrollView.addSubview(dividerView)
         }
+    }
+}
+
+// MARK: - TemplateRenderer Extension to make it public for other views
+extension TemplateRenderer {
+    // This is needed to ensure that the TemplateRenderer can be accessed from the notification handler
+    // Make sure this matches your existing TemplateRenderer implementation
+    static func applyTemplateImmediately(to canvasView: PKCanvasView, template: CanvasTemplate, pageSize: CGSize, numberOfPages: Int, pageSpacing: CGFloat) {
+        applyTemplateToCanvas(canvasView, template: template, pageSize: pageSize, numberOfPages: numberOfPages, pageSpacing: pageSpacing)
     }
 }
 

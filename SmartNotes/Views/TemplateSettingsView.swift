@@ -122,7 +122,20 @@ struct TemplateSettingsView: View {
                 },
                 trailing: Button("Apply") {
                     applyChanges()
-                    presentationMode.wrappedValue.dismiss()
+                    
+                    // This is a key addition - we post a notification before dismissing
+                    // to force immediate template refresh
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("RefreshTemplate"),
+                            object: nil
+                        )
+                        
+                        // Give the notification a moment to be processed before dismissing
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
                 }
             )
         }
