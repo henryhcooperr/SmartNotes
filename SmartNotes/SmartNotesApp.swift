@@ -4,7 +4,15 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
-
+//  This is the application entry point that sets up the environment.
+//  Key responsibilities:
+//    - Creating the DataManager shared instance
+//    - Setting up the MainView as the root view
+//    - Passing the DataManager through the environment
+//
+//  This file also contains the MainView, which integrates the
+//  SubjectsSplitView with the app's data layer.
+//
 import SwiftUI
 
 @main

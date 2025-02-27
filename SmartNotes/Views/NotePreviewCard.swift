@@ -4,6 +4,16 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
+//  This file defines a reusable card view for note previews.
+//  Key responsibilities:
+//    - Displaying a thumbnail of the note content
+//    - Showing the note title and creation date
+//    - Displaying the subject indicator with color
+//    - Handling navigation to the note detail view
+//
+//  This component is used by NotePreviewsGrid to display
+//  individual notes in the grid layout.
+//
 
 import SwiftUI
 import PencilKit

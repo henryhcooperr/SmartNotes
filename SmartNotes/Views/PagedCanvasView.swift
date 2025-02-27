@@ -4,6 +4,17 @@
 //
 //  Created on 2/25/25.
 //
+//  This file implements a multi-page scrollable canvas.
+//  Key responsibilities:
+//    - Creating a scrollable area for drawing across multiple pages
+//    - Managing page boundaries with visual indicators
+//    - Applying templates to each page
+//    - Automatically extending when drawing reaches page bottom
+//    - Handling PencilKit tool picker integration
+//
+//  This is an alternative implementation to SafeCanvasView in
+//  TemplateCanvasView.swift.
+//
 
 import SwiftUI
 import PencilKit

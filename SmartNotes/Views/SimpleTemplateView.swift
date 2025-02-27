@@ -1,3 +1,20 @@
+//
+//  SimpleTemplateView.swift
+//  SmartNotes
+//
+//  Created on 2/26/25.
+//
+//  This file provides a SwiftUI implementation for rendering templates.
+//  Key responsibilities:
+//    - Drawing line patterns based on template settings
+//    - Supporting lined, graph, and dotted templates
+//    - Rendering templates using SwiftUI's Canvas
+//    - Adapting to available width
+//
+//  This is used as an alternative renderer to the UIKit-based
+//  approach in TemplateRenderer.
+//
+
 import SwiftUI
 
 /// A SwiftUI-based template background that renders
@@ -94,7 +111,7 @@ struct SimpleTemplateView: View {
                                         width: dotDiameter,
                                         height: dotDiameter
                                     )
-                                    var dotPath = Path(ellipseIn: dotRect)
+                                    let dotPath = Path(ellipseIn: dotRect)
                                     // Fill for dotted
                                     context.fill(dotPath, with: .color(lineColor))
                                 }

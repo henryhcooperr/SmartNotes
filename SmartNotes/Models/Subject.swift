@@ -4,6 +4,17 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
+//  This file defines the Subject data model, which represents a category
+//  for organizing notes. Each subject has:
+//    - A unique ID
+//    - A name (like "Math" or "History")
+//    - An array of notes that belong to this subject
+//    - A color name (stored as a string) and a computed color property
+//    - A last modified timestamp
+//
+//  The file also implements Hashable and Equatable for use in SwiftUI lists
+//  and provides a "touch()" method to update the last modified date.
+//
 
 import SwiftUI
 import PencilKit

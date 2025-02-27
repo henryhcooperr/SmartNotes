@@ -4,7 +4,17 @@
 //
 //  Created on 2/26/25.
 //
-
+//  This file provides the drawing canvas with template support.
+//  Key responsibilities:
+//    - Wrapping PKCanvasView (Apple's PencilKit canvas) in SwiftUI
+//    - Loading and applying templates to the canvas background
+//    - Saving template settings per note
+//    - Supporting zooming and scrolling
+//    - Auto-extending pages when drawing nears the bottom
+//    - Handling tool picker visibility
+//
+//  This is the core drawing component used by NoteDetailView.
+//
 import SwiftUI
 import PencilKit
 
@@ -389,7 +399,8 @@ struct SafeCanvasView: UIViewRepresentable {
         canvasView.drawingPolicy = .anyInput
         canvasView.backgroundColor = .white
         canvasView.alwaysBounceVertical = true
-        canvasView.allowsFingerDrawing = true  // Allow finger drawing explicitly
+        // Drawing policy is already set to .anyInput which allows both finger and pencil input
+
         
         // Configure touch handling for the canvas
         // PKCanvasView doesn't have allowedTouchTypes property

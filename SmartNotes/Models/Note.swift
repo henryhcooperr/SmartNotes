@@ -4,6 +4,16 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
+//  This file defines the Note data model, which represents an individual note
+//  that users can create and edit. Each note has:
+//    - A unique ID
+//    - A title (can be empty)
+//    - Drawing data (binary data containing the PKDrawing)
+//    - Creation and modification timestamps
+//
+//  It also includes extension helpers for PKDrawing to convert between
+//  drawing objects and binary data for storage.
+//
 
 import SwiftUI
 import PencilKit

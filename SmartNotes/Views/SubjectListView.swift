@@ -4,7 +4,16 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
-
+//  This file provides an alternative implementation of the subjects list.
+//  Key responsibilities:
+//    - Displaying a simple list of subjects
+//    - Handling subject creation with a text field at bottom
+//    - Managing subject deletion
+//    - Navigation to the notes list for a selected subject
+//
+//  Note that this is a simpler alternative to the subject management
+//  provided by SubjectsSplitView.
+//
 import SwiftUI
 
 struct SubjectsListView: View {

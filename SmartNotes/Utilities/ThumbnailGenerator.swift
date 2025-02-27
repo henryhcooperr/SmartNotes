@@ -4,6 +4,16 @@
 //
 //  Created on 2/25/25.
 //
+//  This file generates thumbnail images from note drawing data.
+//  Key responsibilities:
+//    - Rendering PKDrawing data to UIImage thumbnails
+//    - Caching thumbnails for performance
+//    - Creating placeholder images for empty notes
+//    - Handling drawing data conversion errors
+//
+//  These thumbnails are used in the NotePreviewsGrid and NotePreviewCard
+//  views to show note content in the UI.
+//
 
 import SwiftUI
 import PencilKit

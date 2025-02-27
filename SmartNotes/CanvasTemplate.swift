@@ -4,6 +4,21 @@
 //
 //  Created on 2/26/25.
 //
+//  This file defines the template options for note backgrounds.
+//  Templates include:
+//    - None (blank paper)
+//    - Lined (horizontal lines)
+//    - Graph (grid lines)
+//    - Dotted (dot grid)
+//
+//  Each template has configurable properties:
+//    - Type (from the enum)
+//    - Spacing between lines/dots
+//    - Color (stored as hex string)
+//    - Line width
+//
+//  The file also includes a UIColor extension for hex color conversion.
+//
 
 import SwiftUI
 

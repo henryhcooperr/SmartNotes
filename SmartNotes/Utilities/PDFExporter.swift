@@ -4,6 +4,16 @@
 //
 //  Created on 2/25/25.
 //
+//  This file provides functionality to export notes as PDF documents.
+//  Key responsibilities:
+//    - Converting PKDrawing data to PDF format
+//    - Creating multi-page PDFs for long notes
+//    - Adding metadata and title to exported PDFs
+//    - Presenting sharing options using UIActivityViewController
+//
+//  This functionality is used from NoteDetailView when the user
+//  chooses to export their note.
+//
 
 import SwiftUI
 import PencilKit

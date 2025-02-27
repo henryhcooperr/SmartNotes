@@ -1,3 +1,20 @@
+//
+//  NotePreviewsGrid.swift
+//  SmartNotes
+//
+//  Created by Henry Cooper on 2/25/25.
+//
+//  This file provides a grid layout of note thumbnails for a selected subject.
+//  Key responsibilities:
+//    - Displaying notes as a grid of preview cards
+//    - Generating thumbnails from note drawing data
+//    - Handling navigation to the note detail view
+//    - Creating new notes
+//
+//  This view is shown in the detail area of SubjectsSplitView when
+//  a subject is selected.
+//
+
 import SwiftUI
 import PencilKit
 

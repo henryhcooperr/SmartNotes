@@ -4,6 +4,21 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
+//  This file contains the main navigation structure for SmartNotes app.
+//  It implements a split view with:
+//    - Left side: Sidebar displaying a list of subjects with their colors
+//    - Right side: Detail view showing notes for the selected subject
+//
+//  Key responsibilities:
+//    - Subject list management (displaying, selecting subjects)
+//    - Managing the "Add Subject" workflow with the sheet UI
+//    - Handling subject deletion
+//    - Maintaining the navigation state between the list and detail views
+//    - Communicating changes back to the data manager
+//
+//  This is the primary navigation hub that connects the subject list
+//  with the note grid view (NotePreviewsGrid).
+//
 
 import SwiftUI
 

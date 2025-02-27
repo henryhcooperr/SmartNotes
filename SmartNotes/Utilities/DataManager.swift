@@ -4,6 +4,17 @@
 //
 //  Created on 2/25/25.
 //
+//  This file manages data persistence for the application.
+//  Key responsibilities:
+//    - Storing and retrieving subjects and notes using UserDefaults
+//    - Providing CRUD operations for subjects and notes
+//    - Observing app lifecycle to ensure data is saved
+//    - Debouncing saves to improve performance
+//    - Creating default subjects when no data exists
+//
+//  This is the central data handling component that connects
+//  the UI with persistent storage.
+//
 
 import SwiftUI
 import Combine

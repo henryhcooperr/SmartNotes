@@ -1,3 +1,21 @@
+//
+//  TemplateRenderer.swift
+//  SmartNotes
+//
+//  Created on 2/25/25.
+//
+//  This file handles rendering templates onto the canvas background.
+//  Key responsibilities:
+//    - Converting template settings to visual elements
+//    - Creating template images using Core Graphics
+//    - Applying templates to PKCanvasView using layers
+//    - Handling multiple rendering approaches for compatibility
+//    - Debugging template application issues
+//
+//  This is a utility class used by TemplateCanvasView to apply
+//  templates to the drawing surface.
+//
+
 import UIKit
 import SwiftUI
 import PencilKit

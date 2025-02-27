@@ -4,6 +4,16 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
+//  This file provides a list view of notes for a selected subject.
+//  Key responsibilities:
+//    - Displaying notes in a vertical list
+//    - Handling note creation with the + button
+//    - Managing note deletion
+//    - Navigation to the note detail view for a selected note
+//
+//  This provides an alternative to NotePreviewsGrid when a simple
+//  list view is preferred over thumbnails.
+//
 
 import SwiftUI
 import PencilKit

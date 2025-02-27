@@ -4,6 +4,17 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
+//  This file provides the interface for editing an individual note.
+//  Key responsibilities:
+//    - Title editing
+//    - Drawing canvas with the TemplateCanvasView
+//    - Loading and saving drawing data
+//    - PDF export functionality
+//    - Toolbar with template settings and export options
+//
+//  This is the main editing interface that users interact with
+//  when working on a note.
+//
 
 import SwiftUI
 import PencilKit
@@ -147,12 +158,8 @@ struct NoteDetailView: View {
     
     // Safely save drawing data to the note
     private func saveDrawingData(_ drawing: PKDrawing) {
-        do {
-            note.drawingData = try drawing.dataRepresentation()
-            print("📝 Saved drawing data: \(note.drawingData.count) bytes")
-        } catch {
-            print("📝 Error saving drawing data: \(error.localizedDescription)")
-        }
+        note.drawingData = drawing.dataRepresentation()
+        print("📝 Saved drawing data: \(note.drawingData.count) bytes")
     }
     
     private func saveChanges() {

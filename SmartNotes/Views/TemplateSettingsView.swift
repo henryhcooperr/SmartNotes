@@ -4,6 +4,17 @@
 //
 //  Created on 2/26/25.
 //
+//  This file provides the UI for configuring note templates.
+//  Key responsibilities:
+//    - Template type selection (none, lined, graph, dotted)
+//    - Spacing, line width, and color configuration
+//    - Live preview of template appearance
+//    - Quick template presets (college ruled, graph paper)
+//    - Applying changes to the active note
+//
+//  This view appears as a sheet when the template settings
+//  button is tapped in NoteDetailView.
+//
 
 import SwiftUI
 
