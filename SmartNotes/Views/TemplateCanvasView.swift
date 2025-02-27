@@ -28,6 +28,15 @@ struct TemplateCanvasView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowTemplateSettings"))) { _ in
                 showingTemplateSettings = true
             }
+            // Add listener for forcing tool picker visibility
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ForceToolPickerVisible"))) { _ in
+                print("📝 Forcing tool picker to appear")
+                // This will be handled by SafeCanvasView
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("CanvasForceFirstResponder"),
+                    object: nil
+                )
+            }
             .onAppear {
                 print("📝 TemplateCanvasView appeared for note: \(noteID.uuidString)")
                 
@@ -95,6 +104,7 @@ struct SafeCanvasView: UIViewRepresentable {
         var scrollView: UIScrollView?
         var isInitialLoad = true
         var lastTemplate: CanvasTemplate?
+        var toolPicker: PKToolPicker?
         
         init(_ parent: SafeCanvasView) {
             self.parent = parent
@@ -116,27 +126,46 @@ struct SafeCanvasView: UIViewRepresentable {
             guard !canvasView.frame.isEmpty,
                   canvasView.frame.width > 10,
                   canvasView.frame.height > 10 else {
-                // Retry after a short delay
+                print("🖌️ Canvas dimensions invalid: \(canvasView.frame.size), retrying...")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.applyTemplate()
                 }
                 return
             }
             
-            // Apply template if changed
-            if parent.template != lastTemplate {
-                print("🖌️ Applying template: \(parent.template.type.rawValue) (Canvas size: \(canvasView.frame.size))")
-                
-                // Apply template with multiple render approaches
-                TemplateRenderer.applyTemplateToCanvas(
-                    canvasView,
-                    template: parent.template,
-                    pageSize: CGSize(width: parent.pageWidth, height: parent.pageHeight),
-                    numberOfPages: parent.initialPages,
-                    pageSpacing: parent.pageSpacing
-                )
-                
-                lastTemplate = parent.template
+            // Always apply template regardless of lastTemplate state
+            print("🖌️ Forcing template application: \(parent.template.type.rawValue)")
+            
+            TemplateRenderer.applyTemplateToCanvas(
+                canvasView,
+                template: parent.template,
+                pageSize: CGSize(width: parent.pageWidth, height: parent.pageHeight),
+                numberOfPages: parent.initialPages,
+                pageSpacing: parent.pageSpacing
+            )
+            
+            lastTemplate = parent.template
+        }
+        
+        // Ensure tool picker is visible
+        func ensureToolPickerVisible() {
+            guard let canvasView = canvasView else { return }
+            
+            // Create tool picker if needed
+            if toolPicker == nil {
+                toolPicker = PKToolPicker()
+            }
+            
+            guard let toolPicker = toolPicker else { return }
+            
+            print("🔧 Ensuring tool picker is visible")
+            toolPicker.setVisible(true, forFirstResponder: canvasView)
+            toolPicker.addObserver(canvasView)
+            
+            // Make canvas first responder to show the tool picker
+            if !canvasView.isFirstResponder {
+                print("🔧 Canvas is not first responder - making it first responder")
+                canvasView.becomeFirstResponder()
             }
         }
     }
@@ -159,27 +188,41 @@ struct SafeCanvasView: UIViewRepresentable {
         canvasView.backgroundColor = .white
         context.coordinator.canvasView = canvasView
         
-        // Set up the tool picker
-        let toolPicker = PKToolPicker()
-        toolPicker.setVisible(true, forFirstResponder: canvasView)
-        toolPicker.addObserver(canvasView)
-        canvasView.becomeFirstResponder()
+        // Store canvas view reference for use in notifications
+        let canvasViewRef = canvasView
         
-        // We'll safely size and add the canvas view in updateUIView to ensure
-        // we have valid frame dimensions first
+        // Set up the tool picker - IMPROVED IMPLEMENTATION
+        let toolPicker = PKToolPicker()
+        context.coordinator.toolPicker = toolPicker
+        
+        // Add the canvas view to the scroll view
+        scrollView.addSubview(canvasView)
         
         // Load drawing after a slight delay to allow view setup
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             canvasView.drawing = drawing
             
-            // Mark initialization complete after drawing is loaded
+            // Make canvas first responder AFTER drawing is loaded
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                // Force the tool picker to show
+                toolPicker.setVisible(true, forFirstResponder: canvasView)
+                toolPicker.addObserver(canvasView)
+                canvasView.becomeFirstResponder()
+                
                 context.coordinator.isInitialLoad = false
+                print("📝 Canvas ready with tool picker visible")
             }
         }
         
-        // Add the canvas view to the scroll view
-        scrollView.addSubview(canvasView)
+        // Add observation for forced tool picker visibility
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("CanvasForceFirstResponder"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("🔧 Forcing tool picker visibility from notification")
+            context.coordinator.ensureToolPickerVisible()
+        }
         
         return scrollView
     }
@@ -229,6 +272,15 @@ struct SafeCanvasView: UIViewRepresentable {
         
         // Draw page dividers
         drawPageDividers(in: scrollView, canvasWidth: safeWidth)
+        
+        // This is crucial - make sure canvasView is first responder on EVERY update
+        // This fixes cases where tools disappear after app switching or other interruptions
+        if !context.coordinator.isInitialLoad && !canvasView.isFirstResponder {
+            // Every 5th update, ensure visibility
+            if context.coordinator.toolPicker != nil && arc4random_uniform(5) == 0 {
+                context.coordinator.ensureToolPickerVisible()
+            }
+        }
     }
     
     // Draw visual indicators for page breaks

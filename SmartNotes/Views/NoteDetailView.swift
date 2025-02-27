@@ -134,9 +134,15 @@ struct NoteDetailView: View {
         
         // Mark initialization as complete after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.isInitialLoad = false
-            print("📝 Note ready for editing")
-        }
+                self.isInitialLoad = false
+                print("📝 Note ready for editing")
+                
+                // Force template refresh after drawing is loaded
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("RefreshTemplate"),
+                    object: nil
+                )
+            }
     }
     
     // Safely save drawing data to the note

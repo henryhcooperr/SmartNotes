@@ -61,9 +61,9 @@ struct PagedCanvasView: UIViewRepresentable {
                 return
             }
             
-            // Debounce updates
+            // Debounce updates - reduced from 0.3s to 0.1s for more responsive page additions
             let now = Date()
-            if now.timeIntervalSince(lastUpdate) < 0.3 {
+            if now.timeIntervalSince(lastUpdate) < 0.1 {
                 return // Skip rapid updates
             }
             
@@ -73,43 +73,48 @@ struct PagedCanvasView: UIViewRepresentable {
             // Update the binding
             parent.drawing = canvasView.drawing
             
-            // Check if we need to add a new page
+            // Check if we need to add a new page - do this on every drawing change
             checkAndAddNewPageIfNeeded()
         }
         
-        // New method to check if drawing extends to the last page and add a new page if needed
+        // Completely revised method to check if drawing extends to the last page
         func checkAndAddNewPageIfNeeded() {
-            // Get the strokes from the drawing
-            let strokes = canvasView.drawing.strokes
+            // Get the bounds of the entire drawing
+            let drawingBounds = canvasView.drawing.bounds
+            print("📐 Drawing bounds: \(drawingBounds)")
             
             // Calculate the bottom of the last page
-            let lastPageBottom = CGFloat(parent.numberOfPages) * (parent.pageSize.height + parent.pageSpacing) - parent.pageSpacing
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let lastPageBottom = CGFloat(parent.numberOfPages) * pageHeight +
+                                CGFloat(parent.numberOfPages - 1) * pageSpacing
             
-            // Check if any stroke extends below the bottom of the second-to-last page
-            let secondToLastPageBottom = lastPageBottom - (parent.pageSize.height + parent.pageSpacing)
+            print("📐 Last page bottom: \(lastPageBottom), Drawing maxY: \(drawingBounds.maxY)")
             
-            for stroke in strokes {
-                // Get the bounds of the stroke
-                let strokeBounds = stroke.renderBounds
+            // Calculate how close to the bottom we want to trigger a new page (80% of page height)
+            let triggerThreshold = lastPageBottom - (pageHeight * 0.2)
+            
+            // If the drawing extends beyond the trigger threshold
+            if drawingBounds.maxY > triggerThreshold {
+                print("📐 Drawing extends near last page bottom, adding a new page")
                 
-                // If the stroke extends below the second-to-last page bottom,
-                // we'll add a new page
-                if strokeBounds.maxY > secondToLastPageBottom {
-                    // Only add a page if we're currently on the last page
-                    if parent.numberOfPages <= Int(strokeBounds.maxY / (parent.pageSize.height + parent.pageSpacing)) + 1 {
-                        print("📐 Drawing extends to last page, adding a new page")
-                        
-                        // Update the page count via the parent
-                        DispatchQueue.main.async {
-                            // Add one more page
-                            self.parent.numberOfPages += 1
-                            
-                            // Update the scroll view and canvas
-                            self.updateContentSizeAndDividers()
+                // Update the page count via the parent
+                DispatchQueue.main.async {
+                    // Add one more page
+                    self.parent.numberOfPages += 1
+                    print("📐 New page count: \(self.parent.numberOfPages)")
+                    
+                    // Update the scroll view and canvas
+                    self.updateContentSizeAndDividers()
+                    
+                    // Scroll to show part of the new page
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let scrollView = self.scrollView {
+                            // Scroll to show the top portion of the new page
+                            let newPageTop = lastPageBottom + self.parent.pageSpacing
+                            let newContentOffset = CGPoint(x: 0, y: newPageTop - (scrollView.frame.height * 0.7))
+                            scrollView.setContentOffset(newContentOffset, animated: true)
                         }
-                        
-                        // Break after deciding to add a page
-                        break
                     }
                 }
             }
@@ -117,10 +122,14 @@ struct PagedCanvasView: UIViewRepresentable {
         
         // Method to update the content size and page dividers
         func updateContentSizeAndDividers() {
-            guard let scrollView = self.scrollView, let canvasView = self.canvasView else { return }
+            guard let scrollView = self.scrollView, let canvasView = self.canvasView else {
+                print("📐 Error: Missing scrollView or canvasView")
+                return
+            }
             
             // Calculate total content height
             let totalHeight = CGFloat(parent.numberOfPages) * (parent.pageSize.height + parent.pageSpacing) - parent.pageSpacing
+            print("📐 Updating content size to height: \(totalHeight)")
             
             // Update scroll view content size
             scrollView.contentSize = CGSize(width: scrollView.frame.width, height: totalHeight)
