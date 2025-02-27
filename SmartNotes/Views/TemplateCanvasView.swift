@@ -241,29 +241,22 @@ struct SafeCanvasView: UIViewRepresentable {
                     self.parent.numberOfPages += 1
                     print("📐 New page count: \(self.parent.numberOfPages)")
                     
-                    // Update the scroll view and canvas
+                    // Update the scroll view and canvas size without auto-scrolling
                     self.updateContentSizeAndDividers()
-                    
-                    // Scroll to show part of the new page
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        if let scrollView = self.mainScrollView {
-                            // Scroll to show the top portion of the new page
-                            let newPageTop = lastPageBottom + self.parent.pageSpacing
-                            let newContentOffset = CGPoint(x: 0, y: newPageTop - (scrollView.frame.height * 0.7))
-                            scrollView.setContentOffset(newContentOffset, animated: true)
-                        }
-                    }
                 }
             }
         }
         
         // Method to update the content size and page dividers
-        func updateContentSizeAndDividers() {
+        func updateContentSizeAndDividers(autoScroll: Bool = true) {
             guard let scrollView = self.mainScrollView,
                   let canvasView = self.canvasView else {
                 print("📐 Error: Missing scrollView or canvasView")
                 return
             }
+            
+            // Save current scroll position to restore later if needed
+            let currentOffset = scrollView.contentOffset
             
             // Calculate total content height
             let totalHeight = CGFloat(parent.numberOfPages) * (parent.pageHeight + parent.pageSpacing) - parent.pageSpacing
@@ -297,6 +290,14 @@ struct SafeCanvasView: UIViewRepresentable {
             
             // Apply template
             applyTemplate()
+            
+            // If auto-scroll is disabled, restore the original scroll position
+            if !autoScroll {
+                // Make sure we don't scroll past the content
+                let maxY = scrollView.contentSize.height - scrollView.frame.height
+                let restoredY = min(currentOffset.y, maxY > 0 ? maxY : 0)
+                scrollView.contentOffset = CGPoint(x: currentOffset.x, y: restoredY)
+            }
         }
         
         func applyTemplate() {
