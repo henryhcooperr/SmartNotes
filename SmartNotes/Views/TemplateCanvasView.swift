@@ -13,6 +13,7 @@ struct TemplateCanvasView: View {
     @State private var showingTemplateSettings = false
     @State private var template: CanvasTemplate = .none
     @State private var isInitialRenderComplete = false
+    @State private var numberOfPages: Int = 2
     
     // Properly associate template with the specific note
     var noteID: UUID
@@ -21,57 +22,61 @@ struct TemplateCanvasView: View {
     }
     
     var body: some View {
-        SafeCanvasView(drawing: $drawing, template: $template)
-            .sheet(isPresented: $showingTemplateSettings) {
-                TemplateSettingsView(template: $template)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowTemplateSettings"))) { _ in
-                showingTemplateSettings = true
-            }
-            // Add listener for forcing tool picker visibility
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ForceToolPickerVisible"))) { _ in
-                print("📝 Forcing tool picker to appear")
-                // This will be handled by SafeCanvasView
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("CanvasForceFirstResponder"),
-                    object: nil
-                )
-            }
-            .onAppear {
-                print("📝 TemplateCanvasView appeared for note: \(noteID.uuidString)")
-                
-                // Load template from UserDefaults with note-specific key
-                if let savedData = UserDefaults.standard.data(forKey: templateKey) {
-                    do {
-                        let savedTemplate = try JSONDecoder().decode(CanvasTemplate.self, from: savedData)
-                        print("📝 Loaded template: \(savedTemplate.type.rawValue)")
-                        
-                        // Important: Delay setting to ensure view is ready
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            template = savedTemplate
-                            isInitialRenderComplete = true
-                        }
-                    } catch {
-                        print("📝 Error loading template: \(error)")
+        SafeCanvasView(
+            drawing: $drawing,
+            template: $template,
+            numberOfPages: $numberOfPages
+        )
+        .sheet(isPresented: $showingTemplateSettings) {
+            TemplateSettingsView(template: $template)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowTemplateSettings"))) { _ in
+            showingTemplateSettings = true
+        }
+        // Add listener for forcing tool picker visibility
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ForceToolPickerVisible"))) { _ in
+            print("📝 Forcing tool picker to appear")
+            // This will be handled by SafeCanvasView
+            NotificationCenter.default.post(
+                name: NSNotification.Name("CanvasForceFirstResponder"),
+                object: nil
+            )
+        }
+        .onAppear {
+            print("📝 TemplateCanvasView appeared for note: \(noteID.uuidString)")
+            
+            // Load template from UserDefaults with note-specific key
+            if let savedData = UserDefaults.standard.data(forKey: templateKey) {
+                do {
+                    let savedTemplate = try JSONDecoder().decode(CanvasTemplate.self, from: savedData)
+                    print("📝 Loaded template: \(savedTemplate.type.rawValue)")
+                    
+                    // Important: Delay setting to ensure view is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        template = savedTemplate
                         isInitialRenderComplete = true
                     }
-                } else {
-                    // No saved template - mark as ready
+                } catch {
+                    print("📝 Error loading template: \(error)")
                     isInitialRenderComplete = true
                 }
+            } else {
+                // No saved template - mark as ready
+                isInitialRenderComplete = true
             }
-            .onChange(of: template) { oldTemplate, newTemplate in
-                // Only save if initial render is complete (prevents overwrites during setup)
-                if isInitialRenderComplete {
-                    do {
-                        let data = try JSONEncoder().encode(newTemplate)
-                        UserDefaults.standard.set(data, forKey: templateKey)
-                        print("📝 Saved template: \(newTemplate.type.rawValue) for note: \(noteID.uuidString)")
-                    } catch {
-                        print("📝 Error saving template: \(error)")
-                    }
+        }
+        .onChange(of: template) { oldTemplate, newTemplate in
+            // Only save if initial render is complete (prevents overwrites during setup)
+            if isInitialRenderComplete {
+                do {
+                    let data = try JSONEncoder().encode(newTemplate)
+                    UserDefaults.standard.set(data, forKey: templateKey)
+                    print("📝 Saved template: \(newTemplate.type.rawValue) for note: \(noteID.uuidString)")
+                } catch {
+                    print("📝 Error saving template: \(error)")
                 }
             }
+        }
     }
     
     // Default initializer for compatibility with existing code
@@ -87,21 +92,21 @@ struct TemplateCanvasView: View {
     }
 }
 
-/// A complete rewrite of the canvas view with strict geometry validation - implemented in the same file
+/// A completely revised canvas view that supports zooming and better page detection
 struct SafeCanvasView: UIViewRepresentable {
     @Binding var drawing: PKDrawing
     @Binding var template: CanvasTemplate
+    @Binding var numberOfPages: Int
     
     // Standard dimensions
     private let pageWidth: CGFloat = 612 // 8.5" at 72 DPI
     private let pageHeight: CGFloat = 792 // 11" at 72 DPI
     private let pageSpacing: CGFloat = 20
-    private let initialPages: Int = 2
     
     class Coordinator: NSObject, PKCanvasViewDelegate, UIScrollViewDelegate {
         var parent: SafeCanvasView
         var canvasView: PKCanvasView?
-        var scrollView: UIScrollView?
+        var mainScrollView: UIScrollView?
         var isInitialLoad = true
         var lastTemplate: CanvasTemplate?
         var toolPicker: PKToolPicker?
@@ -111,27 +116,110 @@ struct SafeCanvasView: UIViewRepresentable {
         }
         
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            // Only update after initial load
-            if !isInitialLoad {
+            // Skip updates during initial load
+            if isInitialLoad {
+                print("📐 Drawing changed (during initialization, ignored)")
+                return
+            }
+            
+            // Update the binding
+            DispatchQueue.main.async {
+                self.parent.drawing = canvasView.drawing
+                
+                // Check if we need to add a new page - do this on every drawing change
+                self.checkAndAddNewPageIfNeeded()
+            }
+        }
+        
+        // Completely revised method to check if drawing extends to the last page
+        func checkAndAddNewPageIfNeeded() {
+            guard let canvasView = canvasView else { return }
+            
+            // Get the bounds of the entire drawing
+            let drawingBounds = canvasView.drawing.bounds
+            print("📐 Drawing bounds: \(drawingBounds)")
+            
+            // Calculate the bottom of the last page
+            let pageHeight = parent.pageHeight
+            let pageSpacing = parent.pageSpacing
+            let lastPageBottom = CGFloat(parent.numberOfPages) * pageHeight +
+                                CGFloat(parent.numberOfPages - 1) * pageSpacing
+            
+            print("📐 Last page bottom: \(lastPageBottom), Drawing maxY: \(drawingBounds.maxY)")
+            
+            // Calculate how close to the bottom we want to trigger a new page (80% of page height)
+            let triggerThreshold = lastPageBottom - (pageHeight * 0.3)
+            
+            // If the drawing extends beyond the trigger threshold
+            if drawingBounds.maxY > triggerThreshold {
+                print("📐 Drawing extends near last page bottom, adding a new page")
+                
+                // Update the page count via the parent
                 DispatchQueue.main.async {
-                    self.parent.drawing = canvasView.drawing
+                    // Add one more page
+                    self.parent.numberOfPages += 1
+                    print("📐 New page count: \(self.parent.numberOfPages)")
+                    
+                    // Update the scroll view and canvas
+                    self.updateContentSizeAndDividers()
+                    
+                    // Scroll to show part of the new page
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let scrollView = self.mainScrollView {
+                            // Scroll to show the top portion of the new page
+                            let newPageTop = lastPageBottom + self.parent.pageSpacing
+                            let newContentOffset = CGPoint(x: 0, y: newPageTop - (scrollView.frame.height * 0.7))
+                            scrollView.setContentOffset(newContentOffset, animated: true)
+                        }
+                    }
                 }
             }
         }
         
-        func applyTemplate() {
-            guard let canvasView = canvasView else { return }
-            
-            // Ensure canvas has valid dimensions before applying template
-            guard !canvasView.frame.isEmpty,
-                  canvasView.frame.width > 10,
-                  canvasView.frame.height > 10 else {
-                print("🖌️ Canvas dimensions invalid: \(canvasView.frame.size), retrying...")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.applyTemplate()
-                }
+        // Method to update the content size and page dividers
+        func updateContentSizeAndDividers() {
+            guard let scrollView = self.mainScrollView,
+                  let canvasView = self.canvasView else {
+                print("📐 Error: Missing scrollView or canvasView")
                 return
             }
+            
+            // Calculate total content height
+            let totalHeight = CGFloat(parent.numberOfPages) * (parent.pageHeight + parent.pageSpacing) - parent.pageSpacing
+            print("📐 Updating content size to height: \(totalHeight)")
+            
+            // Update canvas view frame - expanded to fill full width
+            let canvasWidth = scrollView.frame.width // Use full scroll view width
+            
+            // Get current zoomScale to preserve zoom
+            let currentZoomScale = scrollView.zoomScale
+            
+            // Update canvas frame accounting for zoom
+            let newCanvasFrame = CGRect(
+                x: 0,
+                y: 0,
+                width: canvasWidth,
+                height: totalHeight
+            )
+            
+            // Only apply if frame is valid
+            if newCanvasFrame.size.width > 0, newCanvasFrame.size.height > 0 {
+                canvasView.frame = newCanvasFrame
+            }
+            
+            // Update scroll view content size
+            scrollView.contentSize = CGSize(width: canvasWidth, height: totalHeight)
+            
+            // Redraw page dividers
+            parent.clearPageDividers(from: scrollView)
+            parent.addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: parent.numberOfPages)
+            
+            // Apply template
+            applyTemplate()
+        }
+        
+        func applyTemplate() {
+            guard let canvasView = canvasView else { return }
             
             // Always apply template regardless of lastTemplate state
             print("🖌️ Forcing template application: \(parent.template.type.rawValue)")
@@ -140,7 +228,7 @@ struct SafeCanvasView: UIViewRepresentable {
                 canvasView,
                 template: parent.template,
                 pageSize: CGSize(width: parent.pageWidth, height: parent.pageHeight),
-                numberOfPages: parent.initialPages,
+                numberOfPages: parent.numberOfPages,
                 pageSpacing: parent.pageSpacing
             )
             
@@ -168,6 +256,32 @@ struct SafeCanvasView: UIViewRepresentable {
                 canvasView.becomeFirstResponder()
             }
         }
+        
+        // UIScrollViewDelegate method to provide zoom view
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            return canvasView
+        }
+        
+        // Handle zoom scale changes
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            // Center the zooming canvas if smaller than the scroll view frame
+            centerZoomingView(in: scrollView)
+        }
+        
+        // Center the zooming canvas
+        private func centerZoomingView(in scrollView: UIScrollView) {
+            guard let canvasView = canvasView else { return }
+            
+            let offsetX = max((scrollView.bounds.width - canvasView.frame.width * scrollView.zoomScale) * 0.5, 0)
+            let offsetY = max((scrollView.bounds.height - canvasView.frame.height * scrollView.zoomScale) * 0.5, 0)
+            
+            scrollView.contentInset = UIEdgeInsets(
+                top: offsetY,
+                left: offsetX,
+                bottom: offsetY,
+                right: offsetX
+            )
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -175,28 +289,47 @@ struct SafeCanvasView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> UIScrollView {
-        // Create the scroll view container
+        // Create main scroll view with zoom support
         let scrollView = UIScrollView()
         scrollView.delegate = context.coordinator
         scrollView.backgroundColor = .systemBackground
-        context.coordinator.scrollView = scrollView
+        scrollView.showsVerticalScrollIndicator = true
+        scrollView.showsHorizontalScrollIndicator = true
+        scrollView.bouncesZoom = true
+        scrollView.minimumZoomScale = 0.5
+        scrollView.maximumZoomScale = 3.0
+        scrollView.contentInsetAdjustmentBehavior = .automatic
+        context.coordinator.mainScrollView = scrollView
         
-        // Create the canvas with fixed, safe dimensions
+        // Create the canvas view to fill the available space
         let canvasView = PKCanvasView()
         canvasView.delegate = context.coordinator
         canvasView.drawingPolicy = .anyInput
         canvasView.backgroundColor = .white
+        canvasView.alwaysBounceVertical = true
+        canvasView.allowsFingerDrawing = true  // Allow finger drawing explicitly
         context.coordinator.canvasView = canvasView
         
-        // Store canvas view reference for use in notifications
-        let canvasViewRef = canvasView
+        // Calculate initial content height
+        let totalHeight = CGFloat(numberOfPages) * (pageHeight + pageSpacing) - pageSpacing
         
-        // Set up the tool picker - IMPROVED IMPLEMENTATION
+        // Set canvas view full width
+        canvasView.frame = CGRect(
+            x: 0,
+            y: 0,
+            width: scrollView.frame.width > 0 ? scrollView.frame.width : UIScreen.main.bounds.width,
+            height: totalHeight
+        )
+        
+        // Set up the tool picker
         let toolPicker = PKToolPicker()
         context.coordinator.toolPicker = toolPicker
+        toolPicker.setVisible(true, forFirstResponder: canvasView)
+        toolPicker.addObserver(canvasView)
         
         // Add the canvas view to the scroll view
         scrollView.addSubview(canvasView)
+        scrollView.contentSize = canvasView.frame.size
         
         // Load drawing after a slight delay to allow view setup
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -204,10 +337,11 @@ struct SafeCanvasView: UIViewRepresentable {
             
             // Make canvas first responder AFTER drawing is loaded
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                // Force the tool picker to show
                 toolPicker.setVisible(true, forFirstResponder: canvasView)
-                toolPicker.addObserver(canvasView)
                 canvasView.becomeFirstResponder()
+                
+                // Update content size and apply template
+                context.coordinator.updateContentSizeAndDividers()
                 
                 context.coordinator.isInitialLoad = false
                 print("📝 Canvas ready with tool picker visible")
@@ -236,67 +370,32 @@ struct SafeCanvasView: UIViewRepresentable {
             return
         }
         
-        // Calculate safe dimensions
-        let safeWidth = min(scrollView.frame.width, pageWidth)
-        let totalHeight = CGFloat(initialPages) * pageHeight + CGFloat(initialPages - 1) * pageSpacing
-        let safeHeight = max(totalHeight, scrollView.frame.height * 2)
-        
-        // Set canvas size safely
-        let canvasFrame = CGRect(
-            x: (scrollView.frame.width - safeWidth) / 2,
-            y: 0,
-            width: safeWidth,
-            height: safeHeight
-        )
-        
-        // Only set frame if dimensions are valid
-        if canvasFrame.size.width > 0, canvasFrame.size.height > 0,
-           !canvasFrame.size.width.isNaN, !canvasFrame.size.height.isNaN {
-            canvasView.frame = canvasFrame
-        }
-        
-        // Set content size
-        let contentSize = CGSize(width: scrollView.frame.width, height: safeHeight)
-        if contentSize.width > 0, contentSize.height > 0,
-           !contentSize.width.isNaN, !contentSize.height.isNaN {
-            scrollView.contentSize = contentSize
-        }
-        
-        // Update drawing
+        // Update drawing if needed
         if !context.coordinator.isInitialLoad, canvasView.drawing != drawing {
             canvasView.drawing = drawing
         }
         
-        // Apply template if needed
-        context.coordinator.applyTemplate()
-        
-        // Draw page dividers
-        drawPageDividers(in: scrollView, canvasWidth: safeWidth)
-        
-        // This is crucial - make sure canvasView is first responder on EVERY update
-        // This fixes cases where tools disappear after app switching or other interruptions
+        // Make sure canvasView is still first responder periodically
         if !context.coordinator.isInitialLoad && !canvasView.isFirstResponder {
-            // Every 5th update, ensure visibility
-            if context.coordinator.toolPicker != nil && arc4random_uniform(5) == 0 {
-                context.coordinator.ensureToolPickerVisible()
-            }
+            context.coordinator.ensureToolPickerVisible()
         }
     }
     
-    // Draw visual indicators for page breaks
-    private func drawPageDividers(in scrollView: UIScrollView, canvasWidth: CGFloat) {
-        // Remove existing dividers
+    // Method to clear existing page dividers
+    func clearPageDividers(from scrollView: UIScrollView) {
         for view in scrollView.subviews where view.tag == 999 {
             view.removeFromSuperview()
         }
-        
-        // Add dividers for each page
-        for i in 1..<initialPages {
+    }
+    
+    func addPageDividers(to scrollView: UIScrollView, canvasWidth: CGFloat, numberOfPages: Int) {
+        // Add visual indicators for page breaks
+        for i in 1..<numberOfPages {
             let yPosition = pageHeight * CGFloat(i) + pageSpacing * CGFloat(i - 1)
             
             let dividerView = UIView()
             dividerView.frame = CGRect(
-                x: (scrollView.frame.width - canvasWidth) / 2,
+                x: 0,
                 y: yPosition,
                 width: canvasWidth,
                 height: pageSpacing
