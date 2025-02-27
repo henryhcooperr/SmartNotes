@@ -35,7 +35,7 @@ struct NoteDetailView: View {
                 .font(.title)
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-                .onChange(of: localTitle) { newValue in
+                .onChange(of: localTitle) { oldValue, newValue in
                     // Only update during normal operation, not initial load
                     if !isInitialLoad {
                         note.title = newValue
@@ -47,15 +47,15 @@ struct NoteDetailView: View {
             Divider()
                 .padding(.horizontal)
             
-            // Use the TemplateCanvasView with our drawing binding
-            TemplateCanvasView(drawing: $pkDrawing)
+            // Use the TemplateCanvasView with our drawing binding and note ID
+            TemplateCanvasView(drawing: $pkDrawing, noteID: note.id)
                 .onAppear {
                     // Load drawing data when view appears - with safety delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         loadDrawingData()
                     }
                 }
-                .onChange(of: pkDrawing) { newValue in
+                .onChange(of: pkDrawing) { oldValue, newValue in
                     // Only save drawing changes after initialization
                     if !isInitialLoad {
                         saveDrawingData(newValue)
@@ -115,7 +115,6 @@ struct NoteDetailView: View {
     }
     
     // Safely load drawing data
-    // Update the loadDrawingData method to handle errors gracefully:
     private func loadDrawingData() {
         print("📝 Loading drawing data...")
         
@@ -205,3 +204,5 @@ struct NoteDetailView: View {
         return rects
     }
 }
+
+

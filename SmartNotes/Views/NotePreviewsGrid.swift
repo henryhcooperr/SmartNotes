@@ -128,3 +128,4 @@ struct NotePreviewsGrid: View {
         subject.notes.append(newNote)
     }
 }
+

@@ -261,7 +261,7 @@ struct PagedCanvasView: UIViewRepresentable {
         }
         
         // Update canvas size safely
-        let canvasWidth = min(max(scrollView.frame.width - (horizontalPadding * 2), 100), pageSize.width)
+        let canvasWidth = min(scrollView.frame.width, pageSize.width) // Remove the horizontal padding
         
         // Calculate safe canvas frame
         let canvasFrame = CGRect(
@@ -391,3 +391,100 @@ struct PagedCanvasView: UIViewRepresentable {
         return rects
     }
 }
+
+
+// MARK: - Previews
+#if DEBUG
+struct PagedCanvasView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            // Preview with explicit environment configuration
+            NavigationView {
+                PreviewWrapper(templateType: .graph)
+            }
+            .previewDisplayName("Graph Template")
+            .frame(width: 800, height: 600)
+            
+            // Preview showing the split layout issue
+            PreviewWrapper(templateType: .lined)
+                .previewLayout(.fixed(width: 800, height: 600))
+                .previewDisplayName("Layout Debug")
+        }
+    }
+    
+    private struct PreviewWrapper: View {
+        let templateType: CanvasTemplate.TemplateType
+        
+        // State variables required for PagedCanvasView bindings
+        @State private var drawing = PKDrawing()
+        @State private var template: CanvasTemplate
+        @State private var numberOfPages = 2
+        
+        init(templateType: CanvasTemplate.TemplateType) {
+            self.templateType = templateType
+            
+            // Configure the appropriate template based on type
+            var initialTemplate: CanvasTemplate
+            switch templateType {
+            case .lined:
+                initialTemplate = .lined
+            case .graph:
+                initialTemplate = .graph
+            case .dotted:
+                initialTemplate = .dotted
+            case .none:
+                initialTemplate = .none
+            }
+            
+            // Initialize the template State
+            _template = State(initialValue: initialTemplate)
+        }
+        
+        var body: some View {
+            VStack(spacing: 0) {
+                Text("Template Type: \(templateType.rawValue)")
+                    .font(.headline)
+                    .padding()
+                    .background(Color.yellow.opacity(0.3))
+                
+                ZStack {
+                    // Background color to show boundaries
+                    Color.white
+                    
+                    // The actual canvas view
+                    PagedCanvasView(
+                        drawing: $drawing,
+                        template: $template,
+                        numberOfPages: $numberOfPages,
+                        pageSize: CGSize(width: 612, height: 792),
+                        pageSpacing: 20
+                    )
+                    .border(Color.blue, width: 1) // Show canvas bounds
+                }
+                .background(Color.gray.opacity(0.1)) // Show outer container bounds
+                .padding(.horizontal)
+                
+                // Debug controls
+                HStack {
+                    Button("Force Template") {
+                        // Force template refresh
+                        let current = template
+                        template = .none
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            template = current
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Spacer()
+                    
+                    // Show current page count
+                    Text("\(numberOfPages) pages")
+                        .font(.caption)
+                }
+                .padding()
+            }
+        }
+    }
+}
+#endif

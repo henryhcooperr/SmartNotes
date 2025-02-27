@@ -12,9 +12,13 @@ struct TemplateCanvasView: View {
     @Binding var drawing: PKDrawing
     @State private var showingTemplateSettings = false
     @State private var template: CanvasTemplate = .none
+    @State private var isInitialRenderComplete = false
     
-    // Add storage of template with note
-    private let templateKey = "note.template"
+    // Properly associate template with the specific note
+    var noteID: UUID
+    private var templateKey: String {
+        "note.template.\(noteID.uuidString)"  // Make key unique per note
+    }
     
     var body: some View {
         SafeCanvasView(drawing: $drawing, template: $template)
@@ -25,27 +29,52 @@ struct TemplateCanvasView: View {
                 showingTemplateSettings = true
             }
             .onAppear {
-                // Try to load saved template settings from UserDefaults
+                print("📝 TemplateCanvasView appeared for note: \(noteID.uuidString)")
+                
+                // Load template from UserDefaults with note-specific key
                 if let savedData = UserDefaults.standard.data(forKey: templateKey) {
                     do {
                         let savedTemplate = try JSONDecoder().decode(CanvasTemplate.self, from: savedData)
-                        template = savedTemplate
-                        print("📝 Loaded template settings: \(savedTemplate.type.rawValue)")
+                        print("📝 Loaded template: \(savedTemplate.type.rawValue)")
+                        
+                        // Important: Delay setting to ensure view is ready
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            template = savedTemplate
+                            isInitialRenderComplete = true
+                        }
                     } catch {
-                        print("📝 Error loading template settings: \(error)")
+                        print("📝 Error loading template: \(error)")
+                        isInitialRenderComplete = true
+                    }
+                } else {
+                    // No saved template - mark as ready
+                    isInitialRenderComplete = true
+                }
+            }
+            .onChange(of: template) { oldTemplate, newTemplate in
+                // Only save if initial render is complete (prevents overwrites during setup)
+                if isInitialRenderComplete {
+                    do {
+                        let data = try JSONEncoder().encode(newTemplate)
+                        UserDefaults.standard.set(data, forKey: templateKey)
+                        print("📝 Saved template: \(newTemplate.type.rawValue) for note: \(noteID.uuidString)")
+                    } catch {
+                        print("📝 Error saving template: \(error)")
                     }
                 }
             }
-            .onChange(of: template) { newTemplate in
-                // Save template settings when they change
-                do {
-                    let data = try JSONEncoder().encode(newTemplate)
-                    UserDefaults.standard.set(data, forKey: templateKey)
-                    print("📝 Template changed to: \(newTemplate.type.rawValue), spacing: \(newTemplate.spacing)")
-                } catch {
-                    print("📝 Error saving template settings: \(error)")
-                }
-            }
+    }
+    
+    // Default initializer for compatibility with existing code
+    init(drawing: Binding<PKDrawing>) {
+        self._drawing = drawing
+        self.noteID = UUID() // Use a default ID if none provided
+    }
+    
+    // Initializer with note ID parameter
+    init(drawing: Binding<PKDrawing>, noteID: UUID) {
+        self._drawing = drawing
+        self.noteID = noteID
     }
 }
 
@@ -81,16 +110,24 @@ struct SafeCanvasView: UIViewRepresentable {
         }
         
         func applyTemplate() {
-            guard let canvasView = canvasView, !canvasView.frame.isEmpty else { return }
+            guard let canvasView = canvasView else { return }
             
-            // Only apply if template changed
-            guard parent.template != lastTemplate else { return }
+            // Ensure canvas has valid dimensions before applying template
+            guard !canvasView.frame.isEmpty,
+                  canvasView.frame.width > 10,
+                  canvasView.frame.height > 10 else {
+                // Retry after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.applyTemplate()
+                }
+                return
+            }
             
-            if parent.template.type == .none {
-                // Simply set white background
-                canvasView.backgroundColor = .white
-            } else {
-                // Apply template via TemplateRenderer
+            // Apply template if changed
+            if parent.template != lastTemplate {
+                print("🖌️ Applying template: \(parent.template.type.rawValue) (Canvas size: \(canvasView.frame.size))")
+                
+                // Apply template with multiple render approaches
                 TemplateRenderer.applyTemplateToCanvas(
                     canvasView,
                     template: parent.template,
@@ -98,9 +135,9 @@ struct SafeCanvasView: UIViewRepresentable {
                     numberOfPages: parent.initialPages,
                     pageSpacing: parent.pageSpacing
                 )
+                
+                lastTemplate = parent.template
             }
-            
-            lastTemplate = parent.template
         }
     }
     
@@ -241,20 +278,15 @@ struct SafeCanvasView: UIViewRepresentable {
         }
     }
 }
-// MARK: - Previews
-#Preview {
-    NavigationView {
-        TemplateCanvasView(drawing: .constant(PKDrawing()), showExportMenu: .constant(false))
-            .navigationTitle("Template Preview")
-    }
-}
 
-// Preview helper extension for TemplateCanvasView
-extension TemplateCanvasView {
-    /// Preview initializer that uses constant bindings for simpler testing
-    init(drawing: Binding<PKDrawing>, showExportMenu: Binding<Bool>) {
-        self._drawing = drawing
-        self._showingTemplateSettings = State(initialValue: false)
-        self._template = State(initialValue: .graph) // Default to graph paper for preview
+// MARK: - Preview
+#if DEBUG
+struct TemplateCanvasView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            TemplateCanvasView(drawing: .constant(PKDrawing()), noteID: UUID())
+                .navigationTitle("Template Preview")
+        }
     }
 }
+#endif
