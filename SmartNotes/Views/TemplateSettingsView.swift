@@ -1,21 +1,3 @@
-//
-//  TemplateSettingsView.swift
-//  SmartNotes
-//
-//  Created on 2/26/25.
-//
-//  This file provides the UI for configuring note templates.
-//  Key responsibilities:
-//    - Template type selection (none, lined, graph, dotted)
-//    - Spacing, line width, and color configuration
-//    - Live preview of template appearance
-//    - Quick template presets (college ruled, graph paper)
-//    - Applying changes to the active note
-//
-//  This view appears as a sheet when the template settings
-//  button is tapped in NoteDetailView.
-//
-
 import SwiftUI
 
 struct TemplateSettingsView: View {
@@ -27,6 +9,9 @@ struct TemplateSettingsView: View {
     @State private var spacing: Double
     @State private var lineWidth: Double
     @State private var colorHex: String
+    
+    // Use @AppStorage to store whether finger drawing is disabled
+    @AppStorage("disableFingerDrawing") private var disableFingerDrawing: Bool = false
     
     // Available colors
     let colorOptions = [
@@ -59,7 +44,7 @@ struct TemplateSettingsView: View {
                     .pickerStyle(MenuPickerStyle())
                 }
                 
-                // Only show spacing settings if a template is selected
+                // Only show spacing/line config if a template is selected
                 if selectedType != .none {
                     Section(header: Text("Line Spacing")) {
                         HStack {
@@ -125,6 +110,12 @@ struct TemplateSettingsView: View {
                         }
                     }
                 }
+                
+                // (Optional) A new toggle so the user can easily disable finger drawing
+                Section(header: Text("Pencil Only")) {
+                    Toggle("Disable Finger Drawing", isOn: $disableFingerDrawing)
+                }
+                
             }
             .navigationTitle("Template Settings")
             .navigationBarItems(
@@ -134,15 +125,14 @@ struct TemplateSettingsView: View {
                 trailing: Button("Apply") {
                     applyChanges()
                     
-                    // This is a key addition - we post a notification before dismissing
-                    // to force immediate template refresh
+                    // Force the template to refresh
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(
                             name: NSNotification.Name("RefreshTemplate"),
                             object: nil
                         )
                         
-                        // Give the notification a moment to be processed before dismissing
+                        // Give the notification a moment
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             presentationMode.wrappedValue.dismiss()
                         }
@@ -152,15 +142,16 @@ struct TemplateSettingsView: View {
         }
     }
     
+    // Apply changes to the bound template
     private func applyChanges() {
-        print("📝 Applying template changes: type=\(selectedType.rawValue), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
+        print("📝 Applying template changes: type=\(selectedType), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
         template.type = selectedType
         template.spacing = CGFloat(spacing)
         template.lineWidth = CGFloat(lineWidth)
         template.colorHex = colorHex
     }
     
-    // Helper to convert hex to color name
+    // Convert hex to a color name for the UI
     private func colorName(for hex: String) -> String {
         switch hex {
         case "#CCCCCC": return "Light Gray"
@@ -172,7 +163,7 @@ struct TemplateSettingsView: View {
         }
     }
     
-    // A preview of the template
+    // Live preview of the template lines/dots/etc.
     private var templatePreview: some View {
         Canvas { context, size in
             let color = UIColor(hex: colorHex) ?? .lightGray
@@ -183,27 +174,20 @@ struct TemplateSettingsView: View {
                 Path { path in
                     switch selectedType {
                     case .lined:
-                        // Draw horizontal lines
                         for y in stride(from: gap, to: size.height, by: gap) {
                             path.move(to: CGPoint(x: 0, y: y))
                             path.addLine(to: CGPoint(x: size.width, y: y))
                         }
-                        
                     case .graph:
-                        // Draw horizontal lines
                         for y in stride(from: gap, to: size.height, by: gap) {
                             path.move(to: CGPoint(x: 0, y: y))
                             path.addLine(to: CGPoint(x: size.width, y: y))
                         }
-                        
-                        // Draw vertical lines
                         for x in stride(from: gap, to: size.width, by: gap) {
                             path.move(to: CGPoint(x: x, y: 0))
                             path.addLine(to: CGPoint(x: x, y: size.height))
                         }
-                        
                     case .dotted:
-                        // Draw dots at intersections
                         for y in stride(from: gap, to: size.height, by: gap) {
                             for x in stride(from: gap, to: size.width, by: gap) {
                                 let rect = CGRect(
@@ -215,9 +199,7 @@ struct TemplateSettingsView: View {
                                 path.addEllipse(in: rect)
                             }
                         }
-                        
                     case .none:
-                        // No template
                         break
                     }
                 },

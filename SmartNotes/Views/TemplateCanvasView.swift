@@ -359,8 +359,10 @@ struct SafeCanvasView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> UIScrollView {
-        // Create main scroll view with zoom support
+        // 1. Create the main scroll view
         let scrollView = UIScrollView()
+        scrollView.decelerationRate = .fast
+        scrollView.alwaysBounceVertical = true
         scrollView.delegate = context.coordinator
         scrollView.backgroundColor = .systemBackground
         scrollView.showsVerticalScrollIndicator = true
@@ -371,58 +373,63 @@ struct SafeCanvasView: UIViewRepresentable {
         scrollView.contentInsetAdjustmentBehavior = .automatic
         context.coordinator.mainScrollView = scrollView
         
-        // Create the canvas view to fill the available space
+        // 2. Create the PKCanvasView
         let canvasView = PKCanvasView()
         canvasView.delegate = context.coordinator
-        canvasView.drawingPolicy = .anyInput
         canvasView.backgroundColor = .white
         canvasView.alwaysBounceVertical = true
-        canvasView.allowsFingerDrawing = true  // Allow finger drawing explicitly
+        
+        // --- NEW: Respect user preference for disabling finger drawing ---
+        let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+        if #available(iOS 16.0, *) {
+            // iOS 16 provides a more explicit "pencilOnly" drawing policy
+            canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+        } else {
+            // For older iOS versions, rely on allowsFingerDrawing
+            canvasView.allowsFingerDrawing = !disableFingerDrawing
+        }
+        // ------------------------------------------------------------------
+        
         context.coordinator.canvasView = canvasView
         
-        // Calculate initial content height
+        // 3. Calculate initial content height & width
         let totalHeight = CGFloat(numberOfPages) * (pageHeight + pageSpacing) - pageSpacing
-        
-        // Calculate the width that maintains the proper aspect ratio
         let availableWidth = scrollView.frame.width > 0 ? scrollView.frame.width : UIScreen.main.bounds.width
         let canvasWidth = min(availableWidth, pageWidth)
         
-        // Set canvas view with proper aspect ratio
+        // 4. Set up the canvas frame
         canvasView.frame = CGRect(
-            x: (availableWidth - canvasWidth) / 2, // Center horizontally
+            x: (availableWidth - canvasWidth) / 2, // center horizontally
             y: 0,
             width: canvasWidth,
             height: totalHeight
         )
         
-        // Set up the tool picker
+        // 5. Set up the PKToolPicker
         let toolPicker = PKToolPicker()
         context.coordinator.toolPicker = toolPicker
         toolPicker.setVisible(true, forFirstResponder: canvasView)
         toolPicker.addObserver(canvasView)
         
-        // Add the canvas view to the scroll view
+        // 6. Add canvasView to scrollView
         scrollView.addSubview(canvasView)
         scrollView.contentSize = CGSize(width: availableWidth, height: totalHeight)
         
-        // Load drawing after a slight delay to allow view setup
+        // 7. Load existing drawing asynchronously
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             canvasView.drawing = drawing
-            
-            // Make canvas first responder AFTER drawing is loaded
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 toolPicker.setVisible(true, forFirstResponder: canvasView)
                 canvasView.becomeFirstResponder()
                 
-                // Update content size and apply template
+                // Update layout / page dividers
                 context.coordinator.updateContentSizeAndDividers()
-                
                 context.coordinator.isInitialLoad = false
                 print("📝 Canvas ready with tool picker visible")
             }
         }
         
-        // Add observation for forced tool picker visibility
+        // 8. Observe a notification to force tool picker
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("CanvasForceFirstResponder"),
             object: nil,
@@ -430,6 +437,20 @@ struct SafeCanvasView: UIViewRepresentable {
         ) { _ in
             print("🔧 Forcing tool picker visibility from notification")
             context.coordinator.ensureToolPickerVisible()
+            context.coordinator.updateContentSizeAndDividers()
+        }
+
+        // NEW: Observe the RefreshTemplate notification
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RefreshTemplate"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("🔄 RefreshTemplate notification received - reapplying template")
+            // Re-apply the template settings immediately
+            context.coordinator.applyTemplate()
+            // If you need new spacing, layout, etc. re-calc content size:
+            context.coordinator.updateContentSizeAndDividers()
         }
         
         return scrollView
@@ -438,23 +459,39 @@ struct SafeCanvasView: UIViewRepresentable {
     func updateUIView(_ scrollView: UIScrollView, context: Context) {
         guard let canvasView = context.coordinator.canvasView else { return }
         
-        // Only proceed if the scroll view has a valid frame
+        // Only proceed if the scroll view has valid dimensions
         guard scrollView.frame.width > 0, scrollView.frame.height > 0 else {
             print("⚠️ SafeCanvasView: Invalid scrollView dimensions: \(scrollView.frame.size)")
             return
         }
         
-        // Update drawing if needed
+        // 1) If the canvas has finished loading and our PKDrawing changed, update it
         if !context.coordinator.isInitialLoad, canvasView.drawing != drawing {
             canvasView.drawing = drawing
         }
         
-        // Make sure canvasView is still first responder periodically
+        // 2) Re-apply the user's template settings if they've changed
+        //    (This ensures new line spacing, thickness, etc. appear right away.)
+        if !context.coordinator.isInitialLoad,
+           context.coordinator.lastTemplate != template {
+            print("✏️ Template has changed, applying new settings...")
+            context.coordinator.applyTemplate()
+        }
+
+        // 3) Respect the 'Disable Finger Drawing' setting each time we update
+        let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+        if #available(iOS 16.0, *) {
+            canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+        } else {
+            canvasView.allowsFingerDrawing = !disableFingerDrawing
+        }
+        
+        // 4) Periodically ensure the canvas is first responder so the tool picker remains visible
         if !context.coordinator.isInitialLoad && !canvasView.isFirstResponder {
             context.coordinator.ensureToolPickerVisible()
         }
         
-        // Update the dividers if the view resizes
+        // 5) Refresh the page dividers in case the view size changed
         context.coordinator.updatePageDividers()
     }
 }
