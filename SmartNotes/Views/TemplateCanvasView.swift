@@ -4,17 +4,7 @@
 //
 //  Created on 2/26/25.
 //
-//  This file provides the drawing canvas with template support.
-//  Key responsibilities:
-//    - Wrapping PKCanvasView (Apple's PencilKit canvas) in SwiftUI
-//    - Loading and applying templates to the canvas background
-//    - Saving template settings per note
-//    - Supporting zooming and scrolling
-//    - Auto-extending pages when drawing nears the bottom
-//    - Handling tool picker visibility
-//
-//  This is the core drawing component used by NoteDetailView.
-//
+
 import SwiftUI
 import PencilKit
 
@@ -38,28 +28,10 @@ struct TemplateCanvasView: View {
             numberOfPages: $numberOfPages
         )
         .sheet(isPresented: $showingTemplateSettings) {
-            // This onDismiss closure will be called when the sheet is dismissed
-            // Force refresh template when sheet closes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshTemplate"),
-                    object: nil
-                )
-            }
-        } content: {
             TemplateSettingsView(template: $template)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowTemplateSettings"))) { _ in
             showingTemplateSettings = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshTemplate"))) { _ in
-            // Force reapplication of template when RefreshTemplate notification is received
-            print("📝 Refreshing template from notification")
-            NotificationCenter.default.post(
-                name: NSNotification.Name("ForceApplyTemplate"),
-                object: nil,
-                userInfo: ["template": template]
-            )
         }
         // Add listener for forcing tool picker visibility
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ForceToolPickerVisible"))) { _ in
@@ -83,14 +55,6 @@ struct TemplateCanvasView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         template = savedTemplate
                         isInitialRenderComplete = true
-                        
-                        // Force template refresh after loading
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("RefreshTemplate"),
-                                object: nil
-                            )
-                        }
                     }
                 } catch {
                     print("📝 Error loading template: \(error)")
@@ -108,14 +72,6 @@ struct TemplateCanvasView: View {
                     let data = try JSONEncoder().encode(newTemplate)
                     UserDefaults.standard.set(data, forKey: templateKey)
                     print("📝 Saved template: \(newTemplate.type.rawValue) for note: \(noteID.uuidString)")
-                    
-                    // Force template refresh whenever template changes
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("RefreshTemplate"),
-                            object: nil
-                        )
-                    }
                 } catch {
                     print("📝 Error saving template: \(error)")
                 }
@@ -142,7 +98,7 @@ struct SafeCanvasView: UIViewRepresentable {
     @Binding var template: CanvasTemplate
     @Binding var numberOfPages: Int
     
-    // Standard dimensions
+    // Standard dimensions for US Letter paper (8.5" x 11")
     private let pageWidth: CGFloat = 612 // 8.5" at 72 DPI
     private let pageHeight: CGFloat = 792 // 11" at 72 DPI
     private let pageSpacing: CGFloat = 20
@@ -154,46 +110,10 @@ struct SafeCanvasView: UIViewRepresentable {
         var isInitialLoad = true
         var lastTemplate: CanvasTemplate?
         var toolPicker: PKToolPicker?
-        // Observer tokens
-        var templateObserver: NSObjectProtocol?
-        var toolPickerObserver: NSObjectProtocol?
+        var dividerViews: [UIView] = []
         
         init(_ parent: SafeCanvasView) {
             self.parent = parent
-            super.init()
-            
-            // Set up notification observers
-            self.templateObserver = NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("ForceApplyTemplate"),
-                object: nil,
-                queue: .main
-            ) { [weak self] notification in
-                print("🖌️ Force apply template notification received")
-                DispatchQueue.main.async {
-                    self?.applyTemplate()
-                }
-            }
-            
-            self.toolPickerObserver = NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("CanvasForceFirstResponder"),
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                print("🔧 Forcing tool picker visibility from notification")
-                DispatchQueue.main.async {
-                    self?.ensureToolPickerVisible()
-                }
-            }
-        }
-        
-        deinit {
-            // Clean up observers
-            if let observer = templateObserver {
-                NotificationCenter.default.removeObserver(observer)
-            }
-            if let observer = toolPickerObserver {
-                NotificationCenter.default.removeObserver(observer)
-            }
         }
         
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
@@ -241,38 +161,44 @@ struct SafeCanvasView: UIViewRepresentable {
                     self.parent.numberOfPages += 1
                     print("📐 New page count: \(self.parent.numberOfPages)")
                     
-                    // Update the scroll view and canvas size without auto-scrolling
+                    // Update the scroll view and canvas
                     self.updateContentSizeAndDividers()
+                    
+                    // Scroll to show part of the new page
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let scrollView = self.mainScrollView {
+                            // Scroll to show the top portion of the new page
+                            let newPageTop = lastPageBottom + self.parent.pageSpacing
+                            let newContentOffset = CGPoint(x: 0, y: newPageTop - (scrollView.frame.height * 0.7))
+                            scrollView.setContentOffset(newContentOffset, animated: true)
+                        }
+                    }
                 }
             }
         }
         
         // Method to update the content size and page dividers
-        func updateContentSizeAndDividers(autoScroll: Bool = true) {
+        func updateContentSizeAndDividers() {
             guard let scrollView = self.mainScrollView,
                   let canvasView = self.canvasView else {
                 print("📐 Error: Missing scrollView or canvasView")
                 return
             }
             
-            // Save current scroll position to restore later if needed
-            let currentOffset = scrollView.contentOffset
-            
             // Calculate total content height
             let totalHeight = CGFloat(parent.numberOfPages) * (parent.pageHeight + parent.pageSpacing) - parent.pageSpacing
             print("📐 Updating content size to height: \(totalHeight)")
             
-            // Update canvas view frame - expanded to fill full width
-            let canvasWidth = scrollView.frame.width // Use full scroll view width
+            // Calculate the proper width based on the aspect ratio
+            // This maintains the 8.5" x 11" ratio while ensuring it fits within the screen
+            let availableWidth = scrollView.frame.width
+            let maxCanvasWidth = min(availableWidth, parent.pageWidth)
             
-            // Get current zoomScale to preserve zoom
-            let currentZoomScale = scrollView.zoomScale
-            
-            // Update canvas frame accounting for zoom
+            // Update canvas view frame - now with proper aspect ratio
             let newCanvasFrame = CGRect(
-                x: 0,
+                x: (availableWidth - maxCanvasWidth) / 2, // Center horizontally
                 y: 0,
-                width: canvasWidth,
+                width: maxCanvasWidth,
                 height: totalHeight
             )
             
@@ -282,21 +208,80 @@ struct SafeCanvasView: UIViewRepresentable {
             }
             
             // Update scroll view content size
-            scrollView.contentSize = CGSize(width: canvasWidth, height: totalHeight)
+            scrollView.contentSize = CGSize(width: availableWidth, height: totalHeight)
             
             // Redraw page dividers
-            parent.clearPageDividers(from: scrollView)
-            parent.addPageDividers(to: scrollView, canvasWidth: canvasWidth, numberOfPages: parent.numberOfPages)
+            updatePageDividers()
             
             // Apply template
             applyTemplate()
+        }
+        
+        // New method to update page dividers that works better with zooming
+        func updatePageDividers() {
+            guard let scrollView = self.mainScrollView,
+                  let canvasView = self.canvasView else { return }
             
-            // If auto-scroll is disabled, restore the original scroll position
-            if !autoScroll {
-                // Make sure we don't scroll past the content
-                let maxY = scrollView.contentSize.height - scrollView.frame.height
-                let restoredY = min(currentOffset.y, maxY > 0 ? maxY : 0)
-                scrollView.contentOffset = CGPoint(x: currentOffset.x, y: restoredY)
+            // Remove existing dividers
+            for dividerView in dividerViews {
+                dividerView.removeFromSuperview()
+            }
+            dividerViews.removeAll()
+            
+            // Don't add dividers during initial load
+            if isInitialLoad { return }
+            
+            // Calculate scale-independent page dimensions
+            let canvasWidth = canvasView.frame.width
+            let zoomScale = scrollView.zoomScale
+            
+            // Add visual indicators for page breaks
+            for i in 1..<parent.numberOfPages {
+                let yPosition = (parent.pageHeight * CGFloat(i) + parent.pageSpacing * CGFloat(i - 1)) * zoomScale
+                
+                // Create a container for the page divider elements
+                let dividerView = UIView()
+                dividerView.frame = CGRect(
+                    x: 0,
+                    y: yPosition,
+                    width: canvasWidth,
+                    height: parent.pageSpacing * zoomScale
+                )
+                dividerView.backgroundColor = .clear
+                dividerView.tag = 999 // Tag for identification
+                
+                // Add a dashed line in the middle of the page spacing
+                let lineLayer = CAShapeLayer()
+                lineLayer.strokeColor = UIColor.systemGray4.cgColor
+                lineLayer.lineDashPattern = [4, 4] // 4 points line, 4 points gap
+                lineLayer.lineWidth = 1
+                
+                // Create a path for the dashed line
+                let path = UIBezierPath()
+                path.move(to: CGPoint(x: 0, y: (parent.pageSpacing * zoomScale) / 2))
+                path.addLine(to: CGPoint(x: canvasWidth, y: (parent.pageSpacing * zoomScale) / 2))
+                lineLayer.path = path.cgPath
+                
+                // Add the dashed line to the container
+                dividerView.layer.addSublayer(lineLayer)
+                
+                // Add page number label
+                let pageLabel = UILabel()
+                pageLabel.text = "Page \(i + 1)"
+                pageLabel.textColor = .systemGray
+                pageLabel.font = UIFont.systemFont(ofSize: 12 * zoomScale, weight: .medium)
+                pageLabel.sizeToFit()
+                pageLabel.center = CGPoint(
+                    x: canvasWidth / 2,
+                    y: (parent.pageSpacing * zoomScale) / 2
+                )
+                
+                // Add the label to the container
+                dividerView.addSubview(pageLabel)
+                
+                // Add the container to the canvas instead of scroll view
+                canvasView.addSubview(dividerView)
+                dividerViews.append(dividerView)
             }
         }
         
@@ -348,11 +333,9 @@ struct SafeCanvasView: UIViewRepresentable {
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
             // Center the zooming canvas if smaller than the scroll view frame
             centerZoomingView(in: scrollView)
-        }
-        
-        // Support for handling mouse wheel events
-        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-            print("📐 Scroll view began dragging")
+            
+            // Update page dividers when zoom changes
+            updatePageDividers()
         }
         
         // Center the zooming canvas
@@ -386,12 +369,6 @@ struct SafeCanvasView: UIViewRepresentable {
         scrollView.minimumZoomScale = 0.5
         scrollView.maximumZoomScale = 3.0
         scrollView.contentInsetAdjustmentBehavior = .automatic
-        
-        // Enable mouse wheel scrolling support
-        scrollView.panGestureRecognizer.allowedTouchTypes = [UITouch.TouchType.direct.rawValue as NSNumber,
-                                                           UITouch.TouchType.indirect.rawValue as NSNumber]
-        scrollView.isScrollEnabled = true
-        
         context.coordinator.mainScrollView = scrollView
         
         // Create the canvas view to fill the available space
@@ -400,24 +377,21 @@ struct SafeCanvasView: UIViewRepresentable {
         canvasView.drawingPolicy = .anyInput
         canvasView.backgroundColor = .white
         canvasView.alwaysBounceVertical = true
-        // Drawing policy is already set to .anyInput which allows both finger and pencil input
-
-        
-        // Configure touch handling for the canvas
-        // PKCanvasView doesn't have allowedTouchTypes property
-        // Instead we'll make sure the canvas responds to all input types
-        canvasView.drawingPolicy = .anyInput
-        
+        canvasView.allowsFingerDrawing = true  // Allow finger drawing explicitly
         context.coordinator.canvasView = canvasView
         
         // Calculate initial content height
         let totalHeight = CGFloat(numberOfPages) * (pageHeight + pageSpacing) - pageSpacing
         
-        // Set canvas view full width
+        // Calculate the width that maintains the proper aspect ratio
+        let availableWidth = scrollView.frame.width > 0 ? scrollView.frame.width : UIScreen.main.bounds.width
+        let canvasWidth = min(availableWidth, pageWidth)
+        
+        // Set canvas view with proper aspect ratio
         canvasView.frame = CGRect(
-            x: 0,
+            x: (availableWidth - canvasWidth) / 2, // Center horizontally
             y: 0,
-            width: scrollView.frame.width > 0 ? scrollView.frame.width : UIScreen.main.bounds.width,
+            width: canvasWidth,
             height: totalHeight
         )
         
@@ -429,7 +403,7 @@ struct SafeCanvasView: UIViewRepresentable {
         
         // Add the canvas view to the scroll view
         scrollView.addSubview(canvasView)
-        scrollView.contentSize = canvasView.frame.size
+        scrollView.contentSize = CGSize(width: availableWidth, height: totalHeight)
         
         // Load drawing after a slight delay to allow view setup
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -446,6 +420,16 @@ struct SafeCanvasView: UIViewRepresentable {
                 context.coordinator.isInitialLoad = false
                 print("📝 Canvas ready with tool picker visible")
             }
+        }
+        
+        // Add observation for forced tool picker visibility
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("CanvasForceFirstResponder"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("🔧 Forcing tool picker visibility from notification")
+            context.coordinator.ensureToolPickerVisible()
         }
         
         return scrollView
@@ -469,63 +453,9 @@ struct SafeCanvasView: UIViewRepresentable {
         if !context.coordinator.isInitialLoad && !canvasView.isFirstResponder {
             context.coordinator.ensureToolPickerVisible()
         }
-    }
-    
-    // Method to clear existing page dividers
-    func clearPageDividers(from scrollView: UIScrollView) {
-        for view in scrollView.subviews where view.tag == 999 {
-            view.removeFromSuperview()
-        }
-    }
-    
-    func addPageDividers(to scrollView: UIScrollView, canvasWidth: CGFloat, numberOfPages: Int) {
-        // Add visual indicators for page breaks
-        for i in 1..<numberOfPages {
-            let yPosition = pageHeight * CGFloat(i) + pageSpacing * CGFloat(i - 1)
-            
-            let dividerView = UIView()
-            dividerView.frame = CGRect(
-                x: 0,
-                y: yPosition,
-                width: canvasWidth,
-                height: pageSpacing
-            )
-            dividerView.backgroundColor = .clear
-            dividerView.tag = 999
-            
-            // Add dashed line
-            let dashedLine = CAShapeLayer()
-            dashedLine.strokeColor = UIColor.systemGray4.cgColor
-            dashedLine.lineDashPattern = [4, 4]
-            dashedLine.lineWidth = 1
-            
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: 0, y: pageSpacing / 2))
-            path.addLine(to: CGPoint(x: canvasWidth, y: pageSpacing / 2))
-            dashedLine.path = path.cgPath
-            
-            dividerView.layer.addSublayer(dashedLine)
-            
-            // Page label
-            let label = UILabel()
-            label.text = "Page \(i + 1)"
-            label.font = UIFont.systemFont(ofSize: 12)
-            label.textColor = .systemGray
-            label.sizeToFit()
-            label.center = CGPoint(x: canvasWidth / 2, y: pageSpacing / 2)
-            dividerView.addSubview(label)
-            
-            scrollView.addSubview(dividerView)
-        }
-    }
-}
-
-// MARK: - TemplateRenderer Extension to make it public for other views
-extension TemplateRenderer {
-    // This is needed to ensure that the TemplateRenderer can be accessed from the notification handler
-    // Make sure this matches your existing TemplateRenderer implementation
-    static func applyTemplateImmediately(to canvasView: PKCanvasView, template: CanvasTemplate, pageSize: CGSize, numberOfPages: Int, pageSpacing: CGFloat) {
-        applyTemplateToCanvas(canvasView, template: template, pageSize: pageSize, numberOfPages: numberOfPages, pageSpacing: pageSpacing)
+        
+        // Update the dividers if the view resizes
+        context.coordinator.updatePageDividers()
     }
 }
 
