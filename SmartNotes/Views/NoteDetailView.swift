@@ -115,6 +115,7 @@ struct NoteDetailView: View {
     }
     
     // Safely load drawing data
+    // Update the loadDrawingData method to handle errors gracefully:
     private func loadDrawingData() {
         print("📝 Loading drawing data...")
         
@@ -134,7 +135,7 @@ struct NoteDetailView: View {
         
         // Mark initialization as complete after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            isInitialLoad = false
+            self.isInitialLoad = false
             print("📝 Note ready for editing")
         }
     }
@@ -161,19 +162,10 @@ struct NoteDetailView: View {
     
     private func exportToPDF() {
         // Create a temporary template for getting page rects
-        // We need to pass a binding, so we'll create a temporary state here
-        let emptyTemplate = CanvasTemplate.none
-        var templateBinding = emptyTemplate
-        let binding = Binding(
-            get: { templateBinding },
-            set: { templateBinding = $0 }
-        )
-        
-        // Get page rects from a PagedCanvasView instance
-        let pageRects = PagedCanvasView(drawing: $pkDrawing, template: binding).getPageRects()
+        let rects = calculatePageRects()
         
         // Export to PDF
-        if let pdfURL = PDFExporter.exportNoteToPDF(note: note, pageRects: pageRects) {
+        if let pdfURL = PDFExporter.exportNoteToPDF(note: note, pageRects: rects) {
             // Find the view controller to present from using the modern scene API
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = windowScene.windows.first,
@@ -181,5 +173,35 @@ struct NoteDetailView: View {
                 PDFExporter.presentPDFForSharing(url: pdfURL, from: viewController)
             }
         }
+    }
+    
+    // Helper method to calculate page rects for PDF export
+    private func calculatePageRects() -> [CGRect] {
+        // Determine how many pages based on drawing bounds
+        let pageHeight = 792.0 // Letter size height
+        let pageWidth = 612.0 // Letter size width
+        
+        // Calculate drawing bounds
+        let drawingBounds = pkDrawing.bounds
+        
+        // Calculate how many pages needed
+        let pagesNeeded = max(
+            2, // Minimum 2 pages
+            Int(ceil(drawingBounds.maxY / pageHeight)) + 1 // +1 for safety
+        )
+        
+        // Create page rects
+        var rects = [CGRect]()
+        for i in 0..<pagesNeeded {
+            let pageRect = CGRect(
+                x: 0,
+                y: CGFloat(i) * pageHeight,
+                width: pageWidth,
+                height: pageHeight
+            )
+            rects.append(pageRect)
+        }
+        
+        return rects
     }
 }

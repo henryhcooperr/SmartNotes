@@ -11,73 +11,98 @@ import PencilKit
 
 class TemplateRenderer {
     
-    /// Renders a template directly to the background of a PKCanvasView
+    /// Renders a template directly to the background of a PKCanvasView with strict validation
     static func applyTemplateToCanvas(_ canvasView: PKCanvasView, template: CanvasTemplate,
                                      pageSize: CGSize, numberOfPages: Int, pageSpacing: CGFloat) {
         
         print("🖌️ TemplateRenderer: Applying template \(template.type.rawValue)")
         
-        // First, set background color to white
-        canvasView.backgroundColor = .white
-        
-        // If no template, we're done
-        if template.type == .none {
+        // Validate all input dimensions to prevent invalid geometry
+        guard canvasView.frame.width > 0, canvasView.frame.height > 0,
+              pageSize.width > 0, pageSize.height > 0,
+              numberOfPages > 0, pageSpacing >= 0,
+              !canvasView.frame.width.isNaN, !canvasView.frame.height.isNaN else {
+            print("🖌️ TemplateRenderer: Skipping due to invalid dimensions")
+            canvasView.backgroundColor = .white // Fallback to white
             return
         }
         
-        // Calculate the total canvas height
-        let totalHeight = CGFloat(numberOfPages) * (pageSize.height + pageSpacing) - pageSpacing
+        // If no template, set white background and early return
+        if template.type == .none {
+            canvasView.backgroundColor = .white
+            return
+        }
         
-        // Create a background image context
-        UIGraphicsBeginImageContextWithOptions(CGSize(width: canvasView.bounds.width, height: totalHeight), false, 0)
+        // Calculate safe total height
+        let totalHeight = CGFloat(numberOfPages) * pageSize.height +
+                          CGFloat(numberOfPages - 1) * pageSpacing
+        
+        // Create background image with explicit, validated dimensions
+        let safeWidth = min(canvasView.frame.width, 2000) // Ensure reasonable width limit
+        let safeHeight = min(totalHeight, 5000) // Ensure reasonable height limit
+        
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: safeWidth, height: safeHeight), true, 0)
         guard let context = UIGraphicsGetCurrentContext() else {
             print("🖌️ Failed to create graphics context")
+            canvasView.backgroundColor = .white
             return
         }
         
-        // Fill with white background
+        // Fill white background
         context.setFillColor(UIColor.white.cgColor)
-        context.fill(CGRect(x: 0, y: 0, width: canvasView.bounds.width, height: totalHeight))
+        context.fill(CGRect(x: 0, y: 0, width: safeWidth, height: safeHeight))
         
         // Set up drawing parameters
         context.setStrokeColor(template.color.cgColor)
         context.setLineWidth(template.lineWidth)
+        context.setFillColor(template.color.cgColor)
         
-        // Draw the template pattern for each page
-        for pageIndex in 0..<numberOfPages {
-            let pageTop = CGFloat(pageIndex) * (pageSize.height + pageSpacing)
-            let pageRect = CGRect(x: 0, y: pageTop, width: canvasView.bounds.width, height: pageSize.height)
+        // Draw template for each page
+        for i in 0..<numberOfPages {
+            let pageTop = CGFloat(i) * (pageSize.height + pageSpacing)
+            // Skip if this page is beyond our safe height
+            if pageTop >= safeHeight { continue }
             
+            let pageRect = CGRect(
+                x: 0,
+                y: pageTop,
+                width: safeWidth,
+                height: min(pageSize.height, safeHeight - pageTop)
+            )
+            
+            // Draw template elements for this page
             drawTemplateForPage(context: context, pageRect: pageRect, template: template)
         }
         
-        // Get the image
-        if let renderedImage = UIGraphicsGetImageFromCurrentImageContext() {
+        // Get the rendered image
+        if let templateImage = UIGraphicsGetImageFromCurrentImageContext() {
             UIGraphicsEndImageContext()
             
-            // Create a background view with the template image
-            let backgroundView = UIImageView(image: renderedImage)
-            backgroundView.tag = 888 // Special tag for template background
-            
-            // Remove any existing background
-            for subview in canvasView.subviews {
-                if subview.tag == 888 {
-                    subview.removeFromSuperview()
-                }
+            // Clear any existing template layers
+            for subview in canvasView.subviews where subview.tag == 888 {
+                subview.removeFromSuperview()
             }
             
-            // Add background view below canvas content
-            canvasView.insertSubview(backgroundView, at: 0)
+            // Create and add template image view
+            let imageView = UIImageView(image: templateImage)
+            imageView.tag = 888
+            imageView.frame = CGRect(x: 0, y: 0, width: safeWidth, height: safeHeight)
+            canvasView.insertSubview(imageView, at: 0)
+            
+            // Make canvas transparent to see template
+            canvasView.backgroundColor = .clear
             
             print("🖌️ Template applied successfully")
         } else {
             UIGraphicsEndImageContext()
             print("🖌️ Failed to render template image")
+            canvasView.backgroundColor = .white // Fallback
         }
     }
     
     private static func drawTemplateForPage(context: CGContext, pageRect: CGRect, template: CanvasTemplate) {
-        let spacing = template.spacing
+        // Use safe spacing value (prevent extremely small or large values)
+        let spacing = max(min(template.spacing, 100), 10)
         
         switch template.type {
         case .lined:
@@ -110,7 +135,7 @@ class TemplateRenderer {
             // Draw dots
             for y in stride(from: pageRect.minY + spacing, to: pageRect.maxY, by: spacing) {
                 for x in stride(from: pageRect.minX + spacing, to: pageRect.maxX, by: spacing) {
-                    let dotSize = template.lineWidth * 2
+                    let dotSize = max(min(template.lineWidth * 2, 5), 1) // Safe dot size
                     let dotRect = CGRect(
                         x: x - dotSize/2,
                         y: y - dotSize/2,
@@ -126,3 +151,4 @@ class TemplateRenderer {
         }
     }
 }
+

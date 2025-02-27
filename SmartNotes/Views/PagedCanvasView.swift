@@ -16,14 +16,14 @@ struct PagedCanvasView: UIViewRepresentable {
     // Binding for the template
     @Binding var template: CanvasTemplate
     
+    // Binding for number of pages
+    @Binding var numberOfPages: Int
+    
     // Configuration options
-    let pageSize = CGSize(width: 612, height: 792) // Standard US Letter size (8.5" x 11" at 72 DPI)
-    let pageSpacing: CGFloat = 20
+    let pageSize: CGSize // Standard US Letter size (8.5" x 11" at 72 DPI)
+    let pageSpacing: CGFloat
     let horizontalPadding: CGFloat = 20
 
-    // Initial number of pages - we'll grow this dynamically
-    @State private var numberOfPages: Int = 2
-    
     // Tool picker for PencilKit
     let toolPicker = PKToolPicker()
     
@@ -35,13 +35,11 @@ struct PagedCanvasView: UIViewRepresentable {
         var lastUpdate = Date()
         var isInitialLoad = true
         var updateCounter = 0
-        var templateLayers: [CALayer] = []
         
         var lastTemplateType: CanvasTemplate.TemplateType?
         var lastTemplateSpacing: CGFloat?
         var lastTemplateLineWidth: CGFloat?
         var lastTemplateColorHex: String?
-        
         
         init(parent: PagedCanvasView) {
             self.parent = parent
@@ -142,13 +140,11 @@ struct PagedCanvasView: UIViewRepresentable {
             
             // Update template rendering
             applyTemplate()
-            
-            print("📐 Updated content size to \(totalHeight) points tall for \(parent.numberOfPages) pages")
         }
         
         // Apply the selected template to the canvas background
         func applyTemplate() {
-            // Simply delegate to the renderer
+            // Use the TemplateRenderer to render the template directly to the canvas
             TemplateRenderer.applyTemplateToCanvas(
                 canvasView,
                 template: parent.template,
@@ -230,8 +226,16 @@ struct PagedCanvasView: UIViewRepresentable {
         return scrollView
     }
     
+    // Inside the updateUIView method of PagedCanvasView, replace the sizing code with:
+
     func updateUIView(_ scrollView: UIScrollView, context: Context) {
         let coordinator = context.coordinator
+        
+        // Only proceed if we have valid dimensions
+        if scrollView.frame.width <= 0 {
+            print("⚠️ PagedCanvasView: Invalid scrollView width (\(scrollView.frame.width)), skipping update")
+            return
+        }
         
         // Only update drawing when necessary to avoid loops
         if !coordinator.isInitialLoad && coordinator.canvasView.drawing != drawing {
@@ -239,18 +243,42 @@ struct PagedCanvasView: UIViewRepresentable {
             coordinator.canvasView.drawing = drawing
         }
         
-        // Recalculate scroll view content size
-        let totalHeight = CGFloat(numberOfPages) * (pageSize.height + pageSpacing) - pageSpacing
-        scrollView.contentSize = CGSize(width: scrollView.frame.width, height: totalHeight)
+        // Calculate reasonable content size
+        let defaultPageHeight = pageSize.height + pageSpacing
+        let totalPageHeight = CGFloat(numberOfPages) * defaultPageHeight - pageSpacing
+        let safeHeight = min(max(totalPageHeight, pageSize.height), 10000) // Ensure reasonable bounds
         
-        // Update canvas size
-        let canvasWidth = min(UIScreen.main.bounds.width - (horizontalPadding * 2), pageSize.width)
-        coordinator.canvasView.frame = CGRect(
-            x: (scrollView.frame.width - canvasWidth) / 2,
+        print("📐 Calculating content size: \(scrollView.frame.width) x \(safeHeight)")
+        
+        // Safely update scroll view content size
+        let contentSize = CGSize(width: scrollView.frame.width, height: safeHeight)
+        if !contentSize.width.isNaN && !contentSize.height.isNaN &&
+           contentSize.width > 0 && contentSize.height > 0 &&
+           contentSize.width < 5000 && contentSize.height < 15000 {
+            scrollView.contentSize = contentSize
+        } else {
+            print("⚠️ PagedCanvasView: Invalid content size calculated: \(contentSize)")
+        }
+        
+        // Update canvas size safely
+        let canvasWidth = min(max(scrollView.frame.width - (horizontalPadding * 2), 100), pageSize.width)
+        
+        // Calculate safe canvas frame
+        let canvasFrame = CGRect(
+            x: max((scrollView.frame.width - canvasWidth) / 2, 0),
             y: 0,
             width: canvasWidth,
-            height: totalHeight
+            height: safeHeight
         )
+        
+        // Only apply if frame is valid
+        if !canvasFrame.origin.x.isNaN && !canvasFrame.origin.y.isNaN &&
+           !canvasFrame.size.width.isNaN && !canvasFrame.size.height.isNaN &&
+           canvasFrame.size.width > 0 && canvasFrame.size.height > 0 {
+            coordinator.canvasView.frame = canvasFrame
+        } else {
+            print("⚠️ PagedCanvasView: Invalid canvas frame calculated: \(canvasFrame)")
+        }
         
         // Only update page dividers occasionally to improve performance
         if coordinator.updateCounter % 5 == 0 {
@@ -266,9 +294,9 @@ struct PagedCanvasView: UIViewRepresentable {
            template.colorHex != coordinator.lastTemplateColorHex ||
            coordinator.updateCounter == 0 {
             
-            print("📐 Template changed or first render - applying template")
+            print("📐 Template changed or first render - applying template \(template.type.rawValue)")
             
-            // Use our new template renderer
+            // Use our template renderer
             TemplateRenderer.applyTemplateToCanvas(
                 coordinator.canvasView,
                 template: template,

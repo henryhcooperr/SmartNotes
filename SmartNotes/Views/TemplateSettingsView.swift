@@ -128,8 +128,8 @@ struct TemplateSettingsView: View {
         }
     }
     
-    // Apply the changes to the binding
     private func applyChanges() {
+        print("📝 Applying template changes: type=\(selectedType.rawValue), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
         template.type = selectedType
         template.spacing = CGFloat(spacing)
         template.lineWidth = CGFloat(lineWidth)

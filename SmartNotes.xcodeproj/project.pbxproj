@@ -29,22 +29,9 @@
 		861C1E762D6E8EAB00176C66 /* SmartNotesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmartNotesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		861C1F562D6FC54E00176C66 /* Exceptions for "SmartNotes" folder in "SmartNotes" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Untitled.swift,
-			);
-			target = 861C1E582D6E8EA900176C66 /* SmartNotes */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		861C1E5B2D6E8EA900176C66 /* SmartNotes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				861C1F562D6FC54E00176C66 /* Exceptions for "SmartNotes" folder in "SmartNotes" target */,
-			);
 			path = SmartNotes;
 			sourceTree = "<group>";
 		};
