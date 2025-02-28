@@ -56,12 +56,14 @@ class DataManager: ObservableObject {
         print("📊 DataManager loading data")
         do {
             if let data = UserDefaults.standard.data(forKey: saveKey) {
-                let decoded = try JSONDecoder().decode([Subject].self, from: data)
+                var decoded = try JSONDecoder().decode([Subject].self, from: data)
                 print("📊 Successfully decoded \(decoded.count) subjects")
-                
-                // Additional validation of drawing data
-                for subject in decoded {
-                    for note in subject.notes {
+
+                for subjectIndex in decoded.indices {
+                    for noteIndex in decoded[subjectIndex].notes.indices {
+                        let note = decoded[subjectIndex].notes[noteIndex]
+
+                        // Validate drawing data if needed
                         if !note.drawingData.isEmpty {
                             do {
                                 _ = try PKDrawing(data: note.drawingData)
@@ -70,9 +72,25 @@ class DataManager: ObservableObject {
                                 print("❌ Invalid drawing data for note: \(note.id)")
                             }
                         }
+                        
+                        // Migrate single-drawing to multi-page if needed
+                        if note.pages.isEmpty && !note.drawingData.isEmpty {
+                            print("📝 Migrating note \(note.id) to multi-page structure")
+                            let newPage = Page(
+                                drawingData: note.drawingData,
+                                template: nil,
+                                pageNumber: 1
+                            )
+                            decoded[subjectIndex].notes[noteIndex].pages = [newPage]
+                            
+                            // Optional: clear the old single-drawing data so
+                            // we don’t repeatedly migrate
+                            decoded[subjectIndex].notes[noteIndex].drawingData = Data()
+                        }
                     }
                 }
-                    
+
+                // Finally, assign the migrated array back to your published subjects
                 self.subjects = decoded
             } else {
                 print("📊 No data found in UserDefaults")
@@ -84,35 +102,35 @@ class DataManager: ObservableObject {
         }
     }
 
-        private func setupDefaultSubjects() {
-            print("📊 Creating default subjects")
-            self.subjects = [
-                Subject(name: "Math", notes: [], colorName: "blue"),
-                Subject(name: "History", notes: [], colorName: "red"),
-                Subject(name: "Science", notes: [], colorName: "green")
-            ]
-        }
+    private func setupDefaultSubjects() {
+        print("📊 Creating default subjects")
+        self.subjects = [
+            Subject(name: "Math", notes: [], colorName: "blue"),
+            Subject(name: "History", notes: [], colorName: "red"),
+            Subject(name: "Science", notes: [], colorName: "green")
+        ]
+    }
 
-        func saveData() {
-            print("📊 DataManager saving data with \(subjects.count) subjects")
+    func saveData() {
+        print("📊 DataManager saving data with \(subjects.count) subjects")
+        
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
             
-            DispatchQueue.global(qos: .background).async { [weak self] in
-                guard let self = self else { return }
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = .prettyPrinted // Optional: for debugging
+                let encoded = try encoder.encode(self.subjects)
                 
-                do {
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = .prettyPrinted // Optional: for debugging
-                    let encoded = try encoder.encode(self.subjects)
-                    
-                    DispatchQueue.main.async {
-                        UserDefaults.standard.set(encoded, forKey: self.saveKey)
-                        print("📊 Data saved successfully to UserDefaults")
-                    }
-                } catch {
-                    print("📊 Failed to encode subjects: \(error)")
+                DispatchQueue.main.async {
+                    UserDefaults.standard.set(encoded, forKey: self.saveKey)
+                    print("📊 Data saved successfully to UserDefaults")
                 }
+            } catch {
+                print("📊 Failed to encode subjects: \(error)")
             }
         }
+    }
     
     // Schedule data saving with much longer debounce (3 seconds) to avoid UI freezing
     private func scheduleSave() {
@@ -128,8 +146,7 @@ class DataManager: ObservableObject {
             self?.saveData()
         }
     }
-    
-    
+
     @objc func saveDataImmediately() {
         print("📊 Saving data immediately")
         saveDebounceTimer?.invalidate()
@@ -200,5 +217,27 @@ class DataManager: ObservableObject {
         print("📊 DataManager deinitializing")
         NotificationCenter.default.removeObserver(self)
         saveDataImmediately()
+    }
+    func createNewNote(title: String, in subjectID: UUID) -> Note {
+        print("📊 Creating new note with title: \(title)")
+        
+        // Create a new note with a single empty page
+        let newPage = Page(
+            drawingData: Data(),
+            template: nil,
+            pageNumber: 1
+        )
+        
+        let newNote = Note(
+            title: title,
+            drawingData: Data(),
+            pages: [newPage]
+        )
+        
+        // Add it to the appropriate subject
+        addNote(to: subjectID, note: newNote)
+        
+        print("📊 New note created with ID: \(newNote.id), includes 1 empty page")
+        return newNote
     }
 }

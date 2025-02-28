@@ -3,16 +3,7 @@
 //  SmartNotes
 //
 //  Created by Henry Cooper on 2/25/25.
-//
-//  This file defines a reusable card view for note previews.
-//  Key responsibilities:
-//    - Displaying a thumbnail of the note content
-//    - Showing the note title and creation date
-//    - Displaying the subject indicator with color
-//    - Handling navigation to the note detail view
-//
-//  This component is used by NotePreviewsGrid to display
-//  individual notes in the grid layout.
+//  Updated to fix navigation issues
 //
 
 import SwiftUI
@@ -21,82 +12,142 @@ import PencilKit
 struct NotePreviewCard: View {
     @Binding var note: Note
     @Binding var subject: Subject
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        NavigationLink(destination: {
-            // Destination is a detail note view
+        NavigationLink {
             NoteDetailView(note: $note, subjectID: subject.id)
-        }) {
+        } label: {
             cardContents
         }
         .buttonStyle(.plain) // Make the link look like a card
     }
     
     private var cardContents: some View {
-        // Compute the thumbnail first
-        let thumbnailImage = forcedFirstPageThumbnail
+        // Compute the thumbnail
+        let thumbnailImage = noteImage
+        let hasDrawing = hasDrawingContent
+        let pageCount = max(1, note.pages.count)
         
-        // Print in a side-effect expression (rather than inline in the View builder)
-        let _ = print("Thumbnail size = \(thumbnailImage.size)")
-        
-        return VStack(alignment: .leading) {
-            if thumbnailImage.size.width > 0 && thumbnailImage.size.height > 0 {
-                Image(uiImage: thumbnailImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 100)
-                    .background(Color.white)
-                    .overlay(
-                        Rectangle()
-                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                    )
-            } else {
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.2))
-                    .frame(height: 100)
+        return VStack(alignment: .leading, spacing: 0) {
+            // Top section with thumbnail or placeholder
+            ZStack(alignment: .topTrailing) {
+                if thumbnailImage.size.width > 0 {
+                    Image(uiImage: thumbnailImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 110)
+                        .background(Color.white)
+                        .overlay(
+                            Rectangle()
+                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                        )
+                } else {
+                    // Fallback placeholder
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 110)
+                }
+                
+                // Page count indicator if multiple pages
+                if pageCount > 1 {
+                    Text("\(pageCount)")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.white)
+                        .foregroundColor(subject.color)
+                        .cornerRadius(6)
+                        .padding(8)
+                }
             }
             
-            Text(note.title.isEmpty ? "Untitled Note" : note.title)
-                .font(.headline)
-                .lineLimit(1)
-            
-            Text(note.dateCreated, format: .dateTime.month().day().year())
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Text(subject.name)
-                .font(.caption2)
-                .fontWeight(.bold)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .foregroundColor(.white)
-                .background(subject.color)
-                .cornerRadius(6)
+            // Bottom info section
+            VStack(alignment: .leading, spacing: 6) {
+                // Title with icon
+                HStack(spacing: 6) {
+                    // Icon based on content type
+                    Image(systemName: hasDrawing ? "pencil.tip" : "doc.text")
+                        .foregroundColor(hasDrawing ? .purple : .blue)
+                        .font(.system(size: 14))
+                    
+                    Text(note.title.isEmpty ? "Untitled Note" : note.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
+                .padding(.top, 8)
+                
+                // Date info
+                Text(note.dateCreated, format: .dateTime.month().day().year())
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                // Subject indicator
+                Text(subject.name)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .foregroundColor(.white)
+                    .background(subject.color)
+                    .cornerRadius(6)
+            }
+            .padding()
         }
-        .padding()
-        .background(Color(.systemBackground))
+        .background(Color(colorScheme == .dark ? .systemGray6 : .systemBackground))
         .cornerRadius(10)
         .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
     }
-
-    // MARK: - Computed Property: forcedFirstPageThumbnail
-    private var forcedFirstPageThumbnail: UIImage {
-        // 1. If there's no drawing data, return an empty UIImage
-        guard !note.drawingData.isEmpty else { return UIImage() }
-        
-        // 2. Attempt to load a PKDrawing
-        guard let loadedDrawing = try? PKDrawing(data: note.drawingData),
-              !loadedDrawing.strokes.isEmpty else {
-            return UIImage()
+    
+    // Get thumbnail image for the note - handling both legacy and multi-page formats
+    private var noteImage: UIImage {
+        // Check for main drawing data first (legacy format)
+        if !note.drawingData.isEmpty {
+            let loadedDrawing = PKDrawing.fromData(note.drawingData)
+            if !loadedDrawing.strokes.isEmpty {
+                let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+                let scale: CGFloat = 0.15
+                
+                return loadedDrawing.image(from: pageRect, scale: scale)
+            }
         }
         
-        // 3. Force the "first page" rectangle (8.5" x 11" at 72DPI)
-        let firstPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+        // Check for multi-page drawing data
+        if !note.pages.isEmpty, let firstPage = note.pages.first,
+           !firstPage.drawingData.isEmpty {
+            let loadedDrawing = PKDrawing.fromData(firstPage.drawingData)
+            if !loadedDrawing.strokes.isEmpty {
+                let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+                let scale: CGFloat = 0.15
+                
+                return loadedDrawing.image(from: pageRect, scale: scale)
+            }
+        }
         
-        // 4. Figure out an appropriate scale
-        let scale: CGFloat = 0.15 // Adjust as desired to fit your card height
+        return UIImage()
+    }
+    
+    // Check if note has any drawing content - handling both formats
+    private var hasDrawingContent: Bool {
+        // Check legacy drawing data
+        if !note.drawingData.isEmpty {
+            let drawing = PKDrawing.fromData(note.drawingData)
+            if !drawing.strokes.isEmpty {
+                return true
+            }
+        }
         
-        // 5. Render a UIImage from that forced rectangle
-        return loadedDrawing.image(from: firstPageRect, scale: scale)
+        // Check pages
+        for page in note.pages {
+            if !page.drawingData.isEmpty {
+                let drawing = PKDrawing.fromData(page.drawingData)
+                if !drawing.strokes.isEmpty {
+                    return true
+                }
+            }
+        }
+        
+        return false
     }
 }

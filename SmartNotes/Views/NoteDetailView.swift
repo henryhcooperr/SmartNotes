@@ -3,17 +3,8 @@
 //  SmartNotes
 //
 //  Created by Henry Cooper on 2/25/25.
-//
-//  This file provides the interface for editing an individual note.
-//  Key responsibilities:
-//    - Title editing
-//    - Drawing canvas with the TemplateCanvasView
-//    - Loading and saving drawing data
-//    - PDF export functionality
-//    - Toolbar with template settings and export options
-//
-//  This is the main editing interface that users interact with
-//  when working on a note.
+//  Updated on 3/6/25 to support a single, note-wide template and unified multi-page
+//  Updated on 2/27/25 to fix template persistence issues
 //
 
 import SwiftUI
@@ -23,20 +14,38 @@ struct NoteDetailView: View {
     @Binding var note: Note
     @EnvironmentObject var dataManager: DataManager
     let subjectID: UUID
-    
-    @State private var pkDrawing = PKDrawing()
+    @State private var showingTemplateSheet = false
+    // Local copy of the note title
     @State private var localTitle: String
-    @State private var showExportOptions = false
-    @Environment(\.presentationMode) private var presentationMode
     
-    // Add flags to control initialization and updates
+    // Track whether we've just loaded the note
     @State private var isInitialLoad = true
     
-    // Initialize the local title with the note's title
+    // Whether to show the export ActionSheet
+    @State private var showExportOptions = false
+    
+    // Keep a single note-level template
+    @State private var noteTemplate: CanvasTemplate
+    
+    // Control sheet presentation for TemplateSettingsView
+    @State private var showingTemplateSettings = false
+    
+    // Flag to track active drawing operations
+    @State private var isDrawingActive = false
+    
+    @Environment(\.presentationMode) private var presentationMode
+    
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
         self.subjectID = subjectID
+        // Start localTitle with whatever is in the note
         self._localTitle = State(initialValue: note.wrappedValue.title)
+        
+        if let template = note.wrappedValue.noteTemplate {
+            self._noteTemplate = State(initialValue: template)
+        } else {
+            self._noteTemplate = State(initialValue: .none)
+        }
     }
     
     var body: some View {
@@ -47,175 +56,266 @@ struct NoteDetailView: View {
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: localTitle) { oldValue, newValue in
-                    // Only update during normal operation, not initial load
+                    // Only update the note model after initial load
                     if !isInitialLoad {
                         note.title = newValue
+                        saveChanges()
                     }
                 }
                 .padding(.horizontal)
             
-            // Divider between title and canvas
-            Divider()
-                .padding(.horizontal)
+            Divider().padding(.horizontal)
             
-            // Use the TemplateCanvasView with our drawing binding and note ID
-            TemplateCanvasView(drawing: $pkDrawing, noteID: note.id)
+            // Unified multi-page scroll
+            MultiPageUnifiedScrollView(pages: $note.pages, template: $noteTemplate)
+                .sheet(isPresented: $showingTemplateSheet) {
+                    TemplateSettingsView(template: $noteTemplate)
+                }
                 .onAppear {
-                    // Load drawing data when view appears - with safety delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        loadDrawingData()
+                    print("📝 NoteDetailView appeared for note ID: \(note.id)")
+                    
+                    // Migrate older single-drawing data to pages if needed
+                    migrateIfNeeded()
+                    
+                    // CRITICAL FIX: Ensure there's at least one page for new notes
+                    if note.pages.isEmpty {
+                        print("📝 Creating initial empty page for new note")
+                        let newPage = Page(
+                            drawingData: Data(),
+                            template: nil,
+                            pageNumber: 1
+                        )
+                        note.pages = [newPage]
+                        
+                        // Save changes immediately to prevent issues if user closes note too quickly
+                        DispatchQueue.main.async {
+                            saveChanges()
+                        }
+                    }
+                    
+                    // Get template from note
+                    if let savedTemplate = note.noteTemplate {
+                        noteTemplate = savedTemplate
+                        print("📝 Loaded template from note: \(savedTemplate.type.rawValue)")
+                    } else {
+                        noteTemplate = .none
+                        print("📝 No template found in note, using default")
+                    }
+                    
+                    // Load from UserDefaults as fallback
+                    loadNoteTemplateIfWanted()
+                    
+                    // Force template refresh after a short delay to ensure views are ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("RefreshTemplate"),
+                            object: nil
+                        )
+                        
+                        // Mark initial load complete
+                        isInitialLoad = false
+                    }
+                    
+                    // Register for drawing state notifications
+                    registerForDrawingNotifications()
+                }
+                .onChange(of: note.pages) { _ in
+                    // Save if pages change
+                    if !isInitialLoad {
+                        saveChanges()
                     }
                 }
-                .onChange(of: pkDrawing) { oldValue, newValue in
-                    // Only save drawing changes after initialization
+                .onChange(of: noteTemplate) { oldValue, newValue in
+                    print("🔍 NoteDetailView - Template changed from \(oldValue.type.rawValue) to \(newValue.type.rawValue)")
+                    // Reapply template changes
                     if !isInitialLoad {
-                        saveDrawingData(newValue)
+                        // Update the note model immediately
+                        note.noteTemplate = newValue
+                        
+                        // Save changes to persist the update
+                        saveChanges()
+                        
+                        // Force a refresh of the template - use ForceTemplateRefresh for more thorough refresh
+                        DispatchQueue.main.async {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ForceTemplateRefresh"),
+                                object: nil
+                            )
+                        }
                     }
+                }
+            // Navigation
+                .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    // Done button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            saveChanges()
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+                    
+                    // Template settings button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            showingTemplateSettings = true
+                        }) {
+                            Image(systemName: "ellipsis")
+                        }
+                    }
+                    
+                    // Export button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            showExportOptions = true
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                }
+                .actionSheet(isPresented: $showExportOptions) {
+                    ActionSheet(
+                        title: Text("Export Note"),
+                        message: Text("Choose export format"),
+                        buttons: [
+                            .default(Text("PDF")) {
+                                exportToPDF()
+                            },
+                            .default(Text("Image")) {
+                                print("Image export requested (not implemented yet)")
+                            },
+                            .cancel()
+                        ]
+                    )
+                }
+                .sheet(isPresented: $showingTemplateSettings) {
+                    // Present the template settings sheet
+                    TemplateSettingsView(template: $noteTemplate)
+                }
+                .onDisappear {
+                    // Clean up drawing notifications
+                    NotificationCenter.default.removeObserver(self)
+                    
+                    // Always save when view disappears
+                    saveChanges()
                 }
         }
-        .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
-                    saveChanges()
-                    presentationMode.wrappedValue.dismiss()
-                }
-            }
+    }
+    
+    // MARK: - Drawing Notifications
+    
+    private func registerForDrawingNotifications() {
+        NotificationCenter.default.removeObserver(self)
+        
+        // Listen for drawing start/end to manage template refreshes
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("DrawingDidComplete"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("📝 DrawingDidComplete notification received")
+            self.isDrawingActive = false
             
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    // Show template settings
+            // Force a template refresh after drawing completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if !self.isDrawingActive {
                     NotificationCenter.default.post(
-                        name: NSNotification.Name("ShowTemplateSettings"),
+                        name: NSNotification.Name("RefreshTemplate"),
                         object: nil
                     )
-                }) {
-                    Image(systemName: "ellipsis")
-                }
-            }
-            
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    showExportOptions = true
-                }) {
-                    Image(systemName: "square.and.arrow.up")
                 }
             }
         }
-        .actionSheet(isPresented: $showExportOptions) {
-            ActionSheet(
-                title: Text("Export Note"),
-                message: Text("Choose export format"),
-                buttons: [
-                    .default(Text("PDF")) {
-                        exportToPDF()
-                    },
-                    .default(Text("Image")) {
-                        // Image export functionality would go here
-                        print("Image export requested")
-                    },
-                    .cancel()
-                ]
+    }
+    
+    // MARK: - Migration
+    private func migrateIfNeeded() {
+        // If this note has no pages but DOES have old single-drawing data,
+        // convert it into a single Page. Then clear drawingData.
+        if note.pages.isEmpty && !note.drawingData.isEmpty {
+            print("📝 Migrating old single-drawing note -> multi-page note")
+            let newPage = Page(
+                drawingData: note.drawingData,
+                template: nil,
+                pageNumber: 1
             )
-        }
-        .onDisappear {
-            // Always save when view disappears
-            saveChanges()
+            note.pages = [newPage]
+            note.drawingData = Data()
         }
     }
     
-    // Safely load drawing data
-    private func loadDrawingData() {
-        print("📝 Loading drawing data...")
-        
-        if note.drawingData.isEmpty {
-            print("📝 Note has no drawing data, using empty drawing")
-            pkDrawing = PKDrawing()
-        } else {
-            do {
-                // Try to load the drawing from data
-                pkDrawing = try PKDrawing(data: note.drawingData)
-                print("📝 Successfully loaded drawing data: \(note.drawingData.count) bytes")
-            } catch {
-                print("📝 Error loading drawing data: \(error.localizedDescription)")
-                pkDrawing = PKDrawing() // Fall back to empty drawing
-            }
+    // (Optional) If you want to load a saved note-level template from the note model or from UserDefaults,
+    // implement something like loadNoteTemplateIfWanted(). Otherwise you can skip it.
+    private func loadNoteTemplateIfWanted() {
+        // First check if the note has a saved template
+        if let savedTemplate = note.noteTemplate {
+            noteTemplate = savedTemplate
+            return
         }
         
-        // Mark initialization as complete after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.isInitialLoad = false
-                print("📝 Note ready for editing")
-                
-                // Force template refresh after drawing is loaded
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshTemplate"),
-                    object: nil
-                )
-            }
+        // Then check UserDefaults as a fallback
+        if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(note.id.uuidString)") {
+             if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
+                 noteTemplate = loadedTemplate
+             }
+         }
     }
     
-    // Safely save drawing data to the note
-    private func saveDrawingData(_ drawing: PKDrawing) {
-        note.drawingData = drawing.dataRepresentation()
-        print("📝 Saved drawing data: \(note.drawingData.count) bytes")
-    }
-    
+    // MARK: - Save
     private func saveChanges() {
-        print("📝 Saving note changes")
         note.title = localTitle
-        saveDrawingData(pkDrawing)
         note.lastModified = Date()
         
-        // Assuming you have access to DataManager and subjectID
+        // Save the current template state to the note model
+        note.noteTemplate = noteTemplate
+        
+        // Also store in UserDefaults as a backup
+        let data = try? JSONEncoder().encode(noteTemplate)
+        UserDefaults.standard.set(data, forKey: "noteTemplate.\(note.id.uuidString)")
+        
+        // Persist changes through data manager
         dataManager.updateNote(in: subjectID, note: note)
+        print("📝 Note changes saved (multi-page with template).")
     }
     
+    // MARK: - PDF Export
     private func exportToPDF() {
-        // Create a temporary template for getting page rects
-        let rects = calculatePageRects()
-        
-        // Export to PDF
-        if let pdfURL = PDFExporter.exportNoteToPDF(note: note, pageRects: rects) {
-            // Find the view controller to present from using the modern scene API
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = windowScene.windows.first,
-               let viewController = window.rootViewController {
-                PDFExporter.presentPDFForSharing(url: pdfURL, from: viewController)
-            }
-        }
+        print("📝 PDF Export requested for multi-page note with template (placeholder).")
+        // You can combineAllPagesIntoOneDrawing() or handle multi-page PDF.
     }
     
-    // Helper method to calculate page rects for PDF export
-    private func calculatePageRects() -> [CGRect] {
-        // Determine how many pages based on drawing bounds
-        let pageHeight = 792.0 // Letter size height
-        let pageWidth = 612.0 // Letter size width
+    private func combineAllPagesIntoOneDrawing() -> PKDrawing {
+        var combined = PKDrawing()
         
-        // Calculate drawing bounds
-        let drawingBounds = pkDrawing.bounds
-        
-        // Calculate how many pages needed
-        let pagesNeeded = max(
-            2, // Minimum 2 pages
-            Int(ceil(drawingBounds.maxY / pageHeight)) + 1 // +1 for safety
-        )
-        
-        // Create page rects
-        var rects = [CGRect]()
-        for i in 0..<pagesNeeded {
-            let pageRect = CGRect(
-                x: 0,
-                y: CGFloat(i) * pageHeight,
-                width: pageWidth,
-                height: pageHeight
-            )
-            rects.append(pageRect)
+        for (index, page) in note.pages.enumerated() {
+            let offsetY = CGFloat(index) * 792 // standard letter
+            let pageDrawing = PKDrawing.fromData(page.drawingData)
+            
+            let translatedStrokes = pageDrawing.strokes.map { stroke -> PKStroke in
+                transformStroke(stroke, offsetY: offsetY)
+            }
+            combined = PKDrawing(strokes: combined.strokes + translatedStrokes)
         }
         
-        return rects
+        return combined
+    }
+    
+    private func transformStroke(_ stroke: PKStroke, offsetY: CGFloat) -> PKStroke {
+        // If iOS 15+ only, you can do stroke.path.transform(...)
+        let newControlPoints = stroke.path.map { point -> PKStrokePoint in
+            let translatedLocation = point.location.applying(CGAffineTransform(translationX: 0, y: offsetY))
+            return PKStrokePoint(
+                location: translatedLocation,
+                timeOffset: point.timeOffset,
+                size: point.size,
+                opacity: point.opacity,
+                force: point.force,
+                azimuth: point.azimuth,
+                altitude: point.altitude
+            )
+        }
+        let newPath = PKStrokePath(controlPoints: newControlPoints, creationDate: stroke.path.creationDate)
+        return PKStroke(ink: stroke.ink, path: newPath, transform: .identity, mask: stroke.mask)
     }
 }
-
-

@@ -1,3 +1,8 @@
+//
+//  TemplateSettingsView.swift
+//  SmartNotes
+//
+
 import SwiftUI
 
 struct TemplateSettingsView: View {
@@ -10,7 +15,7 @@ struct TemplateSettingsView: View {
     @State private var lineWidth: Double
     @State private var colorHex: String
     
-    // Use @AppStorage to store whether finger drawing is disabled
+    // Toggle for disabling finger drawing
     @AppStorage("disableFingerDrawing") private var disableFingerDrawing: Bool = false
     
     // Available colors
@@ -46,6 +51,7 @@ struct TemplateSettingsView: View {
                 
                 // Only show spacing/line config if a template is selected
                 if selectedType != .none {
+                    
                     Section(header: Text("Line Spacing")) {
                         HStack {
                             Text("Spacing: \(Int(spacing)) pts")
@@ -95,6 +101,7 @@ struct TemplateSettingsView: View {
                                 spacing = 24
                                 lineWidth = 0.5
                                 colorHex = "#CCCCCC"
+                                selectedType = .lined
                             }
                             .buttonStyle(.bordered)
                             
@@ -111,11 +118,10 @@ struct TemplateSettingsView: View {
                     }
                 }
                 
-                // (Optional) A new toggle so the user can easily disable finger drawing
+                // Pencil only toggle
                 Section(header: Text("Pencil Only")) {
                     Toggle("Disable Finger Drawing", isOn: $disableFingerDrawing)
                 }
-                
             }
             .navigationTitle("Template Settings")
             .navigationBarItems(
@@ -123,18 +129,28 @@ struct TemplateSettingsView: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Apply") {
+                    // Apply changes to the template binding
                     applyChanges()
                     
-                    // Force the template to refresh
+                    // Force immediate template refresh with three-step approach
                     DispatchQueue.main.async {
+                        // 1. Post notification to trigger layoutPages()
                         NotificationCenter.default.post(
                             name: NSNotification.Name("RefreshTemplate"),
                             object: nil
                         )
                         
-                        // Give the notification a moment
+                        // 2. Post a second notification after a short delay to ensure refresh
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            presentationMode.wrappedValue.dismiss()
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ForceTemplateRefresh"),
+                                object: nil
+                            )
+                            
+                            // 3. Finally dismiss the sheet
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                presentationMode.wrappedValue.dismiss()
+                            }
                         }
                     }
                 }
@@ -142,16 +158,16 @@ struct TemplateSettingsView: View {
         }
     }
     
-    // Apply changes to the bound template
     private func applyChanges() {
-        print("📝 Applying template changes: type=\(selectedType), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
+        print("📝 Applying template changes: type=\(selectedType.rawValue), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
+        
         template.type = selectedType
         template.spacing = CGFloat(spacing)
         template.lineWidth = CGFloat(lineWidth)
         template.colorHex = colorHex
     }
     
-    // Convert hex to a color name for the UI
+    // Convert hex to a color name
     private func colorName(for hex: String) -> String {
         switch hex {
         case "#CCCCCC": return "Light Gray"
@@ -163,7 +179,7 @@ struct TemplateSettingsView: View {
         }
     }
     
-    // Live preview of the template lines/dots/etc.
+    // A preview of the template lines/dots
     private var templatePreview: some View {
         Canvas { context, size in
             let color = UIColor(hex: colorHex) ?? .lightGray
@@ -174,20 +190,24 @@ struct TemplateSettingsView: View {
                 Path { path in
                     switch selectedType {
                     case .lined:
+                        // Draw horizontal lines
                         for y in stride(from: gap, to: size.height, by: gap) {
                             path.move(to: CGPoint(x: 0, y: y))
                             path.addLine(to: CGPoint(x: size.width, y: y))
                         }
                     case .graph:
+                        // Horizontal
                         for y in stride(from: gap, to: size.height, by: gap) {
                             path.move(to: CGPoint(x: 0, y: y))
                             path.addLine(to: CGPoint(x: size.width, y: y))
                         }
+                        // Vertical
                         for x in stride(from: gap, to: size.width, by: gap) {
                             path.move(to: CGPoint(x: x, y: 0))
                             path.addLine(to: CGPoint(x: x, y: size.height))
                         }
                     case .dotted:
+                        // Dot grid
                         for y in stride(from: gap, to: size.height, by: gap) {
                             for x in stride(from: gap, to: size.width, by: gap) {
                                 let rect = CGRect(
