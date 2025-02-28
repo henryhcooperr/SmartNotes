@@ -13,7 +13,7 @@ struct NoteDetailView: View {
     @Binding var note: Note
     @EnvironmentObject var dataManager: DataManager
     let subjectID: UUID
-    
+    @State private var showingTemplateSheet = false
     // Local copy of the note title
     @State private var localTitle: String
     
@@ -24,7 +24,7 @@ struct NoteDetailView: View {
     @State private var showExportOptions = false
     
     // Keep a single note-level template
-    @State private var noteTemplate: CanvasTemplate = .none
+    @State private var noteTemplate: CanvasTemplate
     
     // Control sheet presentation for TemplateSettingsView
     @State private var showingTemplateSettings = false
@@ -36,6 +36,12 @@ struct NoteDetailView: View {
         self.subjectID = subjectID
         // Start localTitle with whatever is in the note
         self._localTitle = State(initialValue: note.wrappedValue.title)
+        
+        if let template = note.wrappedValue.noteTemplate {
+                    self._noteTemplate = State(initialValue: template)
+                } else {
+                    self._noteTemplate = State(initialValue: .none)
+                }
     }
     
     var body: some View {
@@ -58,10 +64,13 @@ struct NoteDetailView: View {
             
             // Unified multi-page scroll
             MultiPageUnifiedScrollView(pages: $note.pages, template: $noteTemplate)
+                .sheet(isPresented: $showingTemplateSheet) {
+                    TemplateSettingsView(template: $noteTemplate)
+                }
                 .onAppear {
                     // Migrate older single-drawing data to pages if needed
                     migrateIfNeeded()
-                    
+                    noteTemplate = note.noteTemplate ?? .none
                     // Load a saved template if you want a persistent note-level template:
                     loadNoteTemplateIfWanted()
                     
@@ -158,11 +167,11 @@ struct NoteDetailView: View {
     // implement something like loadNoteTemplateIfWanted(). Otherwise you can skip it.
     private func loadNoteTemplateIfWanted() {
         // Example: if your Note has a `noteTemplate` property. Or from UserDefaults:
-        // if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(note.id.uuidString)") {
-        //     if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
-        //         noteTemplate = loadedTemplate
-        //     }
-        // }
+        if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(note.id.uuidString)") {
+             if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
+                 noteTemplate = loadedTemplate
+             }
+         }
     }
     
     // MARK: - Save
@@ -170,9 +179,11 @@ struct NoteDetailView: View {
         note.title = localTitle
         note.lastModified = Date()
         
+        note.noteTemplate = noteTemplate
+        
         // You might also want to store `noteTemplate` if you want it persistent:
-        // let data = try? JSONEncoder().encode(noteTemplate)
-        // UserDefaults.standard.set(data, forKey: "noteTemplate.\(note.id.uuidString)")
+        let data = try? JSONEncoder().encode(noteTemplate)
+        UserDefaults.standard.set(data, forKey: "noteTemplate.\(note.id.uuidString)")
         
         dataManager.updateNote(in: subjectID, note: note)
         print("📝 Note changes saved (multi-page with template).")

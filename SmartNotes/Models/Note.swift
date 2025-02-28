@@ -27,6 +27,7 @@ struct Note: Identifiable, Codable, Hashable {
     
     var pages: [Page] = []
     
+    var noteTemplate: CanvasTemplate?
     // Simplified hash function that only uses ID
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)

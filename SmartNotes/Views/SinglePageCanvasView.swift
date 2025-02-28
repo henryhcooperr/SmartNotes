@@ -143,7 +143,12 @@ struct SinglePageCanvasView: UIViewRepresentable {
             }
         }
         
-        // 2) If noteTemplate changed, reapply it (optional)
-        //    e.g. TemplateRenderer.applyTemplateToCanvas(...).
+        TemplateRenderer.applyTemplateToCanvas(
+                    canvasView,
+                    template: noteTemplate,
+                    pageSize: CGSize(width: 612, height: 792),  // or your dynamic size
+                    numberOfPages: 1,
+                    pageSpacing: 0
+                )
     }
 }

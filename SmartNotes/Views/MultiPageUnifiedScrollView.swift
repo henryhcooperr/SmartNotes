@@ -16,7 +16,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     // The standard "paper" size for each page
     let pageSize = CGSize(width: 612, height: 792)
     // Minimal spacing so there's a slight boundary between pages
-    let pageSpacing: CGFloat = 10
+    let pageSpacing: CGFloat = 2
     
     class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate {
         var parent: MultiPageUnifiedScrollView
@@ -124,7 +124,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     
                     // Load existing drawing
                     cv.drawing = PKDrawing.fromData(page.drawingData)
-                    
+                    TemplateRenderer.applyTemplateToCanvas(
+                        cv,
+                           template: parent.template, // <--- the template from your binding
+                           pageSize: parent.pageSize,
+                           numberOfPages: 1,
+                           pageSpacing: 0
+                       )
                     if let toolPicker = toolPicker {
                                             toolPicker.setVisible(true, forFirstResponder: cv)
                                             // Make it first responder so the palette appears
@@ -166,10 +172,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         /// Re-apply the user's chosen template lines/dots
         private func applyTemplate(to canvasView: PKCanvasView) {
-            let t = parent.template
             TemplateRenderer.applyTemplateToCanvas(
                 canvasView,
-                template: t,
+                template: parent.template,
                 pageSize: parent.pageSize,
                 numberOfPages: 1,   // since each PKCanvasView is just 1 "page"
                 pageSpacing: 0
@@ -206,6 +211,14 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         context.coordinator.scrollView = scrollView
         context.coordinator.containerView = container
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("RefreshTemplate"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            context.coordinator.layoutPages()
+        }
         
         // Layout pages next runloop
         DispatchQueue.main.async {
