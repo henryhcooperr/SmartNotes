@@ -1,126 +1,136 @@
-//
 //  SubjectsSplitView.swift
 //  SmartNotes
-//
-//  Created by Henry Cooper on 2/25/25.
-//
-//  This file contains the main navigation structure for SmartNotes app.
-//  It implements a split view with:
-//    - Left side: Sidebar displaying a list of subjects with their colors
-//    - Right side: Detail view showing notes for the selected subject
-//
-//  Key responsibilities:
-//    - Subject list management (displaying, selecting subjects)
-//    - Managing the "Add Subject" workflow with the sheet UI
-//    - Handling subject deletion
-//    - Maintaining the navigation state between the list and detail views
-//    - Communicating changes back to the data manager
-//
-//  This is the primary navigation hub that connects the subject list
-//  with the note grid view (NotePreviewsGrid).
-//
 
 import SwiftUI
 
 struct SubjectsSplitView: View {
-    // Binding to the subjects array
     @Binding var subjects: [Subject]
-    // Callback for when a subject is updated
     var onSubjectChange: (Subject) -> Void
     
-    // The subject currently selected in the sidebar
     @State private var selectedSubject: Subject?
-    
-    // For searching subjects or notes (optional).
     @State private var searchText: String = ""
     
-    // State to track when we're adding a new subject
     @State private var isAddingNewSubject = false
     @State private var newSubjectName = ""
     @State private var newSubjectColor = "blue"
-    
-    // Flag to prevent loops
     @State private var isInitialSelection = true
     
-    // Available color options
     let colorOptions = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "gray"]
     
     init(subjects: Binding<[Subject]>, onSubjectChange: @escaping (Subject) -> Void) {
         self._subjects = subjects
         self.onSubjectChange = onSubjectChange
-        print("📘 SubjectsSplitView initialized")
     }
     
     var body: some View {
         NavigationSplitView {
-            // SIDEBAR
             sidebarView
         } detail: {
-            // MAIN DETAIL
             detailView
         }
         .sheet(isPresented: $isAddingNewSubject) {
             addSubjectView
         }
         .onAppear {
-            print("📘 SubjectsSplitView appeared")
-            
-            // Only set initial selection once
-            if isInitialSelection && subjects.count > 0 && selectedSubject == nil {
+            if isInitialSelection, !subjects.isEmpty, selectedSubject == nil {
                 selectedSubject = subjects[0]
                 isInitialSelection = false
-                print("📘 Set initial subject selection to: \(subjects[0].name)")
             }
         }
     }
     
     // MARK: - Sidebar
-    
     private var sidebarView: some View {
-        VStack {
-            // Search bar at top
-            TextField("Search", text: $searchText)
-                .padding(8)
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-                .padding()
+        VStack(spacing: 0) {
+            headerBanner
             
-            // The list of subjects
-            List(selection: $selectedSubject) {
-                ForEach(subjects) { subject in
-                    // Color circle + subject name
-                    HStack {
-                        Circle()
-                            .fill(subject.color)
-                            .frame(width: 12, height: 12)
-                        Text(subject.name)
-                    }
-                    .tag(subject) // Identifies which subject is selected
-                }
-                .onDelete(perform: deleteSubjects)
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search subjects...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.subheadline)
             }
-            .listStyle(SidebarListStyle())
-            .navigationTitle("Subjects")
-            .toolbar {
-                // Add new subject
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { isAddingNewSubject = true }) {
-                        Image(systemName: "plus")
-                    }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
+            )
+            .padding(.horizontal)
+            .padding(.top, 8)
+            
+            subjectList
+            
+            Spacer(minLength: 0)
+        }
+        .background(
+            BlurView(style: .systemUltraThinMaterial)
+                .edgesIgnoringSafeArea(.all)
+        )
+        .navigationTitle("")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Text("Subjects")
+                    .font(.system(size: 26, weight: .bold))
+                    .padding(.leading, 2)
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    isAddingNewSubject = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2)
                 }
             }
         }
     }
     
-    // MARK: - Detail
+    // MARK: - Header Banner
+    private var headerBanner: some View {
+        ZStack {
+            Color(.systemGray6)
+                .frame(height: 44)
+                .overlay(
+                    Divider()
+                        .offset(y: 22)
+                )
+        }
+    }
     
+    // MARK: - Subject List
+    private var subjectList: some View {
+        List(selection: $selectedSubject) {
+            ForEach(filteredSubjects) { subject in
+                SubjectRowView(subject: subject)
+                    .tag(subject)
+                    .listRowBackground(
+                        subject == selectedSubject
+                        ? Color.blue.opacity(0.1)    // Subtle highlight for selected
+                        : Color(.systemBackground).opacity(0.8)
+                    )
+                    .contextMenu {
+                        Button("Rename") {
+                            renameSubject(subject)
+                        }
+                        Button(role: .destructive) {
+                            deleteSubject(subject)
+                        } label: {
+                            Text("Delete")
+                        }
+                    }
+            }
+            .onDelete(perform: deleteSubjects)
+        }
+        .listStyle(.inset)
+        .padding(.top, 4)
+    }
+    
+    // MARK: - Detail View
     private var detailView: some View {
         Group {
             if let subject = selectedSubject {
                 if let index = subjects.firstIndex(where: { $0.id == subject.id }) {
-                    // Create explicit binding to the subject in the array
                     let subjectBinding = $subjects[index]
-                    
                     NavigationStack {
                         NotePreviewsGrid(subject: subjectBinding)
                     }
@@ -137,18 +147,13 @@ struct SubjectsSplitView: View {
         }
     }
     
-    // MARK: - Functions
-    
-    private func deleteSubjects(at offsets: IndexSet) {
-        subjects.remove(atOffsets: offsets)
-    }
-    
-    // View for adding a new subject
+    // MARK: - Add Subject View
     private var addSubjectView: some View {
         NavigationView {
             Form {
                 Section(header: Text("Subject Details")) {
                     TextField("Subject Name", text: $newSubjectName)
+                        .textFieldStyle(.roundedBorder)
                     
                     Picker("Color", selection: $newSubjectColor) {
                         ForEach(colorOptions, id: \.self) { colorName in
@@ -163,26 +168,52 @@ struct SubjectsSplitView: View {
                 }
             }
             .navigationTitle("New Subject")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    isAddingNewSubject = false
-                    newSubjectName = ""
-                },
-                trailing: Button("Add") {
-                    let newSubject = Subject(name: newSubjectName, notes: [], colorName: newSubjectColor)
-                    subjects.append(newSubject)
-                    isAddingNewSubject = false
-                    newSubjectName = ""
-                    // Select the newly created subject and save once
-                    selectedSubject = newSubject
-                    onSubjectChange(newSubject)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isAddingNewSubject = false
+                        newSubjectName = ""
+                    }
                 }
-                .disabled(newSubjectName.isEmpty)
-            )
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        let newSubject = Subject(
+                            name: newSubjectName,
+                            notes: [],
+                            colorName: newSubjectColor
+                        )
+                        subjects.append(newSubject)
+                        isAddingNewSubject = false
+                        newSubjectName = ""
+                        selectedSubject = newSubject
+                        onSubjectChange(newSubject)
+                    }
+                    .disabled(newSubjectName.isEmpty)
+                }
+            }
         }
     }
     
-    // Helper to convert string color names to SwiftUI Color
+    // MARK: - Helpers
+    private var filteredSubjects: [Subject] {
+        if searchText.isEmpty { return subjects }
+        return subjects.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
+    private func deleteSubjects(at offsets: IndexSet) {
+        subjects.remove(atOffsets: offsets)
+    }
+    private func deleteSubject(_ subject: Subject) {
+        if let idx = subjects.firstIndex(where: { $0.id == subject.id }) {
+            subjects.remove(at: idx)
+        }
+    }
+    private func renameSubject(_ subject: Subject) {
+        print("Renaming subject: \(subject.name)")
+    }
+    
     private func colorToSwiftUIColor(_ name: String) -> Color {
         switch name.lowercased() {
         case "red":      return .red
@@ -195,4 +226,55 @@ struct SubjectsSplitView: View {
         default:         return .gray
         }
     }
+}
+
+// MARK: - SubjectRowView
+fileprivate struct SubjectRowView: View {
+    let subject: Subject
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: iconForSubject(subject.name))
+                .foregroundColor(subject.color)
+                .font(.system(size: 20, weight: .medium))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                // Make sure the text is always visible
+                Text(subject.name)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)  // <-- Always primary color
+                
+                if !subject.notes.isEmpty {
+                    Text("\(subject.notes.count) note\(subject.notes.count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Circle()
+                .fill(subject.color)
+                .frame(width: 12, height: 12)
+        }
+        .padding(.vertical, 6)
+    }
+    
+    private func iconForSubject(_ name: String) -> String {
+        let lowerName = name.lowercased()
+        if lowerName.contains("math") { return "function" }
+        if lowerName.contains("history") { return "clock" }
+        if lowerName.contains("science") { return "atom" }
+        if lowerName.contains("art") { return "paintpalette" }
+        return "book.closed"
+    }
+}
+
+// MARK: - Optional Blur View
+fileprivate struct BlurView: UIViewRepresentable {
+    let style: UIBlurEffect.Style
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: UIBlurEffect(style: style))
+    }
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) { }
 }
