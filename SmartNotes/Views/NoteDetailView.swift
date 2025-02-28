@@ -3,8 +3,7 @@
 //  SmartNotes
 //
 //  Created by Henry Cooper on 2/25/25.
-//
-//  Updated to use multi‐page approach on 3/1/25.
+//  Updated on 3/5/25 to use MultiPageUnifiedScrollView
 //
 
 import SwiftUI
@@ -26,6 +25,7 @@ struct NoteDetailView: View {
     
     @Environment(\.presentationMode) private var presentationMode
     
+    // MARK: - Init
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
         self.subjectID = subjectID
@@ -33,6 +33,7 @@ struct NoteDetailView: View {
         self._localTitle = State(initialValue: note.wrappedValue.title)
     }
     
+    // MARK: - Body
     var body: some View {
         VStack(spacing: 0) {
             // Title area
@@ -53,19 +54,17 @@ struct NoteDetailView: View {
             Divider()
                 .padding(.horizontal)
             
-            // -- Replace TemplateCanvasView with MultiPageCanvasView --
-            MultiPageCanvasView(pages: $note.pages)
+            // ---- Here's the key: show the Unified Scroll of multiple pages ----
+            MultiPageUnifiedScrollView(pages: $note.pages)
                 .onAppear {
-                    // Migrate older single-drawing data (if any) to multi-page
-                    migrateIfNeeded()
-                    
-                    // Mark initial load complete so future changes get saved
+                    migrateIfNeeded()  // Convert old single-drawing data to pages, if needed
+                    // Mark initial load complete after a short delay
                     DispatchQueue.main.async {
                         isInitialLoad = false
                     }
                 }
                 .onChange(of: note.pages) { _ in
-                    // Whenever pages change (new page added, etc.), save
+                    // Save changes to DataManager whenever pages array changes
                     if !isInitialLoad {
                         saveChanges()
                     }
@@ -83,11 +82,9 @@ struct NoteDetailView: View {
                 }
             }
             
-            // Template settings button (if you still want a global template)
+            // Template settings button (optional)
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    // Show template settings for the note-level template
-                    // (Or skip if each page has its own template)
                     NotificationCenter.default.post(
                         name: NSNotification.Name("ShowTemplateSettings"),
                         object: nil
@@ -115,7 +112,8 @@ struct NoteDetailView: View {
                         exportToPDF()
                     },
                     .default(Text("Image")) {
-                        print("Image export requested (not implemented)")
+                        // Not implemented
+                        print("Image export requested")
                     },
                     .cancel()
                 ]
@@ -127,7 +125,7 @@ struct NoteDetailView: View {
         }
     }
     
-    // MARK: - Migration for Old Notes
+    // MARK: - MIGRATION
     private func migrateIfNeeded() {
         // If this note has no pages but DOES have old single-drawing data,
         // convert it into a single Page. Then clear drawingData to avoid re-migration.
@@ -143,60 +141,43 @@ struct NoteDetailView: View {
         }
     }
     
-    // MARK: - Save Changes
+    // MARK: - SAVE
     private func saveChanges() {
         note.title = localTitle
         note.lastModified = Date()
         dataManager.updateNote(in: subjectID, note: note)
-        print("📝 Note changes saved")
+        print("📝 Note changes saved (multi-page)")
     }
     
-    // MARK: - PDF Export
+    // MARK: - PDF EXPORT
     private func exportToPDF() {
-        // Right now, your PDFExporter is built around a single PKDrawing.
-        // You can adapt it to handle multiple pages by combining them or
-        // generating a multi-page PDF. For now, just show a placeholder.
-        
-        print("📝 PDF Export requested for multi-page note")
-        
-        // Example: If you want a quick hack that merges all pages into one
-        // PKDrawing, you'd do something like:
-        // let mergedDrawing = combineAllPagesIntoOneDrawing()
-        // Then pass that to PDFExporter.
-        
-        // Or create a multi-page PDF with each page drawn in its own rect.
-        // For now, just log a message or show an alert.
+        // Currently a placeholder. You can adapt your PDFExporter
+        // to handle multiple pages. For example, combineAllPagesIntoOneDrawing()
+        // or generate a multi-page PDF document.
+        print("📝 PDF Export requested for multi-page note.")
     }
     
-    // Optional if you want to merge pages for PDF
+    // Example if you want to combine all pages into one big PKDrawing
     private func combineAllPagesIntoOneDrawing() -> PKDrawing {
         var combined = PKDrawing()
         
         for (index, page) in note.pages.enumerated() {
-            let offsetY = CGFloat(index) * 792 // US Letter page height
+            let offsetY = CGFloat(index) * 792 // for standard letter
             let pageDrawing = PKDrawing.fromData(page.drawingData)
             
-            // Translate each stroke by offsetY and append to `combined`.
             let translatedStrokes = pageDrawing.strokes.map { stroke -> PKStroke in
-                return transformStroke(stroke, offsetY: offsetY)
+                transformStroke(stroke, offsetY: offsetY)
             }
-            
             combined = PKDrawing(strokes: combined.strokes + translatedStrokes)
         }
         
         return combined
     }
-
-    // MARK: - Manual Stroke Transform
+    
     private func transformStroke(_ stroke: PKStroke, offsetY: CGFloat) -> PKStroke {
-        // If you only support iOS 15+, you could do:
-        // if #available(iOS 15.0, *) {
-        //     let newPath = stroke.path.transform(using: CGAffineTransform(translationX: 0, y: offsetY))
-        //     return PKStroke(ink: stroke.ink, path: newPath, transform: .identity, mask: stroke.mask)
-        // }
-        // else fallback below:
-        
-        // Fallback for iOS < 15: manually translate each control point
+        // If only iOS 15+ is supported, you can do:
+        // stroke.path.transform(using: CGAffineTransform(translationX: 0, y: offsetY))
+        // else do manual path transform:
         let newControlPoints = stroke.path.map { point -> PKStrokePoint in
             let translatedLocation = point.location.applying(CGAffineTransform(translationX: 0, y: offsetY))
             return PKStrokePoint(
@@ -210,13 +191,7 @@ struct NoteDetailView: View {
             )
         }
         
-        // Recreate the PKStrokePath with the new control points
-        let newPath = PKStrokePath(
-            controlPoints: newControlPoints,
-            creationDate: stroke.path.creationDate
-        )
-        
-        // Return a stroke with the translated path
+        let newPath = PKStrokePath(controlPoints: newControlPoints, creationDate: stroke.path.creationDate)
         return PKStroke(
             ink: stroke.ink,
             path: newPath,
