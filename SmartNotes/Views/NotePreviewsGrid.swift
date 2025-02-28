@@ -4,21 +4,19 @@ import PencilKit
 struct NotePreviewsGrid: View {
     @Binding var subject: Subject
     
-    // MARK: - View State
-    @State private var isFirstAppearance = true
     @State private var viewMode: ViewMode = .bigGrid
-    
-    // One namespace for the entire screen
     @Namespace private var animationNamespace
     
-    // MARK: - Enum for Layout Modes
+    // Multi-selection
+    @State private var isSelecting = false
+    @State private var selectedNoteIDs = Set<UUID>()
+    
     enum ViewMode: String, CaseIterable, Identifiable {
         case bigGrid = "Big Grid"
         case list = "List"
         case compact = "Compact"
         
         var id: String { rawValue }
-        
         var iconName: String {
             switch self {
             case .bigGrid: return "square.grid.2x2.fill"
@@ -44,50 +42,44 @@ struct NotePreviewsGrid: View {
         .toolbar {
             if !subject.notes.isEmpty {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    viewModePicker
+                    if isSelecting {
+                        Button("Done") {
+                            exitSelectionMode()
+                        }
+                    } else {
+                        viewModePicker
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: createNewNote) {
-                        Image(systemName: "plus")
+                    if isSelecting {
+                        if !selectedNoteIDs.isEmpty {
+                            Button(role: .destructive) {
+                                deleteSelectedNotes()
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                        } else {
+                            Image(systemName: "trash")
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        Button {
+                            createNewNote()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
         }
-        .onAppear {
-            if isFirstAppearance {
-                isFirstAppearance = false
-            }
-        }
-        // Animate layout changes
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: subject.notes)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewMode)
+        // Animate changes to notes, selection, or layout
+        .animation(.default, value: subject.notes)
+        .animation(.default, value: isSelecting)
+        .animation(.default, value: selectedNoteIDs)
+        .animation(.default, value: viewMode)
     }
     
-    // MARK: - Empty State View
-    private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Text("No Notes Yet!")
-                .font(.largeTitle)
-                .fontWeight(.semibold)
-            
-            Button {
-                withAnimation {
-                    createNewNote()
-                    viewMode = .list
-                }
-            } label: {
-                Label("Add Note", systemImage: "plus.circle.fill")
-                    .font(.title2)
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(Color.accentColor)
-                    .cornerRadius(12)
-            }
-        }
-        .transition(.opacity) // simple fade
-    }
-    
-    // MARK: - Main LayoutContent
+    // MARK: - Main Layout Switch
     @ViewBuilder
     private var layoutContent: some View {
         switch viewMode {
@@ -102,24 +94,28 @@ struct NotePreviewsGrid: View {
     
     // MARK: - Big Grid
     private var bigGridView: some View {
-        // Large adaptive columns:
         let columns = [
             GridItem(.adaptive(minimum: 300, maximum: 500), spacing: 20)
         ]
-        
         return ScrollView {
             LazyVGrid(columns: columns, spacing: 20) {
                 ForEach(subject.notes.indices, id: \.self) { i in
+                    let note = subject.notes[i]
+                    
+                    // Always use a NavigationLink for normal taps
                     NavigationLink {
                         NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
                     } label: {
-                        // Provide the note + layout style + namespace
                         NoteCardView(
-                            note: subject.notes[i],
+                            note: note,
                             subject: subject,
                             layout: .bigGrid,
-                            namespace: animationNamespace
+                            namespace: animationNamespace,
+                            isSelecting: isSelecting,
+                            isSelected: selectedNoteIDs.contains(note.id),
+                            onLongPress: { toggleSelection(note: note) }
                         )
+                        .matchedGeometryEffect(id: note.id, in: animationNamespace)
                     }
                     .buttonStyle(.plain)
                 }
@@ -132,15 +128,20 @@ struct NotePreviewsGrid: View {
     private var listView: some View {
         List {
             ForEach(subject.notes.indices, id: \.self) { i in
+                let note = subject.notes[i]
                 NavigationLink {
                     NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
                 } label: {
                     NoteCardView(
-                        note: subject.notes[i],
+                        note: note,
                         subject: subject,
                         layout: .list,
-                        namespace: animationNamespace
+                        namespace: animationNamespace,
+                        isSelecting: isSelecting,
+                        isSelected: selectedNoteIDs.contains(note.id),
+                        onLongPress: { toggleSelection(note: note) }
                     )
+                    .matchedGeometryEffect(id: note.id, in: animationNamespace)
                 }
             }
         }
@@ -151,15 +152,20 @@ struct NotePreviewsGrid: View {
         ScrollView {
             LazyVStack(spacing: 8) {
                 ForEach(subject.notes.indices, id: \.self) { i in
+                    let note = subject.notes[i]
                     NavigationLink {
                         NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
                     } label: {
                         NoteCardView(
-                            note: subject.notes[i],
+                            note: note,
                             subject: subject,
                             layout: .compact,
-                            namespace: animationNamespace
+                            namespace: animationNamespace,
+                            isSelecting: isSelecting,
+                            isSelected: selectedNoteIDs.contains(note.id),
+                            onLongPress: { toggleSelection(note: note) }
                         )
+                        .matchedGeometryEffect(id: note.id, in: animationNamespace)
                     }
                     .buttonStyle(.plain)
                 }
@@ -168,13 +174,54 @@ struct NotePreviewsGrid: View {
         }
     }
     
-    // MARK: - Create new note
+    // MARK: - Empty View
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Text("No Notes Yet!")
+                .font(.largeTitle)
+            Button {
+                createNewNote()
+                viewMode = .list
+            } label: {
+                Label("Add Note", systemImage: "plus.circle.fill")
+                    .font(.title2)
+                    .padding()
+                    .foregroundColor(.white)
+                    .background(Color.accentColor)
+                    .cornerRadius(12)
+            }
+        }
+    }
+    
+    // MARK: - Actions
     private func createNewNote() {
-        let newNote = Note(
-            title: "New Note",
-            drawingData: PKDrawing().dataRepresentation()
+        subject.notes.append(
+            Note(title: "New Note",
+                 drawingData: PKDrawing().dataRepresentation())
         )
-        subject.notes.append(newNote)
+    }
+    
+    private func toggleSelection(note: Note) {
+        // If not already selecting, enter selection mode
+        if !isSelecting {
+            isSelecting = true
+        }
+        // Toggle this note's membership in the selected set
+        if selectedNoteIDs.contains(note.id) {
+            selectedNoteIDs.remove(note.id)
+        } else {
+            selectedNoteIDs.insert(note.id)
+        }
+    }
+    
+    private func deleteSelectedNotes() {
+        subject.notes.removeAll { selectedNoteIDs.contains($0.id) }
+        exitSelectionMode()
+    }
+    
+    private func exitSelectionMode() {
+        isSelecting = false
+        selectedNoteIDs.removeAll()
     }
     
     // MARK: - View Mode Picker
@@ -190,57 +237,58 @@ struct NotePreviewsGrid: View {
     }
 }
 
-// MARK: - Single Card View with Sub-Element Geometry Effects
+// MARK: - Note Card View
 fileprivate struct NoteCardView: View {
     let note: Note
     let subject: Subject
     
-    // Layouts we want to support
-    enum CardLayout {
-        case bigGrid, list, compact
-    }
+    enum CardLayout { case bigGrid, list, compact }
     let layout: CardLayout
     
     let namespace: Namespace.ID
     
+    let isSelecting: Bool
+    let isSelected: Bool
+    
+    // Called on a long press. We can toggle selection this way.
+    let onLongPress: () -> Void
+    
     var body: some View {
-        switch layout {
-        case .bigGrid:
-            bigGridCard
-        case .list:
-            listCard
-        case .compact:
-            compactCard
+        Group {
+            switch layout {
+            case .bigGrid:
+                bigGridCard
+            case .list:
+                listCard
+            case .compact:
+                compactCard
+            }
+        }
+        // Long press toggles selection.
+        // A normal tap is handled by NavigationLink for opening the note.
+        .onLongPressGesture {
+            onLongPress()
         }
     }
     
     // MARK: - Big Grid Card
     private var bigGridCard: some View {
-        ZStack {
-            // Background
+        ZStack(alignment: .topTrailing) {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemBackground))
-                .matchedGeometryEffect(id: "background-\(note.id)",
-                                       in: namespace)
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             
             VStack(alignment: .leading, spacing: 8) {
                 thumbnail
                     .frame(height: 180)
                     .cornerRadius(8)
-                    .matchedGeometryEffect(id: "thumbnail-\(note.id)",
-                                           in: namespace)
                 
                 Text(note.title.isEmpty ? "Untitled Note" : note.title)
                     .font(.headline)
-                    .matchedGeometryEffect(id: "title-\(note.id)",
-                                           in: namespace)
                 
                 Text(note.dateCreated, format: .dateTime.year().month().day())
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                    .matchedGeometryEffect(id: "date-\(note.id)",
-                                           in: namespace)
                 
                 Text(subject.name)
                     .font(.caption2)
@@ -250,12 +298,13 @@ fileprivate struct NoteCardView: View {
                     .foregroundColor(.white)
                     .background(subject.color)
                     .cornerRadius(6)
-                    .matchedGeometryEffect(id: "subject-\(note.id)",
-                                           in: namespace)
             }
             .padding()
+            
+            if isSelecting {
+                selectionIndicator
+            }
         }
-        .frame(minWidth: 0)
     }
     
     // MARK: - List Card
@@ -264,20 +313,14 @@ fileprivate struct NoteCardView: View {
             thumbnail
                 .frame(width: 60, height: 80)
                 .cornerRadius(4)
-                .matchedGeometryEffect(id: "thumbnail-\(note.id)",
-                                       in: namespace)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(note.title.isEmpty ? "Untitled Note" : note.title)
                     .font(.headline)
-                    .matchedGeometryEffect(id: "title-\(note.id)",
-                                           in: namespace)
                 
                 Text(note.dateCreated, format: .dateTime.year().month().day())
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .matchedGeometryEffect(id: "date-\(note.id)",
-                                           in: namespace)
                 
                 Text(subject.name)
                     .font(.caption2)
@@ -286,19 +329,13 @@ fileprivate struct NoteCardView: View {
                     .foregroundColor(.white)
                     .background(subject.color)
                     .cornerRadius(4)
-                    .matchedGeometryEffect(id: "subject-\(note.id)",
-                                           in: namespace)
             }
-            
             Spacer()
+            
+            if isSelecting {
+                selectionIndicator
+            }
         }
-        .background(
-            // We can still morph the background if we want:
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.clear)
-                .matchedGeometryEffect(id: "background-\(note.id)",
-                                       in: namespace)
-        )
         .padding(.vertical, 6)
     }
     
@@ -307,32 +344,26 @@ fileprivate struct NoteCardView: View {
         HStack {
             Text(note.title.isEmpty ? "Untitled Note" : note.title)
                 .font(.subheadline)
-                .matchedGeometryEffect(id: "title-\(note.id)",
-                                       in: namespace)
-            
             Spacer()
-            
             Text(note.dateCreated, format: .dateTime.month(.abbreviated).day())
                 .font(.caption2)
                 .foregroundColor(.secondary)
-                .matchedGeometryEffect(id: "date-\(note.id)",
-                                       in: namespace)
+            
+            if isSelecting {
+                selectionIndicator
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color(.systemGray6))
-                .matchedGeometryEffect(id: "background-\(note.id)",
-                                       in: namespace)
         )
-        // We could optionally put the subject name somewhere else or omit it in compact view
     }
     
-    // MARK: - Thumbnail
+    // MARK: - Thumbnail Helper
     @ViewBuilder
     private var thumbnail: some View {
-        // Attempt to create a small PKDrawing thumbnail
         if !note.drawingData.isEmpty,
            let drawing = try? PKDrawing(data: note.drawingData),
            !drawing.strokes.isEmpty {
@@ -346,9 +377,26 @@ fileprivate struct NoteCardView: View {
                 .scaledToFill()
                 .clipped()
         } else {
-            // Fallback placeholder
             Rectangle()
                 .fill(Color.secondary.opacity(0.2))
         }
+    }
+    
+    // MARK: - Selection Indicator
+    private var selectionIndicator: some View {
+        ZStack {
+            Circle()
+                .fill(isSelected ? Color.accentColor : Color.white)
+                .frame(width: 24, height: 24)
+                .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+                .padding(8)
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                    .offset(x: 8, y: 8)
+            }
+        }
+        .transition(.scale.combined(with: .opacity))
     }
 }
