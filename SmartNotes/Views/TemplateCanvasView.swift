@@ -132,7 +132,7 @@ struct SafeCanvasView: UIViewRepresentable {
             }
         }
         
-        // Completely revised method to check if drawing extends to the last page
+        // Check if drawing extends to the last page
         func checkAndAddNewPageIfNeeded() {
             guard let canvasView = canvasView else { return }
             
@@ -148,16 +148,14 @@ struct SafeCanvasView: UIViewRepresentable {
             
             print("📐 Last page bottom: \(lastPageBottom), Drawing maxY: \(drawingBounds.maxY)")
             
-            // Calculate how close to the bottom we want to trigger a new page (80% of page height)
+            // Trigger threshold near bottom of the last page
             let triggerThreshold = lastPageBottom - (pageHeight * 0.3)
             
-            // If the drawing extends beyond the trigger threshold
+            // If the drawing extends beyond the trigger threshold, add a page
             if drawingBounds.maxY > triggerThreshold {
                 print("📐 Drawing extends near last page bottom, adding a new page")
                 
-                // Update the page count via the parent
                 DispatchQueue.main.async {
-                    // Add one more page
                     self.parent.numberOfPages += 1
                     print("📐 New page count: \(self.parent.numberOfPages)")
                     
@@ -167,9 +165,11 @@ struct SafeCanvasView: UIViewRepresentable {
                     // Scroll to show part of the new page
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         if let scrollView = self.mainScrollView {
-                            // Scroll to show the top portion of the new page
                             let newPageTop = lastPageBottom + self.parent.pageSpacing
-                            let newContentOffset = CGPoint(x: 0, y: newPageTop - (scrollView.frame.height * 0.7))
+                            let newContentOffset = CGPoint(
+                                x: 0,
+                                y: newPageTop - (scrollView.frame.height * 0.7)
+                            )
                             scrollView.setContentOffset(newContentOffset, animated: true)
                         }
                     }
@@ -177,7 +177,7 @@ struct SafeCanvasView: UIViewRepresentable {
             }
         }
         
-        // Method to update the content size and page dividers
+        // Update scroll view content size and redraw page dividers
         func updateContentSizeAndDividers() {
             guard let scrollView = self.mainScrollView,
                   let canvasView = self.canvasView else {
@@ -185,24 +185,24 @@ struct SafeCanvasView: UIViewRepresentable {
                 return
             }
             
-            // Calculate total content height
-            let totalHeight = CGFloat(parent.numberOfPages) * (parent.pageHeight + parent.pageSpacing) - parent.pageSpacing
+            // Total content height
+            let totalHeight = CGFloat(parent.numberOfPages)
+                            * (parent.pageHeight + parent.pageSpacing)
+                            - parent.pageSpacing
+            
             print("📐 Updating content size to height: \(totalHeight)")
             
-            // Calculate the proper width based on the aspect ratio
-            // This maintains the 8.5" x 11" ratio while ensuring it fits within the screen
             let availableWidth = scrollView.frame.width
             let maxCanvasWidth = min(availableWidth, parent.pageWidth)
             
-            // Update canvas view frame - now with proper aspect ratio
+            // Update the canvas frame
             let newCanvasFrame = CGRect(
-                x: (availableWidth - maxCanvasWidth) / 2, // Center horizontally
+                x: (availableWidth - maxCanvasWidth) / 2, // center horizontally
                 y: 0,
                 width: maxCanvasWidth,
                 height: totalHeight
             )
             
-            // Only apply if frame is valid
             if newCanvasFrame.size.width > 0, newCanvasFrame.size.height > 0 {
                 canvasView.frame = newCanvasFrame
             }
@@ -217,10 +217,8 @@ struct SafeCanvasView: UIViewRepresentable {
             applyTemplate()
         }
         
-        // New method to update page dividers that works better with zooming
         func updatePageDividers() {
-            guard let scrollView = self.mainScrollView,
-                  let canvasView = self.canvasView else { return }
+            guard let canvasView = self.canvasView else { return }
             
             // Remove existing dividers
             for dividerView in dividerViews {
@@ -228,58 +226,57 @@ struct SafeCanvasView: UIViewRepresentable {
             }
             dividerViews.removeAll()
             
-            // Don't add dividers during initial load
+            // Don't do anything if it's still initial loading
             if isInitialLoad { return }
             
-            // Calculate scale-independent page dimensions
+            // The width of the (unscaled) canvas
             let canvasWidth = canvasView.frame.width
-            let zoomScale = scrollView.zoomScale
             
-            // Add visual indicators for page breaks
+            // For each boundary between pages, place a dashed line
             for i in 1..<parent.numberOfPages {
-                let yPosition = (parent.pageHeight * CGFloat(i) + parent.pageSpacing * CGFloat(i - 1)) * zoomScale
+                let yPosition = parent.pageHeight * CGFloat(i)
+                               + parent.pageSpacing * CGFloat(i - 1)
                 
-                // Create a container for the page divider elements
                 let dividerView = UIView()
                 dividerView.frame = CGRect(
                     x: 0,
                     y: yPosition,
                     width: canvasWidth,
-                    height: parent.pageSpacing * zoomScale
+                    height: parent.pageSpacing
                 )
                 dividerView.backgroundColor = .clear
-                dividerView.tag = 999 // Tag for identification
                 
-                // Add a dashed line in the middle of the page spacing
                 let lineLayer = CAShapeLayer()
                 lineLayer.strokeColor = UIColor.systemGray4.cgColor
-                lineLayer.lineDashPattern = [4, 4] // 4 points line, 4 points gap
+                lineLayer.lineDashPattern = [4, 4]
                 lineLayer.lineWidth = 1
                 
-                // Create a path for the dashed line
+                // Draw the line horizontally across the dividerView's width
                 let path = UIBezierPath()
-                path.move(to: CGPoint(x: 0, y: (parent.pageSpacing * zoomScale) / 2))
-                path.addLine(to: CGPoint(x: canvasWidth, y: (parent.pageSpacing * zoomScale) / 2))
+                path.move(to: CGPoint(
+                    x: 0,
+                    y: dividerView.frame.height / 2
+                ))
+                path.addLine(to: CGPoint(
+                    x: dividerView.frame.width,
+                    y: dividerView.frame.height / 2
+                ))
                 lineLayer.path = path.cgPath
                 
-                // Add the dashed line to the container
                 dividerView.layer.addSublayer(lineLayer)
                 
-                // Add page number label
+                // Optional label
                 let pageLabel = UILabel()
                 pageLabel.text = "Page \(i + 1)"
                 pageLabel.textColor = .systemGray
-                pageLabel.font = UIFont.systemFont(ofSize: 12 * zoomScale, weight: .medium)
+                pageLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
                 pageLabel.sizeToFit()
                 pageLabel.center = CGPoint(
-                    x: canvasWidth / 2,
-                    y: (parent.pageSpacing * zoomScale) / 2
+                    x: dividerView.frame.width / 2,
+                    y: dividerView.frame.height / 2
                 )
-                
-                // Add the label to the container
                 dividerView.addSubview(pageLabel)
                 
-                // Add the container to the canvas instead of scroll view
                 canvasView.addSubview(dividerView)
                 dividerViews.append(dividerView)
             }
@@ -287,8 +284,6 @@ struct SafeCanvasView: UIViewRepresentable {
         
         func applyTemplate() {
             guard let canvasView = canvasView else { return }
-            
-            // Always apply template regardless of lastTemplate state
             print("🖌️ Forcing template application: \(parent.template.type.rawValue)")
             
             TemplateRenderer.applyTemplateToCanvas(
@@ -302,7 +297,6 @@ struct SafeCanvasView: UIViewRepresentable {
             lastTemplate = parent.template
         }
         
-        // Ensure tool picker is visible
         func ensureToolPickerVisible() {
             guard let canvasView = canvasView else { return }
             
@@ -310,41 +304,44 @@ struct SafeCanvasView: UIViewRepresentable {
             if toolPicker == nil {
                 toolPicker = PKToolPicker()
             }
-            
             guard let toolPicker = toolPicker else { return }
             
             print("🔧 Ensuring tool picker is visible")
             toolPicker.setVisible(true, forFirstResponder: canvasView)
             toolPicker.addObserver(canvasView)
             
-            // Make canvas first responder to show the tool picker
+            // Make canvas first responder
             if !canvasView.isFirstResponder {
                 print("🔧 Canvas is not first responder - making it first responder")
                 canvasView.becomeFirstResponder()
             }
         }
         
-        // UIScrollViewDelegate method to provide zoom view
+        // MARK: - UIScrollViewDelegate
         func viewForZooming(in scrollView: UIScrollView) -> UIView? {
             return canvasView
         }
         
-        // Handle zoom scale changes
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
-            // Center the zooming canvas if smaller than the scroll view frame
+            // Center the zooming canvas if smaller than the scroll view
             centerZoomingView(in: scrollView)
             
-            // Update page dividers when zoom changes
-            updatePageDividers()
+            // ⚠️ We do NOT call updatePageDividers() here,
+            // because that would re-layout subviews using unscaled coords.
+            // The scroll view will scale them automatically.
         }
         
-        // Center the zooming canvas
         private func centerZoomingView(in scrollView: UIScrollView) {
             guard let canvasView = canvasView else { return }
             
-            let offsetX = max((scrollView.bounds.width - canvasView.frame.width * scrollView.zoomScale) * 0.5, 0)
-            let offsetY = max((scrollView.bounds.height - canvasView.frame.height * scrollView.zoomScale) * 0.5, 0)
-            
+            let offsetX = max(
+                (scrollView.bounds.width - canvasView.frame.width * scrollView.zoomScale) * 0.5,
+                0
+            )
+            let offsetY = max(
+                (scrollView.bounds.height - canvasView.frame.height * scrollView.zoomScale) * 0.5,
+                0
+            )
             scrollView.contentInset = UIEdgeInsets(
                 top: offsetY,
                 left: offsetX,
@@ -359,7 +356,6 @@ struct SafeCanvasView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> UIScrollView {
-        // 1. Create the main scroll view
         let scrollView = UIScrollView()
         scrollView.decelerationRate = .fast
         scrollView.alwaysBounceVertical = true
@@ -373,31 +369,30 @@ struct SafeCanvasView: UIViewRepresentable {
         scrollView.contentInsetAdjustmentBehavior = .automatic
         context.coordinator.mainScrollView = scrollView
         
-        // 2. Create the PKCanvasView
+        // Create the PKCanvasView
         let canvasView = PKCanvasView()
         canvasView.delegate = context.coordinator
         canvasView.backgroundColor = .white
         canvasView.alwaysBounceVertical = true
         
-        // --- NEW: Respect user preference for disabling finger drawing ---
+        // Respect user preference for disabling finger drawing
         let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
         if #available(iOS 16.0, *) {
-            // iOS 16 provides a more explicit "pencilOnly" drawing policy
             canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
         } else {
-            // For older iOS versions, rely on allowsFingerDrawing
             canvasView.allowsFingerDrawing = !disableFingerDrawing
         }
-        // ------------------------------------------------------------------
         
         context.coordinator.canvasView = canvasView
         
-        // 3. Calculate initial content height & width
+        // Calculate initial content height & width
         let totalHeight = CGFloat(numberOfPages) * (pageHeight + pageSpacing) - pageSpacing
-        let availableWidth = scrollView.frame.width > 0 ? scrollView.frame.width : UIScreen.main.bounds.width
+        let availableWidth = scrollView.frame.width > 0
+            ? scrollView.frame.width
+            : UIScreen.main.bounds.width
         let canvasWidth = min(availableWidth, pageWidth)
         
-        // 4. Set up the canvas frame
+        // Set up the canvas frame
         canvasView.frame = CGRect(
             x: (availableWidth - canvasWidth) / 2, // center horizontally
             y: 0,
@@ -405,31 +400,31 @@ struct SafeCanvasView: UIViewRepresentable {
             height: totalHeight
         )
         
-        // 5. Set up the PKToolPicker
+        // Set up the PKToolPicker
         let toolPicker = PKToolPicker()
         context.coordinator.toolPicker = toolPicker
         toolPicker.setVisible(true, forFirstResponder: canvasView)
         toolPicker.addObserver(canvasView)
         
-        // 6. Add canvasView to scrollView
+        // Add canvas to the scroll view
         scrollView.addSubview(canvasView)
         scrollView.contentSize = CGSize(width: availableWidth, height: totalHeight)
         
-        // 7. Load existing drawing asynchronously
+        // Load the existing drawing asynchronously
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             canvasView.drawing = drawing
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 toolPicker.setVisible(true, forFirstResponder: canvasView)
                 canvasView.becomeFirstResponder()
                 
-                // Update layout / page dividers
+                // Update layout & page dividers
                 context.coordinator.updateContentSizeAndDividers()
                 context.coordinator.isInitialLoad = false
                 print("📝 Canvas ready with tool picker visible")
             }
         }
         
-        // 8. Observe a notification to force tool picker
+        // Observe a notification to force the tool picker
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("CanvasForceFirstResponder"),
             object: nil,
@@ -440,16 +435,14 @@ struct SafeCanvasView: UIViewRepresentable {
             context.coordinator.updateContentSizeAndDividers()
         }
 
-        // NEW: Observe the RefreshTemplate notification
+        // Observe the RefreshTemplate notification
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("RefreshTemplate"),
             object: nil,
             queue: .main
         ) { _ in
             print("🔄 RefreshTemplate notification received - reapplying template")
-            // Re-apply the template settings immediately
             context.coordinator.applyTemplate()
-            // If you need new spacing, layout, etc. re-calc content size:
             context.coordinator.updateContentSizeAndDividers()
         }
         
@@ -471,14 +464,13 @@ struct SafeCanvasView: UIViewRepresentable {
         }
         
         // 2) Re-apply the user's template settings if they've changed
-        //    (This ensures new line spacing, thickness, etc. appear right away.)
         if !context.coordinator.isInitialLoad,
            context.coordinator.lastTemplate != template {
             print("✏️ Template has changed, applying new settings...")
             context.coordinator.applyTemplate()
         }
 
-        // 3) Respect the 'Disable Finger Drawing' setting each time we update
+        // 3) Respect the 'Disable Finger Drawing' setting each time
         let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
         if #available(iOS 16.0, *) {
             canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
@@ -491,7 +483,8 @@ struct SafeCanvasView: UIViewRepresentable {
             context.coordinator.ensureToolPickerVisible()
         }
         
-        // 5) Refresh the page dividers in case the view size changed
+        // 5) Optionally refresh page dividers if the view size changed
+        //    (e.g. device rotation). But do NOT multiply by zoomScale.
         context.coordinator.updatePageDividers()
     }
 }

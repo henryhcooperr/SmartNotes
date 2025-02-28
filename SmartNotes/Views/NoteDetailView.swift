@@ -4,16 +4,7 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
-//  This file provides the interface for editing an individual note.
-//  Key responsibilities:
-//    - Title editing
-//    - Drawing canvas with the TemplateCanvasView
-//    - Loading and saving drawing data
-//    - PDF export functionality
-//    - Toolbar with template settings and export options
-//
-//  This is the main editing interface that users interact with
-//  when working on a note.
+//  Updated to use multi‐page approach on 3/1/25.
 //
 
 import SwiftUI
@@ -24,18 +15,21 @@ struct NoteDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     let subjectID: UUID
     
-    @State private var pkDrawing = PKDrawing()
+    // Local copy of the note title for editing
     @State private var localTitle: String
-    @State private var showExportOptions = false
-    @Environment(\.presentationMode) private var presentationMode
     
-    // Add flags to control initialization and updates
+    // Track whether we've just loaded the note
     @State private var isInitialLoad = true
     
-    // Initialize the local title with the note's title
+    // Whether to show the export ActionSheet
+    @State private var showExportOptions = false
+    
+    @Environment(\.presentationMode) private var presentationMode
+    
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
         self.subjectID = subjectID
+        // Start localTitle with whatever is in the note
         self._localTitle = State(initialValue: note.wrappedValue.title)
     }
     
@@ -47,9 +41,10 @@ struct NoteDetailView: View {
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: localTitle) { oldValue, newValue in
-                    // Only update during normal operation, not initial load
+                    // Only update the note model after the initial load
                     if !isInitialLoad {
                         note.title = newValue
+                        saveChanges()
                     }
                 }
                 .padding(.horizontal)
@@ -58,24 +53,29 @@ struct NoteDetailView: View {
             Divider()
                 .padding(.horizontal)
             
-            // Use the TemplateCanvasView with our drawing binding and note ID
-            TemplateCanvasView(drawing: $pkDrawing, noteID: note.id)
+            // -- Replace TemplateCanvasView with MultiPageCanvasView --
+            MultiPageCanvasView(pages: $note.pages)
                 .onAppear {
-                    // Load drawing data when view appears - with safety delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        loadDrawingData()
+                    // Migrate older single-drawing data (if any) to multi-page
+                    migrateIfNeeded()
+                    
+                    // Mark initial load complete so future changes get saved
+                    DispatchQueue.main.async {
+                        isInitialLoad = false
                     }
                 }
-                .onChange(of: pkDrawing) { oldValue, newValue in
-                    // Only save drawing changes after initialization
+                .onChange(of: note.pages) { _ in
+                    // Whenever pages change (new page added, etc.), save
                     if !isInitialLoad {
-                        saveDrawingData(newValue)
+                        saveChanges()
                     }
                 }
         }
+        // Navigation bar
         .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // "Done" button to dismiss
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
                     saveChanges()
@@ -83,9 +83,11 @@ struct NoteDetailView: View {
                 }
             }
             
+            // Template settings button (if you still want a global template)
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    // Show template settings
+                    // Show template settings for the note-level template
+                    // (Or skip if each page has its own template)
                     NotificationCenter.default.post(
                         name: NSNotification.Name("ShowTemplateSettings"),
                         object: nil
@@ -95,6 +97,7 @@ struct NoteDetailView: View {
                 }
             }
             
+            // Export button
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     showExportOptions = true
@@ -112,8 +115,7 @@ struct NoteDetailView: View {
                         exportToPDF()
                     },
                     .default(Text("Image")) {
-                        // Image export functionality would go here
-                        print("Image export requested")
+                        print("Image export requested (not implemented)")
                     },
                     .cancel()
                 ]
@@ -125,97 +127,101 @@ struct NoteDetailView: View {
         }
     }
     
-    // Safely load drawing data
-    private func loadDrawingData() {
-        print("📝 Loading drawing data...")
-        
-        if note.drawingData.isEmpty {
-            print("📝 Note has no drawing data, using empty drawing")
-            pkDrawing = PKDrawing()
-        } else {
-            do {
-                // Try to load the drawing from data
-                pkDrawing = try PKDrawing(data: note.drawingData)
-                print("📝 Successfully loaded drawing data: \(note.drawingData.count) bytes")
-            } catch {
-                print("📝 Error loading drawing data: \(error.localizedDescription)")
-                pkDrawing = PKDrawing() // Fall back to empty drawing
-            }
+    // MARK: - Migration for Old Notes
+    private func migrateIfNeeded() {
+        // If this note has no pages but DOES have old single-drawing data,
+        // convert it into a single Page. Then clear drawingData to avoid re-migration.
+        if note.pages.isEmpty && !note.drawingData.isEmpty {
+            print("📝 Migrating old single-drawing note -> multi-page note")
+            let newPage = Page(
+                drawingData: note.drawingData,
+                template: nil,
+                pageNumber: 1
+            )
+            note.pages = [newPage]
+            note.drawingData = Data()
         }
-        
-        // Mark initialization as complete after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.isInitialLoad = false
-                print("📝 Note ready for editing")
-                
-                // Force template refresh after drawing is loaded
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("RefreshTemplate"),
-                    object: nil
-                )
-            }
     }
     
-    // Safely save drawing data to the note
-    private func saveDrawingData(_ drawing: PKDrawing) {
-        note.drawingData = drawing.dataRepresentation()
-        print("📝 Saved drawing data: \(note.drawingData.count) bytes")
-    }
-    
+    // MARK: - Save Changes
     private func saveChanges() {
-        print("📝 Saving note changes")
         note.title = localTitle
-        saveDrawingData(pkDrawing)
         note.lastModified = Date()
-        
-        // Assuming you have access to DataManager and subjectID
         dataManager.updateNote(in: subjectID, note: note)
+        print("📝 Note changes saved")
     }
     
+    // MARK: - PDF Export
     private func exportToPDF() {
-        // Create a temporary template for getting page rects
-        let rects = calculatePageRects()
+        // Right now, your PDFExporter is built around a single PKDrawing.
+        // You can adapt it to handle multiple pages by combining them or
+        // generating a multi-page PDF. For now, just show a placeholder.
         
-        // Export to PDF
-        if let pdfURL = PDFExporter.exportNoteToPDF(note: note, pageRects: rects) {
-            // Find the view controller to present from using the modern scene API
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = windowScene.windows.first,
-               let viewController = window.rootViewController {
-                PDFExporter.presentPDFForSharing(url: pdfURL, from: viewController)
-            }
-        }
+        print("📝 PDF Export requested for multi-page note")
+        
+        // Example: If you want a quick hack that merges all pages into one
+        // PKDrawing, you'd do something like:
+        // let mergedDrawing = combineAllPagesIntoOneDrawing()
+        // Then pass that to PDFExporter.
+        
+        // Or create a multi-page PDF with each page drawn in its own rect.
+        // For now, just log a message or show an alert.
     }
     
-    // Helper method to calculate page rects for PDF export
-    private func calculatePageRects() -> [CGRect] {
-        // Determine how many pages based on drawing bounds
-        let pageHeight = 792.0 // Letter size height
-        let pageWidth = 612.0 // Letter size width
+    // Optional if you want to merge pages for PDF
+    private func combineAllPagesIntoOneDrawing() -> PKDrawing {
+        var combined = PKDrawing()
         
-        // Calculate drawing bounds
-        let drawingBounds = pkDrawing.bounds
+        for (index, page) in note.pages.enumerated() {
+            let offsetY = CGFloat(index) * 792 // US Letter page height
+            let pageDrawing = PKDrawing.fromData(page.drawingData)
+            
+            // Translate each stroke by offsetY and append to `combined`.
+            let translatedStrokes = pageDrawing.strokes.map { stroke -> PKStroke in
+                return transformStroke(stroke, offsetY: offsetY)
+            }
+            
+            combined = PKDrawing(strokes: combined.strokes + translatedStrokes)
+        }
         
-        // Calculate how many pages needed
-        let pagesNeeded = max(
-            2, // Minimum 2 pages
-            Int(ceil(drawingBounds.maxY / pageHeight)) + 1 // +1 for safety
+        return combined
+    }
+
+    // MARK: - Manual Stroke Transform
+    private func transformStroke(_ stroke: PKStroke, offsetY: CGFloat) -> PKStroke {
+        // If you only support iOS 15+, you could do:
+        // if #available(iOS 15.0, *) {
+        //     let newPath = stroke.path.transform(using: CGAffineTransform(translationX: 0, y: offsetY))
+        //     return PKStroke(ink: stroke.ink, path: newPath, transform: .identity, mask: stroke.mask)
+        // }
+        // else fallback below:
+        
+        // Fallback for iOS < 15: manually translate each control point
+        let newControlPoints = stroke.path.map { point -> PKStrokePoint in
+            let translatedLocation = point.location.applying(CGAffineTransform(translationX: 0, y: offsetY))
+            return PKStrokePoint(
+                location: translatedLocation,
+                timeOffset: point.timeOffset,
+                size: point.size,
+                opacity: point.opacity,
+                force: point.force,
+                azimuth: point.azimuth,
+                altitude: point.altitude
+            )
+        }
+        
+        // Recreate the PKStrokePath with the new control points
+        let newPath = PKStrokePath(
+            controlPoints: newControlPoints,
+            creationDate: stroke.path.creationDate
         )
         
-        // Create page rects
-        var rects = [CGRect]()
-        for i in 0..<pagesNeeded {
-            let pageRect = CGRect(
-                x: 0,
-                y: CGFloat(i) * pageHeight,
-                width: pageWidth,
-                height: pageHeight
-            )
-            rects.append(pageRect)
-        }
-        
-        return rects
+        // Return a stroke with the translated path
+        return PKStroke(
+            ink: stroke.ink,
+            path: newPath,
+            transform: .identity,
+            mask: stroke.mask
+        )
     }
 }
-
-

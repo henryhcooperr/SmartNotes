@@ -25,6 +25,8 @@ struct Note: Identifiable, Codable, Hashable {
     var dateCreated: Date = Date()
     var lastModified: Date = Date()
     
+    var pages: [Page] = []
+    
     // Simplified hash function that only uses ID
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
