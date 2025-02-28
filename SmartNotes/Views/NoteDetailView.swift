@@ -3,7 +3,7 @@
 //  SmartNotes
 //
 //  Created by Henry Cooper on 2/25/25.
-//  Updated on 3/5/25 to use MultiPageUnifiedScrollView
+//  Updated on 3/6/25 to support a single, note-wide template and unified multi-page
 //
 
 import SwiftUI
@@ -14,7 +14,7 @@ struct NoteDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     let subjectID: UUID
     
-    // Local copy of the note title for editing
+    // Local copy of the note title
     @State private var localTitle: String
     
     // Track whether we've just loaded the note
@@ -23,9 +23,14 @@ struct NoteDetailView: View {
     // Whether to show the export ActionSheet
     @State private var showExportOptions = false
     
+    // Keep a single note-level template
+    @State private var noteTemplate: CanvasTemplate = .none
+    
+    // Control sheet presentation for TemplateSettingsView
+    @State private var showingTemplateSettings = false
+    
     @Environment(\.presentationMode) private var presentationMode
     
-    // MARK: - Init
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
         self.subjectID = subjectID
@@ -33,7 +38,6 @@ struct NoteDetailView: View {
         self._localTitle = State(initialValue: note.wrappedValue.title)
     }
     
-    // MARK: - Body
     var body: some View {
         VStack(spacing: 0) {
             // Title area
@@ -42,7 +46,7 @@ struct NoteDetailView: View {
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .onChange(of: localTitle) { oldValue, newValue in
-                    // Only update the note model after the initial load
+                    // Only update the note model after initial load
                     if !isInitialLoad {
                         note.title = newValue
                         saveChanges()
@@ -50,31 +54,40 @@ struct NoteDetailView: View {
                 }
                 .padding(.horizontal)
             
-            // Divider between title and canvas
-            Divider()
-                .padding(.horizontal)
+            Divider().padding(.horizontal)
             
-            // ---- Here's the key: show the Unified Scroll of multiple pages ----
-            MultiPageUnifiedScrollView(pages: $note.pages)
+            // Unified multi-page scroll
+            MultiPageUnifiedScrollView(pages: $note.pages, template: $noteTemplate)
                 .onAppear {
-                    migrateIfNeeded()  // Convert old single-drawing data to pages, if needed
-                    // Mark initial load complete after a short delay
+                    // Migrate older single-drawing data to pages if needed
+                    migrateIfNeeded()
+                    
+                    // Load a saved template if you want a persistent note-level template:
+                    loadNoteTemplateIfWanted()
+                    
+                    // Mark initial load complete
                     DispatchQueue.main.async {
                         isInitialLoad = false
                     }
                 }
                 .onChange(of: note.pages) { _ in
-                    // Save changes to DataManager whenever pages array changes
+                    // Save if pages change
+                    if !isInitialLoad {
+                        saveChanges()
+                    }
+                }
+                .onChange(of: noteTemplate) { _ in
+                    // Reapply template changes
                     if !isInitialLoad {
                         saveChanges()
                     }
                 }
         }
-        // Navigation bar
+        // Navigation
         .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // "Done" button to dismiss
+            // Done button
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
                     saveChanges()
@@ -82,13 +95,10 @@ struct NoteDetailView: View {
                 }
             }
             
-            // Template settings button (optional)
+            // Template settings button
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("ShowTemplateSettings"),
-                        object: nil
-                    )
+                    showingTemplateSettings = true
                 }) {
                     Image(systemName: "ellipsis")
                 }
@@ -112,12 +122,15 @@ struct NoteDetailView: View {
                         exportToPDF()
                     },
                     .default(Text("Image")) {
-                        // Not implemented
-                        print("Image export requested")
+                        print("Image export requested (not implemented yet)")
                     },
                     .cancel()
                 ]
             )
+        }
+        .sheet(isPresented: $showingTemplateSettings) {
+            // Present the template settings sheet
+            TemplateSettingsView(template: $noteTemplate)
         }
         .onDisappear {
             // Always save when view disappears
@@ -125,10 +138,10 @@ struct NoteDetailView: View {
         }
     }
     
-    // MARK: - MIGRATION
+    // MARK: - Migration
     private func migrateIfNeeded() {
         // If this note has no pages but DOES have old single-drawing data,
-        // convert it into a single Page. Then clear drawingData to avoid re-migration.
+        // convert it into a single Page. Then clear drawingData.
         if note.pages.isEmpty && !note.drawingData.isEmpty {
             print("📝 Migrating old single-drawing note -> multi-page note")
             let newPage = Page(
@@ -141,28 +154,41 @@ struct NoteDetailView: View {
         }
     }
     
-    // MARK: - SAVE
+    // (Optional) If you want to load a saved note-level template from the note model or from UserDefaults,
+    // implement something like loadNoteTemplateIfWanted(). Otherwise you can skip it.
+    private func loadNoteTemplateIfWanted() {
+        // Example: if your Note has a `noteTemplate` property. Or from UserDefaults:
+        // if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(note.id.uuidString)") {
+        //     if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
+        //         noteTemplate = loadedTemplate
+        //     }
+        // }
+    }
+    
+    // MARK: - Save
     private func saveChanges() {
         note.title = localTitle
         note.lastModified = Date()
+        
+        // You might also want to store `noteTemplate` if you want it persistent:
+        // let data = try? JSONEncoder().encode(noteTemplate)
+        // UserDefaults.standard.set(data, forKey: "noteTemplate.\(note.id.uuidString)")
+        
         dataManager.updateNote(in: subjectID, note: note)
-        print("📝 Note changes saved (multi-page)")
+        print("📝 Note changes saved (multi-page with template).")
     }
     
-    // MARK: - PDF EXPORT
+    // MARK: - PDF Export
     private func exportToPDF() {
-        // Currently a placeholder. You can adapt your PDFExporter
-        // to handle multiple pages. For example, combineAllPagesIntoOneDrawing()
-        // or generate a multi-page PDF document.
-        print("📝 PDF Export requested for multi-page note.")
+        print("📝 PDF Export requested for multi-page note with template (placeholder).")
+        // You can combineAllPagesIntoOneDrawing() or handle multi-page PDF.
     }
     
-    // Example if you want to combine all pages into one big PKDrawing
     private func combineAllPagesIntoOneDrawing() -> PKDrawing {
         var combined = PKDrawing()
         
         for (index, page) in note.pages.enumerated() {
-            let offsetY = CGFloat(index) * 792 // for standard letter
+            let offsetY = CGFloat(index) * 792 // standard letter
             let pageDrawing = PKDrawing.fromData(page.drawingData)
             
             let translatedStrokes = pageDrawing.strokes.map { stroke -> PKStroke in
@@ -175,9 +201,7 @@ struct NoteDetailView: View {
     }
     
     private func transformStroke(_ stroke: PKStroke, offsetY: CGFloat) -> PKStroke {
-        // If only iOS 15+ is supported, you can do:
-        // stroke.path.transform(using: CGAffineTransform(translationX: 0, y: offsetY))
-        // else do manual path transform:
+        // If iOS 15+ only, you can do stroke.path.transform(...)
         let newControlPoints = stroke.path.map { point -> PKStrokePoint in
             let translatedLocation = point.location.applying(CGAffineTransform(translationX: 0, y: offsetY))
             return PKStrokePoint(
@@ -190,13 +214,7 @@ struct NoteDetailView: View {
                 altitude: point.altitude
             )
         }
-        
         let newPath = PKStrokePath(controlPoints: newControlPoints, creationDate: stroke.path.creationDate)
-        return PKStroke(
-            ink: stroke.ink,
-            path: newPath,
-            transform: .identity,
-            mask: stroke.mask
-        )
+        return PKStroke(ink: stroke.ink, path: newPath, transform: .identity, mask: stroke.mask)
     }
 }

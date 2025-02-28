@@ -95,7 +95,6 @@ struct SinglePageCanvasView: UIViewRepresentable {
         canvasView.delegate = context.coordinator
         canvasView.alwaysBounceVertical = false
         canvasView.backgroundColor = .white
-        
         // If iOS 16 or above:
         if #available(iOS 16.0, *) {
             canvasView.drawingPolicy = .anyInput
