@@ -4,15 +4,9 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //
-//  This file provides an alternative implementation of the subjects list.
-//  Key responsibilities:
-//    - Displaying a simple list of subjects
-//    - Handling subject creation with a text field at bottom
-//    - Managing subject deletion
-//    - Navigation to the notes list for a selected subject
-//
-//  Note that this is a simpler alternative to the subject management
-//  provided by SubjectsSplitView.
+//  This file provides a simpler list of subjects but now includes a floating
+//  action button (FAB) for adding new subjects. It retains the basic list layout
+//  for each subject, which navigates to the NotesListView.
 //
 import SwiftUI
 
@@ -29,38 +23,63 @@ struct SubjectsListView: View {
 
     var body: some View {
         NavigationView {
-            VStack {
-                List {
-                    ForEach($subjects) { $subject in
-                        NavigationLink(destination: NotesListView(subject: $subject)) {
-                            Text(subject.name)
+            ZStack {
+                VStack {
+                    List {
+                        ForEach($subjects) { $subject in
+                            NavigationLink(destination: NotesListView(subject: $subject)) {
+                                Text(subject.name)
+                            }
+                        }
+                        .onDelete(perform: deleteSubject)
+                    }
+                    .navigationTitle("Subjects")
+                    .toolbar {
+                        // Edit button for swipe-to-delete
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            EditButton()
                         }
                     }
-                    .onDelete(perform: deleteSubject)
-                }
-                .navigationTitle("Subjects")
-                .toolbar {
-                    // Edit button for swipe-to-delete
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        EditButton()
+                    
+                    // A simple text field + button remains for quick subject creation
+                    // (Alternatively, you could remove this in favor of only the FAB)
+                    HStack {
+                        TextField("New Subject Name", text: $newSubjectName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .padding()
+
+                        Button(action: addSubject) {
+                            Image(systemName: "plus")
+                                .padding(.trailing)
+                        }
+                        .disabled(newSubjectName.isEmpty)
                     }
                 }
-
-                // A simple text field + button to add new subjects
-                HStack {
-                    TextField("New Subject Name", text: $newSubjectName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                // Floating Action Button to add a new subject
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            addSubject()
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.title)
+                                .padding()
+                                .foregroundColor(.white)
+                                .background(Circle().fill(Color.accentColor))
+                                .shadow(radius: 5)
+                        }
                         .padding()
-
-                    Button(action: addSubject) {
-                        Image(systemName: "plus")
-                            .padding(.trailing)
                     }
-                    .disabled(newSubjectName.isEmpty)
                 }
             }
         }
     }
+
+    // MARK: - Functions
 
     private func addSubject() {
         // Provide a colorName for newly created subjects, too

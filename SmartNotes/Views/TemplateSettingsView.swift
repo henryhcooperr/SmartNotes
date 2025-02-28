@@ -129,22 +129,29 @@ struct TemplateSettingsView: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Apply") {
-                    // First, record what we're changing from and to for debugging
-                    print("📝 Template change: \(template.type.rawValue) → \(selectedType.rawValue)")
-                    
                     // Apply changes to the template binding
                     applyChanges()
                     
-                    // Dismiss immediately to avoid state conflicts
-                    presentationMode.wrappedValue.dismiss()
-                    
-                    // Then send notification after a short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        print("📝 Sending template refresh notification after apply")
+                    // Force immediate template refresh with three-step approach
+                    DispatchQueue.main.async {
+                        // 1. Post notification to trigger layoutPages()
                         NotificationCenter.default.post(
                             name: NSNotification.Name("RefreshTemplate"),
                             object: nil
                         )
+                        
+                        // 2. Post a second notification after a short delay to ensure refresh
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ForceTemplateRefresh"),
+                                object: nil
+                            )
+                            
+                            // 3. Finally dismiss the sheet
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                presentationMode.wrappedValue.dismiss()
+                            }
+                        }
                     }
                 }
             )

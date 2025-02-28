@@ -37,7 +37,29 @@ struct Note: Identifiable, Codable, Hashable {
     static func == (lhs: Note, rhs: Note) -> Bool {
         return lhs.id == rhs.id
     }
+    
+    func hasDrawingContent() -> Bool {
+        // Check legacy drawing data
+        if !drawingData.isEmpty {
+            if let drawing = try? PKDrawing(data: drawingData), !drawing.strokes.isEmpty {
+                return true
+            }
+        }
+        
+        // Check pages
+        for page in pages {
+            if !page.drawingData.isEmpty {
+                if let drawing = try? PKDrawing(data: page.drawingData), !drawing.strokes.isEmpty {
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
 }
+
+
 
 // Simple helper for PKDrawing conversion
 extension PKDrawing {

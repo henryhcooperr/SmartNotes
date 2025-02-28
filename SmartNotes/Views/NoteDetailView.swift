@@ -4,6 +4,7 @@
 //
 //  Created by Henry Cooper on 2/25/25.
 //  Updated on 3/6/25 to support a single, note-wide template and unified multi-page
+//  Updated on 2/27/25 to fix template persistence issues
 //
 
 import SwiftUI
@@ -29,6 +30,9 @@ struct NoteDetailView: View {
     // Control sheet presentation for TemplateSettingsView
     @State private var showingTemplateSettings = false
     
+    // Flag to track active drawing operations
+    @State private var isDrawingActive = false
+    
     @Environment(\.presentationMode) private var presentationMode
     
     init(note: Binding<Note>, subjectID: UUID) {
@@ -38,10 +42,10 @@ struct NoteDetailView: View {
         self._localTitle = State(initialValue: note.wrappedValue.title)
         
         if let template = note.wrappedValue.noteTemplate {
-                    self._noteTemplate = State(initialValue: template)
-                } else {
-                    self._noteTemplate = State(initialValue: .none)
-                }
+            self._noteTemplate = State(initialValue: template)
+        } else {
+            self._noteTemplate = State(initialValue: .none)
+        }
     }
     
     var body: some View {
@@ -111,6 +115,9 @@ struct NoteDetailView: View {
                         // Mark initial load complete
                         isInitialLoad = false
                     }
+                    
+                    // Register for drawing state notifications
+                    registerForDrawingNotifications()
                 }
                 .onChange(of: note.pages) { _ in
                     // Save if pages change
@@ -128,7 +135,7 @@ struct NoteDetailView: View {
                         // Save changes to persist the update
                         saveChanges()
                         
-                        // Force a refresh of the template
+                        // Force a refresh of the template - use ForceTemplateRefresh for more thorough refresh
                         DispatchQueue.main.async {
                             NotificationCenter.default.post(
                                 name: NSNotification.Name("ForceTemplateRefresh"),
@@ -187,9 +194,38 @@ struct NoteDetailView: View {
                     TemplateSettingsView(template: $noteTemplate)
                 }
                 .onDisappear {
+                    // Clean up drawing notifications
+                    NotificationCenter.default.removeObserver(self)
+                    
                     // Always save when view disappears
                     saveChanges()
                 }
+        }
+    }
+    
+    // MARK: - Drawing Notifications
+    
+    private func registerForDrawingNotifications() {
+        NotificationCenter.default.removeObserver(self)
+        
+        // Listen for drawing start/end to manage template refreshes
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("DrawingDidComplete"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("📝 DrawingDidComplete notification received")
+            self.isDrawingActive = false
+            
+            // Force a template refresh after drawing completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if !self.isDrawingActive {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("RefreshTemplate"),
+                        object: nil
+                    )
+                }
+            }
         }
     }
     
@@ -212,7 +248,13 @@ struct NoteDetailView: View {
     // (Optional) If you want to load a saved note-level template from the note model or from UserDefaults,
     // implement something like loadNoteTemplateIfWanted(). Otherwise you can skip it.
     private func loadNoteTemplateIfWanted() {
-        // Example: if your Note has a `noteTemplate` property. Or from UserDefaults:
+        // First check if the note has a saved template
+        if let savedTemplate = note.noteTemplate {
+            noteTemplate = savedTemplate
+            return
+        }
+        
+        // Then check UserDefaults as a fallback
         if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(note.id.uuidString)") {
              if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
                  noteTemplate = loadedTemplate
@@ -225,12 +267,14 @@ struct NoteDetailView: View {
         note.title = localTitle
         note.lastModified = Date()
         
+        // Save the current template state to the note model
         note.noteTemplate = noteTemplate
         
-        // You might also want to store `noteTemplate` if you want it persistent:
+        // Also store in UserDefaults as a backup
         let data = try? JSONEncoder().encode(noteTemplate)
         UserDefaults.standard.set(data, forKey: "noteTemplate.\(note.id.uuidString)")
         
+        // Persist changes through data manager
         dataManager.updateNote(in: subjectID, note: note)
         print("📝 Note changes saved (multi-page with template).")
     }

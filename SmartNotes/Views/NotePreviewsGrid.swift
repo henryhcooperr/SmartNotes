@@ -1,148 +1,354 @@
-//
-//  NotePreviewsGrid.swift
-//  SmartNotes
-//
-//  Created by Henry Cooper on 2/25/25.
-//
-//  This file provides a grid layout of note thumbnails for a selected subject.
-//  Key responsibilities:
-//    - Displaying notes as a grid of preview cards
-//    - Generating thumbnails from note drawing data
-//    - Handling navigation to the note detail view
-//    - Creating new notes
-//
-//  This view is shown in the detail area of SubjectsSplitView when
-//  a subject is selected.
-//
-
 import SwiftUI
 import PencilKit
 
 struct NotePreviewsGrid: View {
     @Binding var subject: Subject
     
-    // Add this flag to prevent infinite update loops
+    // MARK: - View State
     @State private var isFirstAppearance = true
+    @State private var viewMode: ViewMode = .bigGrid
     
-    // Explicit initializer to avoid ambiguity
-    init(subject: Binding<Subject>) {
-        self._subject = subject
-        print("🔍 NotePreviewsGrid initialized with subject: \(subject.wrappedValue.name)")
+    // One namespace for the entire screen
+    @Namespace private var animationNamespace
+    
+    // MARK: - Enum for Layout Modes
+    enum ViewMode: String, CaseIterable, Identifiable {
+        case bigGrid = "Big Grid"
+        case list = "List"
+        case compact = "Compact"
+        
+        var id: String { rawValue }
+        
+        var iconName: String {
+            switch self {
+            case .bigGrid: return "square.grid.2x2.fill"
+            case .list:    return "list.bullet"
+            case .compact: return "rectangle.compress.vertical"
+            }
+        }
     }
     
-    // Example grid layout
-    private let columns = [
-        GridItem(.adaptive(minimum: 200), spacing: 16)
-    ]
+    init(subject: Binding<Subject>) {
+        self._subject = subject
+    }
     
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(subject.notes.indices, id: \.self) { index in
-                    NavigationLink {
-                        NoteDetailView(note: $subject.notes[index], subjectID: subject.id)
-                    } label: {
-                        noteCardView(for: index)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
+        ZStack {
+            if subject.notes.isEmpty {
+                emptyStateView
+            } else {
+                layoutContent
             }
-            .padding()
         }
         .navigationTitle(subject.name)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: createNewNote) {
-                    Image(systemName: "plus")
+            if !subject.notes.isEmpty {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    viewModePicker
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: createNewNote) {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
         .onAppear {
-            // Only trigger updates on the first appearance to avoid loops
             if isFirstAppearance {
-                print("🔍 NotePreviewsGrid onAppear - FIRST TIME - subject: \(subject.name)")
                 isFirstAppearance = false
-            } else {
-                print("🔍 NotePreviewsGrid onAppear - REPEAT - subject: \(subject.name)")
             }
         }
-        // Only update when disappearing, not when appearing
-        .onDisappear {
-            print("🔍 NotePreviewsGrid onDisappear - subject: \(subject.name)")
+        // Animate layout changes
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: subject.notes)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewMode)
+    }
+    
+    // MARK: - Empty State View
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Text("No Notes Yet!")
+                .font(.largeTitle)
+                .fontWeight(.semibold)
+            
+            Button {
+                withAnimation {
+                    createNewNote()
+                    viewMode = .list
+                }
+            } label: {
+                Label("Add Note", systemImage: "plus.circle.fill")
+                    .font(.title2)
+                    .padding()
+                    .foregroundColor(.white)
+                    .background(Color.accentColor)
+                    .cornerRadius(12)
+            }
+        }
+        .transition(.opacity) // simple fade
+    }
+    
+    // MARK: - Main LayoutContent
+    @ViewBuilder
+    private var layoutContent: some View {
+        switch viewMode {
+        case .bigGrid:
+            bigGridView
+        case .list:
+            listView
+        case .compact:
+            compactView
         }
     }
     
-    private func noteCardView(for index: Int) -> some View {
-        let note = subject.notes[index]
-
-        // Compute the forced-first-page thumbnail
-        let thumbnailImage: UIImage = {
-            // 1. If there's no drawing data, return an empty UIImage
-            guard !note.drawingData.isEmpty else { return UIImage() }
-
-            // 2. Attempt to load a PKDrawing
-            guard let loadedDrawing = try? PKDrawing(data: note.drawingData),
-                  !loadedDrawing.strokes.isEmpty else {
-                return UIImage()
+    // MARK: - Big Grid
+    private var bigGridView: some View {
+        // Large adaptive columns:
+        let columns = [
+            GridItem(.adaptive(minimum: 300, maximum: 500), spacing: 20)
+        ]
+        
+        return ScrollView {
+            LazyVGrid(columns: columns, spacing: 20) {
+                ForEach(subject.notes.indices, id: \.self) { i in
+                    NavigationLink {
+                        NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                    } label: {
+                        // Provide the note + layout style + namespace
+                        NoteCardView(
+                            note: subject.notes[i],
+                            subject: subject,
+                            layout: .bigGrid,
+                            namespace: animationNamespace
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-
-            // 3. Force a letter-size rectangle (8.5" x 11" at 72DPI)
-            let firstPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
-
-            // 4. Scale it down to fit a ~100pt height
-            let scale: CGFloat = 0.15
-
-            // 5. Render a UIImage from that forced rectangle
-            return loadedDrawing.image(from: firstPageRect, scale: scale)
-        }()
-
-        // Side effect print outside the view builder
-        let _ = print("Thumbnail size = \(thumbnailImage.size)")
-
-        return VStack(alignment: .leading) {
-            // Show the thumbnail if valid
-            if thumbnailImage.size.width > 0 && thumbnailImage.size.height > 0 {
-                Image(uiImage: thumbnailImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 100)
-            } else {
-                // Fallback placeholder
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.2))
-                    .frame(height: 100)
-            }
-
-            Text(note.title.isEmpty ? "Untitled Note" : note.title)
-                .font(.headline)
-                .lineLimit(1)
-                .foregroundColor(.primary)
-
-            Text(note.dateCreated, format: .dateTime.month().day().year())
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            Text(subject.name)
-                .font(.caption2)
-                .fontWeight(.bold)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .foregroundColor(.white)
-                .background(subject.color)
-                .cornerRadius(6)
+            .padding()
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(10)
-        .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
     }
     
-    // Function to create a new note and navigate to it
+    // MARK: - List
+    private var listView: some View {
+        List {
+            ForEach(subject.notes.indices, id: \.self) { i in
+                NavigationLink {
+                    NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                } label: {
+                    NoteCardView(
+                        note: subject.notes[i],
+                        subject: subject,
+                        layout: .list,
+                        namespace: animationNamespace
+                    )
+                }
+            }
+        }
+    }
+    
+    // MARK: - Compact
+    private var compactView: some View {
+        ScrollView {
+            LazyVStack(spacing: 8) {
+                ForEach(subject.notes.indices, id: \.self) { i in
+                    NavigationLink {
+                        NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                    } label: {
+                        NoteCardView(
+                            note: subject.notes[i],
+                            subject: subject,
+                            layout: .compact,
+                            namespace: animationNamespace
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+        }
+    }
+    
+    // MARK: - Create new note
     private func createNewNote() {
-        print("🔍 Creating new note")
-        // Create a blank untitled note by default
-        let newNote = Note(title: "", drawingData: PKDrawing().dataRepresentation())
+        let newNote = Note(
+            title: "New Note",
+            drawingData: PKDrawing().dataRepresentation()
+        )
         subject.notes.append(newNote)
+    }
+    
+    // MARK: - View Mode Picker
+    private var viewModePicker: some View {
+        Picker("Layout Mode", selection: $viewMode) {
+            ForEach(ViewMode.allCases) { mode in
+                Label(mode.rawValue, systemImage: mode.iconName)
+                    .tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(width: 300)
     }
 }
 
+// MARK: - Single Card View with Sub-Element Geometry Effects
+fileprivate struct NoteCardView: View {
+    let note: Note
+    let subject: Subject
+    
+    // Layouts we want to support
+    enum CardLayout {
+        case bigGrid, list, compact
+    }
+    let layout: CardLayout
+    
+    let namespace: Namespace.ID
+    
+    var body: some View {
+        switch layout {
+        case .bigGrid:
+            bigGridCard
+        case .list:
+            listCard
+        case .compact:
+            compactCard
+        }
+    }
+    
+    // MARK: - Big Grid Card
+    private var bigGridCard: some View {
+        ZStack {
+            // Background
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .matchedGeometryEffect(id: "background-\(note.id)",
+                                       in: namespace)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                thumbnail
+                    .frame(height: 180)
+                    .cornerRadius(8)
+                    .matchedGeometryEffect(id: "thumbnail-\(note.id)",
+                                           in: namespace)
+                
+                Text(note.title.isEmpty ? "Untitled Note" : note.title)
+                    .font(.headline)
+                    .matchedGeometryEffect(id: "title-\(note.id)",
+                                           in: namespace)
+                
+                Text(note.dateCreated, format: .dateTime.year().month().day())
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .matchedGeometryEffect(id: "date-\(note.id)",
+                                           in: namespace)
+                
+                Text(subject.name)
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .foregroundColor(.white)
+                    .background(subject.color)
+                    .cornerRadius(6)
+                    .matchedGeometryEffect(id: "subject-\(note.id)",
+                                           in: namespace)
+            }
+            .padding()
+        }
+        .frame(minWidth: 0)
+    }
+    
+    // MARK: - List Card
+    private var listCard: some View {
+        HStack(spacing: 12) {
+            thumbnail
+                .frame(width: 60, height: 80)
+                .cornerRadius(4)
+                .matchedGeometryEffect(id: "thumbnail-\(note.id)",
+                                       in: namespace)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(note.title.isEmpty ? "Untitled Note" : note.title)
+                    .font(.headline)
+                    .matchedGeometryEffect(id: "title-\(note.id)",
+                                           in: namespace)
+                
+                Text(note.dateCreated, format: .dateTime.year().month().day())
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .matchedGeometryEffect(id: "date-\(note.id)",
+                                           in: namespace)
+                
+                Text(subject.name)
+                    .font(.caption2)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .foregroundColor(.white)
+                    .background(subject.color)
+                    .cornerRadius(4)
+                    .matchedGeometryEffect(id: "subject-\(note.id)",
+                                           in: namespace)
+            }
+            
+            Spacer()
+        }
+        .background(
+            // We can still morph the background if we want:
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.clear)
+                .matchedGeometryEffect(id: "background-\(note.id)",
+                                       in: namespace)
+        )
+        .padding(.vertical, 6)
+    }
+    
+    // MARK: - Compact Card
+    private var compactCard: some View {
+        HStack {
+            Text(note.title.isEmpty ? "Untitled Note" : note.title)
+                .font(.subheadline)
+                .matchedGeometryEffect(id: "title-\(note.id)",
+                                       in: namespace)
+            
+            Spacer()
+            
+            Text(note.dateCreated, format: .dateTime.month(.abbreviated).day())
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .matchedGeometryEffect(id: "date-\(note.id)",
+                                       in: namespace)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(.systemGray6))
+                .matchedGeometryEffect(id: "background-\(note.id)",
+                                       in: namespace)
+        )
+        // We could optionally put the subject name somewhere else or omit it in compact view
+    }
+    
+    // MARK: - Thumbnail
+    @ViewBuilder
+    private var thumbnail: some View {
+        // Attempt to create a small PKDrawing thumbnail
+        if !note.drawingData.isEmpty,
+           let drawing = try? PKDrawing(data: note.drawingData),
+           !drawing.strokes.isEmpty {
+            
+            let image = drawing.image(
+                from: CGRect(x: 0, y: 0, width: 612, height: 792),
+                scale: 0.2
+            )
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .clipped()
+        } else {
+            // Fallback placeholder
+            Rectangle()
+                .fill(Color.secondary.opacity(0.2))
+        }
+    }
+}
