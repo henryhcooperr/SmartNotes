@@ -129,19 +129,22 @@ struct TemplateSettingsView: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Apply") {
+                    // First, record what we're changing from and to for debugging
+                    print("📝 Template change: \(template.type.rawValue) → \(selectedType.rawValue)")
+                    
+                    // Apply changes to the template binding
                     applyChanges()
                     
-                    // Force the template to refresh
-                    DispatchQueue.main.async {
+                    // Dismiss immediately to avoid state conflicts
+                    presentationMode.wrappedValue.dismiss()
+                    
+                    // Then send notification after a short delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        print("📝 Sending template refresh notification after apply")
                         NotificationCenter.default.post(
                             name: NSNotification.Name("RefreshTemplate"),
                             object: nil
                         )
-                        
-                        // Give the notification a moment
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            presentationMode.wrappedValue.dismiss()
-                        }
                     }
                 }
             )

@@ -68,14 +68,47 @@ struct NoteDetailView: View {
                     TemplateSettingsView(template: $noteTemplate)
                 }
                 .onAppear {
+                    print("📝 NoteDetailView appeared for note ID: \(note.id)")
+                    
                     // Migrate older single-drawing data to pages if needed
                     migrateIfNeeded()
-                    noteTemplate = note.noteTemplate ?? .none
-                    // Load a saved template if you want a persistent note-level template:
+                    
+                    // CRITICAL FIX: Ensure there's at least one page for new notes
+                    if note.pages.isEmpty {
+                        print("📝 Creating initial empty page for new note")
+                        let newPage = Page(
+                            drawingData: Data(),
+                            template: nil,
+                            pageNumber: 1
+                        )
+                        note.pages = [newPage]
+                        
+                        // Save changes immediately to prevent issues if user closes note too quickly
+                        DispatchQueue.main.async {
+                            saveChanges()
+                        }
+                    }
+                    
+                    // Get template from note
+                    if let savedTemplate = note.noteTemplate {
+                        noteTemplate = savedTemplate
+                        print("📝 Loaded template from note: \(savedTemplate.type.rawValue)")
+                    } else {
+                        noteTemplate = .none
+                        print("📝 No template found in note, using default")
+                    }
+                    
+                    // Load from UserDefaults as fallback
                     loadNoteTemplateIfWanted()
                     
-                    // Mark initial load complete
-                    DispatchQueue.main.async {
+                    // Force template refresh after a short delay to ensure views are ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("RefreshTemplate"),
+                            object: nil
+                        )
+                        
+                        // Mark initial load complete
                         isInitialLoad = false
                     }
                 }
@@ -85,65 +118,78 @@ struct NoteDetailView: View {
                         saveChanges()
                     }
                 }
-                .onChange(of: noteTemplate) { _ in
+                .onChange(of: noteTemplate) { oldValue, newValue in
+                    print("🔍 NoteDetailView - Template changed from \(oldValue.type.rawValue) to \(newValue.type.rawValue)")
                     // Reapply template changes
                     if !isInitialLoad {
+                        // Update the note model immediately
+                        note.noteTemplate = newValue
+                        
+                        // Save changes to persist the update
                         saveChanges()
+                        
+                        // Force a refresh of the template
+                        DispatchQueue.main.async {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("ForceTemplateRefresh"),
+                                object: nil
+                            )
+                        }
                     }
                 }
-        }
-        // Navigation
-        .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            // Done button
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
+            // Navigation
+                .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    // Done button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            saveChanges()
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+                    
+                    // Template settings button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            showingTemplateSettings = true
+                        }) {
+                            Image(systemName: "ellipsis")
+                        }
+                    }
+                    
+                    // Export button
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            showExportOptions = true
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                }
+                .actionSheet(isPresented: $showExportOptions) {
+                    ActionSheet(
+                        title: Text("Export Note"),
+                        message: Text("Choose export format"),
+                        buttons: [
+                            .default(Text("PDF")) {
+                                exportToPDF()
+                            },
+                            .default(Text("Image")) {
+                                print("Image export requested (not implemented yet)")
+                            },
+                            .cancel()
+                        ]
+                    )
+                }
+                .sheet(isPresented: $showingTemplateSettings) {
+                    // Present the template settings sheet
+                    TemplateSettingsView(template: $noteTemplate)
+                }
+                .onDisappear {
+                    // Always save when view disappears
                     saveChanges()
-                    presentationMode.wrappedValue.dismiss()
                 }
-            }
-            
-            // Template settings button
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    showingTemplateSettings = true
-                }) {
-                    Image(systemName: "ellipsis")
-                }
-            }
-            
-            // Export button
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    showExportOptions = true
-                }) {
-                    Image(systemName: "square.and.arrow.up")
-                }
-            }
-        }
-        .actionSheet(isPresented: $showExportOptions) {
-            ActionSheet(
-                title: Text("Export Note"),
-                message: Text("Choose export format"),
-                buttons: [
-                    .default(Text("PDF")) {
-                        exportToPDF()
-                    },
-                    .default(Text("Image")) {
-                        print("Image export requested (not implemented yet)")
-                    },
-                    .cancel()
-                ]
-            )
-        }
-        .sheet(isPresented: $showingTemplateSettings) {
-            // Present the template settings sheet
-            TemplateSettingsView(template: $noteTemplate)
-        }
-        .onDisappear {
-            // Always save when view disappears
-            saveChanges()
         }
     }
     

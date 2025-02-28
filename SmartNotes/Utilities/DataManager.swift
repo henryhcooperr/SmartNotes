@@ -218,4 +218,26 @@ class DataManager: ObservableObject {
         NotificationCenter.default.removeObserver(self)
         saveDataImmediately()
     }
+    func createNewNote(title: String, in subjectID: UUID) -> Note {
+        print("📊 Creating new note with title: \(title)")
+        
+        // Create a new note with a single empty page
+        let newPage = Page(
+            drawingData: Data(),
+            template: nil,
+            pageNumber: 1
+        )
+        
+        let newNote = Note(
+            title: title,
+            drawingData: Data(),
+            pages: [newPage]
+        )
+        
+        // Add it to the appropriate subject
+        addNote(to: subjectID, note: newNote)
+        
+        print("📊 New note created with ID: \(newNote.id), includes 1 empty page")
+        return newNote
+    }
 }
