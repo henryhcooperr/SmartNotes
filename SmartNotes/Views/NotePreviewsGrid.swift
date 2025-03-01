@@ -95,7 +95,7 @@ struct NotePreviewsGrid: View {
     // MARK: - Big Grid
     private var bigGridView: some View {
         let columns = [
-            GridItem(.adaptive(minimum: 300, maximum: 500), spacing: 20)
+            GridItem(.adaptive(minimum: 500, maximum: 700), spacing: 20)
         ]
         return ScrollView {
             LazyVGrid(columns: columns, spacing: 20) {
