@@ -270,14 +270,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Add this method to the Coordinator class
         func setCustomTool(type: PKInkingTool.InkType, color: UIColor, width: CGFloat) {
-            selectedTool = type
-            selectedColor = color
-            lineWidth = width
+            // Create the inking tool with the color that's already been converted
+            let inkingTool = PKInkingTool(type, color: color, width: width)
             
-            // Apply to all canvas views
+            // Apply to each canvas view
             for (_, canvasView) in canvasViews {
-                let tool = PKInkingTool(type, color: color, width: width)
-                canvasView.tool = tool
+                canvasView.tool = inkingTool
             }
         }
         

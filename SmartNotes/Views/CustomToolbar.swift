@@ -45,7 +45,6 @@ struct CustomToolbar: View {
         DrawingTool(type: .pen),
         DrawingTool(type: .pencil),
         DrawingTool(type: .marker),
-        DrawingTool(type: .colorPicker),
         DrawingTool(type: .eraser),
         DrawingTool(type: .selection),
         DrawingTool(type: .aiTool),
@@ -54,10 +53,18 @@ struct CustomToolbar: View {
     ]
     
     // Available colors
-    let colors: [Color] = [.black, .blue, .red, .green, .orange, .purple]
+    @State private var colors: [Color] = [
+        // Use explicitly defined RGB colors instead of semantic color names
+        Color(.sRGB, red: 0, green: 0, blue: 0, opacity: 1),          // black
+        Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 1),          // blue
+        Color(.sRGB, red: 1, green: 0, blue: 0, opacity: 1),          // red
+        Color(.sRGB, red: 0, green: 0.5, blue: 0, opacity: 1),        // green
+        Color(.sRGB, red: 1, green: 0.5, blue: 0, opacity: 1),        // orange
+        Color(.sRGB, red: 0.5, green: 0, blue: 0.5, opacity: 1)       // purple
+    ]
     
     // Available line widths
-    let lineWidths: [CGFloat] = [1, 2, 4, 6, 10]
+    @State private var lineWidths: [CGFloat] = [1, 2, 4, 6, 10]
     
     // Add these state variables to CustomToolbar
     @State private var draggedTool: DrawingTool?
@@ -71,6 +78,15 @@ struct CustomToolbar: View {
     
     // 1. First, add a state to track the position of the selected tool
     @State private var activeToolFrame: CGRect = .zero
+    
+    // 2. Add state for custom width/color UI
+    @State private var showCustomWidthInput = false
+    @State private var showCustomColorPicker = false
+    @State private var tempCustomWidth: CGFloat = 5.0
+    @State private var tempCustomColor: Color = .gray
+    
+    // New state for color picker index
+    @State private var showColorPickerForIndex: Int? = nil
     
     var body: some View {
         GeometryReader { geometry in
@@ -124,6 +140,11 @@ struct CustomToolbar: View {
             // Reset toolbar preferences (remove this after testing)
             UserDefaults.standard.removeObject(forKey: "toolbarTools")
             
+            // Ensure default color is set to black
+            if selectedColor == .white {
+                selectedColor = .black
+            }
+            
             loadSavedPreferences()
             // Initial setup of tools
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -146,7 +167,7 @@ struct CustomToolbar: View {
                     // For right toolbar, show picker on the left
                     if toolbarPosition == .right, let toolType = toolShowingWidthOptions {
                         sideWidthPicker(for: toolType)
-                            .frame(width: 70) // Constrain width
+                            .frame(width: 90) // Increased width for colors
                     }
                     
                     // Main vertical toolbar
@@ -155,39 +176,38 @@ struct CustomToolbar: View {
                     // For left toolbar, show picker on the right
                     if toolbarPosition == .left, let toolType = toolShowingWidthOptions {
                         sideWidthPicker(for: toolType)
-                            .frame(width: 70) // Constrain width
+                            .frame(width: 90) // Increased width for colors
                     }
                 }
-                // Add a fixed width for the entire toolbar
-                .frame(maxWidth: toolShowingWidthOptions != nil ? 150 : 80)
+                // Update max width for the entire toolbar
+                .frame(maxWidth: toolShowingWidthOptions != nil ? 180 : 80)
             } else {
                 VStack(spacing: 0) {
-                    // Extended width picker (above if bottom toolbar)
+                    // Extended picker (above if bottom toolbar)
                     if let toolType = toolShowingWidthOptions, toolbarPosition == .bottom {
                         horizontalWidthPicker(for: toolType)
-                            .frame(height: 60) // Constrain height
+                            .frame(height: 120) // Increased height for colors
                     }
                     
                     // Main horizontal toolbar
                     horizontalToolbar()
                     
-                    // Extended width picker (below if top toolbar)
+                    // Extended picker (below if top toolbar)
                     if let toolType = toolShowingWidthOptions, toolbarPosition == .top {
                         horizontalWidthPicker(for: toolType)
-                            .frame(height: 60) // Constrain height
+                            .frame(height: 120) // Increased height for colors
                     }
                 }
-                // Add a fixed height for the entire toolbar
-                .frame(maxHeight: toolShowingWidthOptions != nil ? 150 : 80)
+                // Update max height for the entire toolbar
+                .frame(maxHeight: toolShowingWidthOptions != nil ? 210 : 80)
             }
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color(.systemGray6))
                 .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
         )
-        // Fix the layout so it doesn't expand
         .fixedSize()
         .animation(.spring(response: 0.3), value: toolShowingWidthOptions)
     }
@@ -462,13 +482,45 @@ struct CustomToolbar: View {
                     }
                 } label: {
                     Circle()
-                        .fill(color)
+                        .fill(renderAccurateColor(color))
                         .frame(width: 30, height: 30)
                         .overlay(
                             Circle()
                                 .stroke(selectedColor == color ? Color.primary : Color.clear, lineWidth: 2)
                         )
                 }
+            }
+            
+            if toolShowingWidthOptions != nil {
+                VStack {
+                    Text("Preview")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    // A small canvas that demonstrates exactly how the stroke will look
+                    ZStack {
+                        Color.white
+                            .frame(width: 60, height: 40)
+                            .cornerRadius(6)
+                        
+                        // Draw a sample stroke in the EXACT way it will appear on canvas
+                        Path { path in
+                            path.move(to: CGPoint(x: 10, y: 20))
+                            path.addCurve(
+                                to: CGPoint(x: 50, y: 20),
+                                control1: CGPoint(x: 20, y: 10),
+                                control2: CGPoint(x: 40, y: 30)
+                            )
+                        }
+                        .stroke(selectedColor, lineWidth: lineWidth)
+                        .frame(width: 60, height: 40)
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+                    )
+                }
+                .padding(.top, 8)
             }
         }
         .padding()
@@ -522,21 +574,27 @@ struct CustomToolbar: View {
             isEraserSelected = false
             applyToolToAllCanvases()
             toggleWidthOptions(for: tool.type)
+            // Hide color picker when showing width/color options
+            showColorPicker = false
         case .pencil:
             selectedTool = .pencil
             isEraserSelected = false
             applyToolToAllCanvases()
             toggleWidthOptions(for: tool.type)
+            showColorPicker = false
         case .marker:
             selectedTool = .marker
             isEraserSelected = false
             applyToolToAllCanvases()
             toggleWidthOptions(for: tool.type)
+            showColorPicker = false
         case .eraser:
             isEraserSelected = true
             applyEraserToAllCanvases()
             toggleWidthOptions(for: tool.type)
+            showColorPicker = false
         case .colorPicker:
+            // Legacy color picker - could be removed since we now have integrated color options
             showColorPicker.toggle()
             toolShowingWidthOptions = nil
         case .selection:
@@ -564,16 +622,36 @@ struct CustomToolbar: View {
     private func applyToolToAllCanvases() {
         guard let coordinator = coordinator else { return }
         
-        // Create the tool with selected properties
-        let tool = PKInkingTool(selectedTool, color: UIColor(selectedColor), width: lineWidth)
+        // Convert the SwiftUI Color to UIColor
+        let uiColor = UIColor(selectedColor)
         
-        // Apply to each canvas view
-        for (_, canvasView) in coordinator.canvasViews {
-            canvasView.tool = tool
+        // Use PKInkingTool.convertColor to handle dark/light mode properly
+        // First get the current interface style
+        let interfaceStyle = coordinator.canvasViews.first?.value.traitCollection.userInterfaceStyle ?? .light
+        
+        // Then convert the color appropriately for the current interface style
+        let correctColor: UIColor
+        if #available(iOS 14.0, *) {
+            // Use direct method if available
+            correctColor = PKInkingTool.convertColor(uiColor, from: .light, to: interfaceStyle)
+        } else {
+            // Fallback for older iOS versions - extract components properly
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+            
+            correctColor = interfaceStyle == .dark ? 
+                UIColor(red: 1-r, green: 1-g, blue: 1-b, alpha: a) :
+                uiColor
         }
         
-        // Log for debugging
-        print("📌 Applied \(selectedTool) tool with color \(selectedColor) and width \(lineWidth) to \(coordinator.canvasViews.count) canvases")
+        // Apply the tool to all canvases
+        coordinator.setCustomTool(
+            type: selectedTool,
+            color: correctColor,
+            width: lineWidth
+        )
+        
+        print("📌 Applied \(selectedTool) tool with color \(correctColor.description) and width \(lineWidth)")
     }
     
     private func applyEraserToAllCanvases() {
@@ -715,7 +793,6 @@ struct CustomToolbar: View {
                     DrawingTool(type: .pen),
                     DrawingTool(type: .pencil),
                     DrawingTool(type: .marker),
-                    DrawingTool(type: .colorPicker),
                     DrawingTool(type: .eraser),
                     DrawingTool(type: .selection),  // Ensure selection tool is included
                     DrawingTool(type: .aiTool),     // Ensure AI tool is included
@@ -774,13 +851,14 @@ struct CustomToolbar: View {
         saveToolConfiguration()
     }
     
-    // 3. Create horizontal and vertical width pickers for extending the toolbar
+    // 1. First, let's update the horizontal width picker to include colors
     private func horizontalWidthPicker(for toolType: DrawingTool.ToolType) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             Divider()
                 .background(Color.gray.opacity(0.5))
                 .padding(.vertical, 4)
             
+            // Width options with Add button
             HStack(spacing: 16) {
                 ForEach(lineWidths, id: \.self) { width in
                     Button {
@@ -793,7 +871,7 @@ struct CustomToolbar: View {
                                 .frame(width: 32, height: 32)
                             
                             Circle()
-                                .fill(selectedColor)
+                                .fill(renderAccurateColor(selectedColor))
                                 .frame(width: width * 2.5, height: width * 2.5)
                             
                             if width == lineWidth {
@@ -804,12 +882,149 @@ struct CustomToolbar: View {
                         }
                     }
                 }
+                
+                // Add custom width button
+                Button {
+                    showCustomWidthInput.toggle()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.secondary, lineWidth: 1)
+                            .frame(width: 32, height: 32)
+                        
+                        Image(systemName: "plus")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            
+            // Custom width input
+            if showCustomWidthInput {
+                VStack(spacing: 4) {
+                    Text("Custom Width: \(Int(tempCustomWidth))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack {
+                        Slider(value: $tempCustomWidth, in: 1...20, step: 1)
+                            .frame(width: 120)
+                        
+                        Button {
+                            if !lineWidths.contains(tempCustomWidth) {
+                                // Add the custom width to the array
+                                lineWidths.append(tempCustomWidth)
+                                lineWidth = tempCustomWidth
+                                applyToolToAllCanvases()
+                                
+                                // Save to UserDefaults
+                                saveCustomSettings()
+                            }
+                            showCustomWidthInput = false
+                        } label: {
+                            Text("Add")
+                                .foregroundColor(.blue)
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.blue, lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .transition(.opacity)
+            }
+            
+            Divider()
+                .background(Color.gray.opacity(0.5))
+                .padding(.vertical, 4)
+            
+            // Color options with Add button
+            HStack(spacing: 12) {
+                ForEach(colors.indices, id: \.self) { index in
+                    Button {
+                        // First click selects the color
+                        if selectedColor != colors[index] {
+                            self.selectedColor = colors[index]
+                            applyToolToAllCanvases()
+                        } else {
+                            // Second click on already selected color opens picker to change it
+                            showColorPickerForIndex = index
+                        }
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(renderAccurateColor(colors[index]))
+                                .frame(width: 30, height: 30)
+                            
+                            if colors[index] == selectedColor {
+                                Circle()
+                                    .stroke(Color.white, lineWidth: 2)
+                                    .frame(width: 34, height: 34)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // If a color is being edited, show the color picker overlay
+            if let editingIndex = showColorPickerForIndex {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Change Color")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    ColorPicker("", selection: $tempCustomColor)
+                        .labelsHidden()
+                        .frame(width: 120)
+                    
+                    HStack {
+                        Button {
+                            // Replace color at this index
+                            colors[editingIndex] = tempCustomColor
+                            selectedColor = tempCustomColor
+                            applyToolToAllCanvases()
+                            
+                            // Save to UserDefaults
+                            saveCustomSettings()
+                            showColorPickerForIndex = nil
+                        } label: {
+                            Text("Update")
+                                .foregroundColor(.blue)
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.blue, lineWidth: 1)
+                                )
+                        }
+                        
+                        Button {
+                            showColorPickerForIndex = nil
+                        } label: {
+                            Text("Cancel")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .transition(.opacity)
             }
         }
-        .padding(.vertical, 4)
-        .frame(height: 60) // Fixed height to prevent excessive expansion
+        .padding(.vertical, 8)
+        .frame(height: showCustomWidthInput || showColorPickerForIndex != nil ? 180 : 120)
+        .animation(.spring(), value: showCustomWidthInput)
+        .animation(.spring(), value: showColorPickerForIndex)
     }
     
+    // 2. Update the vertical/side width picker as well
     private func sideWidthPicker(for toolType: DrawingTool.ToolType) -> some View {
         HStack(spacing: 4) {
             // Divider
@@ -818,34 +1033,164 @@ struct CustomToolbar: View {
                 .frame(width: 1)
                 .padding(.horizontal, 4)
             
-            // Width options in a vertical stack
-            VStack(spacing: 12) {
-                ForEach(lineWidths, id: \.self) { width in
+            // Options in a vertical stack
+            VStack(spacing: 16) {
+                // Width section
+                VStack(spacing: 12) {
+                    Text("Width")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    ForEach(lineWidths, id: \.self) { width in
+                        Button {
+                            self.lineWidth = width
+                            applyToolToAllCanvases()
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .stroke(Color.secondary, lineWidth: 1)
+                                    .frame(width: 32, height: 32)
+                                
+                                Circle()
+                                    .fill(renderAccurateColor(selectedColor))
+                                    .frame(width: width * 2.5, height: width * 2.5)
+                                
+                                if width == lineWidth {
+                                    Circle()
+                                        .stroke(Color.blue, lineWidth: 2)
+                                        .frame(width: 36, height: 36)
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Add custom width button
                     Button {
-                        self.lineWidth = width
-                        applyToolToAllCanvases()
+                        showCustomWidthInput.toggle()
                     } label: {
                         ZStack {
                             Circle()
                                 .stroke(Color.secondary, lineWidth: 1)
                                 .frame(width: 32, height: 32)
                             
-                            Circle()
-                                .fill(selectedColor)
-                                .frame(width: width * 2.5, height: width * 2.5)
-                            
-                            if width == lineWidth {
-                                Circle()
-                                    .stroke(Color.blue, lineWidth: 2)
-                                    .frame(width: 36, height: 36)
+                            Image(systemName: "plus")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                // Custom width input
+                if showCustomWidthInput {
+                    VStack(spacing: 4) {
+                        Text("Width: \(Int(tempCustomWidth))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Slider(value: $tempCustomWidth, in: 1...20, step: 1)
+                            .frame(width: 70)
+                        
+                        Button {
+                            if !lineWidths.contains(tempCustomWidth) {
+                                lineWidths.append(tempCustomWidth)
+                                lineWidth = tempCustomWidth
+                                applyToolToAllCanvases()
+                                saveCustomSettings()
+                            }
+                            showCustomWidthInput = false
+                        } label: {
+                            Text("Add")
+                                .foregroundColor(.blue)
+                                .font(.caption2)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .transition(.opacity)
+                }
+                
+                Divider()
+                    .background(Color.gray.opacity(0.5))
+                    .padding(.vertical, 4)
+                
+                // Color section
+                VStack(spacing: 8) {
+                    Text("Color")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    // Maintain the grid layout for the 6 colors  
+                    ForEach(0..<((colors.count + 1) / 2), id: \.self) { row in
+                        HStack(spacing: 8) {
+                            ForEach(0..<2) { col in
+                                let index = row * 2 + col
+                                if index < colors.count {
+                                    Button {
+                                        // First click selects the color
+                                        if selectedColor != colors[index] {
+                                            self.selectedColor = colors[index]
+                                            applyToolToAllCanvases()
+                                        } else {
+                                            // Second click on already selected color opens picker to change it
+                                            showColorPickerForIndex = index
+                                        }
+                                    } label: {
+                                        ZStack {
+                                            Circle()
+                                                .fill(renderAccurateColor(colors[index]))
+                                                .frame(width: 24, height: 24)
+                                            
+                                            if colors[index] == selectedColor {
+                                                Circle()
+                                                    .stroke(Color.white, lineWidth: 2)
+                                                    .frame(width: 28, height: 28)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
+                    }
+                    
+                    // Add this color picker when editing a color
+                    if let editingIndex = showColorPickerForIndex {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ColorPicker("", selection: $tempCustomColor)
+                                .labelsHidden()
+                                .frame(width: 70)
+                            
+                            HStack {
+                                Button {
+                                    // Replace color
+                                    colors[editingIndex] = tempCustomColor
+                                    selectedColor = tempCustomColor
+                                    applyToolToAllCanvases()
+                                    saveCustomSettings()
+                                    showColorPickerForIndex = nil
+                                } label: {
+                                    Text("✓")
+                                        .foregroundColor(.blue)
+                                        .font(.caption2)
+                                }
+                                
+                                Button {
+                                    showColorPickerForIndex = nil
+                                } label: {
+                                    Text("✕")
+                                        .foregroundColor(.red)
+                                        .font(.caption2)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .transition(.opacity)
                     }
                 }
             }
         }
         .padding(.vertical, 16)
-        .frame(width: 70) // Fixed width to prevent excessive expansion
+        .frame(width: showCustomWidthInput || showCustomColorPicker ? 120 : 90)
+        .animation(.spring(), value: showCustomWidthInput)
+        .animation(.spring(), value: showCustomColorPicker)
     }
     
     // 6. Add this preference key to track view positions
@@ -853,6 +1198,150 @@ struct CustomToolbar: View {
         static var defaultValue: CGRect = .zero
         static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
             value = nextValue()
+        }
+    }
+    
+    // Helper to check if a color already exists
+    private func colorExists(_ color: Color) -> Bool {
+        // Convert the color to RGB components for comparison
+        let newColorUI = UIColor(color)
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        newColorUI.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        
+        for existingColor in colors {
+            let existingUI = UIColor(existingColor)
+            var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+            existingUI.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+            
+            // Compare with a small tolerance for floating point differences
+            if abs(r1-r2) < 0.01 && abs(g1-g2) < 0.01 && abs(b1-b2) < 0.01 {
+                return true
+            }
+        }
+        return false
+    }
+    
+    // Save custom settings to UserDefaults
+    private func saveCustomSettings() {
+        // Convert [Color] to [RGBAColor]
+        let colorData = colors.map { RGBAColor(from: $0) }
+        if let encoded = try? JSONEncoder().encode(colorData) {
+            UserDefaults.standard.set(encoded, forKey: "customColors")
+        }
+        
+        UserDefaults.standard.set(lineWidths, forKey: "customLineWidths")
+    }
+    
+    // Load custom settings from UserDefaults
+    private func loadCustomSettings() {
+        // Load line widths
+        if let savedWidths = UserDefaults.standard.array(forKey: "customLineWidths") as? [CGFloat] {
+            lineWidths = savedWidths
+        }
+        
+        // Load colors from RGBA encoding
+        if let data = UserDefaults.standard.data(forKey: "customColors"),
+           let decoded = try? JSONDecoder().decode([RGBAColor].self, from: data) {
+            colors = decoded.map { $0.swiftUIColor }
+        }
+    }
+    
+    // Add this helper function to ensure colors are rendered accurately
+    private func renderAccurateColor(_ color: Color) -> Color {
+        // Get the tool-specific rendering of the color
+        return getAccurateDrawingColor(
+            for: isEraserSelected ? .eraser : 
+                 selectedTool == .pen ? .pen :
+                 selectedTool == .pencil ? .pencil : .marker,
+            baseColor: color
+        )
+    }
+    
+    private func getAccurateDrawingColor(for toolType: DrawingTool.ToolType, baseColor: Color) -> Color {
+        // First, capture the color components in a device-independent way
+        let components = baseColor.cgColor?.components ?? [0, 0, 0, 1]
+        
+        // Create a new color using explicit sRGB color space for consistency
+        let uiColor = UIColor(
+            displayP3Red: components[0],
+            green: components[1],
+            blue: components[2],
+            alpha: components[3]
+        )
+        
+        // Handle tool-specific adjustments
+        switch toolType {
+        case .pen:
+            // Pens typically render at full opacity
+            return Color(uiColor)
+        case .marker:
+            // Markers are often semi-transparent
+            // Use withAlphaComponent only on the final output
+            return Color(uiColor.withAlphaComponent(0.7))
+        case .pencil:
+            // Pencils might have a slight texture or reduced opacity
+            return Color(uiColor.withAlphaComponent(0.9))
+        case .eraser:
+            // Erasers don't need color adjustments
+            return baseColor
+        default:
+            return baseColor
+        }
+    }
+}
+
+// OPTIONAL: A more robust approach is to store colors by RGBA instead
+// instead of `color.description`. For instance:
+struct RGBAColor: Codable {
+    var red: CGFloat
+    var green: CGFloat
+    var blue: CGFloat
+    var alpha: CGFloat
+    var useDisplayP3: Bool = false
+    
+    init(from color: Color) {
+        // Use temporary local vars
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 1
+        
+        let uiColor = UIColor(color)
+        
+        // Try to get components from the color
+        if uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            // Successfully got RGB components
+            self.useDisplayP3 = false
+        } else {
+            // If standard RGB conversion fails, try with DisplayP3
+            // First convert to CGColor which has components we can access
+            if let components = uiColor.cgColor.components, uiColor.cgColor.numberOfComponents >= 4 {
+                r = components[0]
+                g = components[1]
+                b = components[2]
+                a = components[3]
+                self.useDisplayP3 = true
+            } else if let components = uiColor.cgColor.components, uiColor.cgColor.numberOfComponents >= 2 {
+                // Handle grayscale + alpha color space
+                r = components[0]
+                g = components[0]
+                b = components[0]
+                a = components[1]
+                self.useDisplayP3 = false
+            }
+        }
+        
+        self.red = r
+        self.green = g 
+        self.blue = b
+        self.alpha = a
+    }
+    
+    var swiftUIColor: Color {
+        if useDisplayP3 {
+            return Color(UIColor(displayP3Red: red, green: green, blue: blue, alpha: alpha))
+        } else {
+            return Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
         }
     }
 } 
