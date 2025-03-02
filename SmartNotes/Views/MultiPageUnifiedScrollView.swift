@@ -18,7 +18,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     @Binding var template: CanvasTemplate
     
     // The standard "paper" size for each page
-    let pageSize = CGSize(width: 612, height: 792)
+    let pageSize = CGSize(width: 1224, height: 1584)
     // Minimal spacing so there's a slight boundary between pages
     let pageSpacing: CGFloat = 2
     
@@ -390,7 +390,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // If we have all the views we need, just update templates
             print("🔄 Update #\(currentUpdate) - All PKCanvasViews exist, only refreshing templates")
             for (pageID, canvasView) in context.coordinator.canvasViews {
-                context.coordinator.applyTemplate(to: canvasView)
+                //context.coordinator.applyTemplate(to: canvasView)
             }
         } else {
             // Otherwise do a full layout refresh
