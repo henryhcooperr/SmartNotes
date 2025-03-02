@@ -221,18 +221,15 @@ struct NoteDetailView: View {
                     saveChanges()
                 }
                 .overlay(
-                    VStack {
-                        Spacer()
-                        if showCustomToolbar {
-                            CustomToolbar(
-                                coordinator: scrollViewCoordinator,
-                                selectedTool: $selectedTool,
-                                selectedColor: $selectedColor,
-                                lineWidth: $lineWidth
-                            )
-                            .padding(.bottom)
-                        }
+                    ZStack {
+                        CustomToolbar(
+                            coordinator: scrollViewCoordinator,
+                            selectedTool: $selectedTool,
+                            selectedColor: $selectedColor,
+                            lineWidth: $lineWidth
+                        )
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 )
         }
     }

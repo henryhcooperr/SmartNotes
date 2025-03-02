@@ -410,7 +410,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         if pagesWithoutViews.isEmpty && existingViewCount == pages.count {
             // If we have all the views we need, just update templates
             print("🔄 Update #\(currentUpdate) - All PKCanvasViews exist, only refreshing templates")
-            for (pageID, canvasView) in context.coordinator.canvasViews {
+            for (_, _) in context.coordinator.canvasViews {
                 //context.coordinator.applyTemplate(to: canvasView)
             }
         } else {
