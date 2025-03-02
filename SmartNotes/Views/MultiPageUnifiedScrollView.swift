@@ -30,21 +30,20 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // Keep references to each PKCanvasView by page ID
         var canvasViews: [UUID: PKCanvasView] = [:]
         
-        var toolPicker: PKToolPicker?
         // Avoid repeated triggers during initial load
         var isInitialLoad = true
         
         // Track whether pages are being laid out
         var isLayoutingPages = false
         
+        // Tool properties
+        var selectedTool: PKInkingTool.InkType = .pen
+        var selectedColor: UIColor = .black
+        var lineWidth: CGFloat = 2.0
+        
         init(_ parent: MultiPageUnifiedScrollView) {
             self.parent = parent
             super.init()
-            if #available(iOS 14.0, *) {
-                self.toolPicker = PKToolPicker()
-            } else {
-                self.toolPicker = PKToolPicker()
-            }
         }
         
         // MARK: - UIScrollViewDelegate
@@ -188,15 +187,6 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     // Load existing drawing
                     cv.drawing = PKDrawing.fromData(page.drawingData)
                     
-                    if let toolPicker = toolPicker {
-                        toolPicker.setVisible(true, forFirstResponder: cv)
-                        // Make it first responder so the palette appears
-                        DispatchQueue.main.async {
-                            cv.becomeFirstResponder()
-                        }
-                        toolPicker.addObserver(cv)
-                    }
-                    
                     // Respect finger drawing toggle
                     self.applyFingerDrawingPolicy(to: cv)
                     
@@ -228,6 +218,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             scrollView.contentSize = container.frame.size
             
             centerContainer(scrollView: scrollView)
+            
+            // Make the first canvas the first responder
+            if let firstCanvas = canvasViews.first?.value {
+                DispatchQueue.main.async {
+                    firstCanvas.becomeFirstResponder()
+                }
+            }
             
             // Reset layout flag
             isLayoutingPages = false
@@ -269,6 +266,30 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             } else {
                 canvasView.allowsFingerDrawing = !disableFingerDrawing
             }
+        }
+        
+        // Add this method to the Coordinator class
+        func setCustomTool(type: PKInkingTool.InkType, color: UIColor, width: CGFloat) {
+            selectedTool = type
+            selectedColor = color
+            lineWidth = width
+            
+            // Apply to all canvas views
+            for (_, canvasView) in canvasViews {
+                let tool = PKInkingTool(type, color: color, width: width)
+                canvasView.tool = tool
+            }
+        }
+        
+        // Method to get active canvas
+        func getActiveCanvasView() -> PKCanvasView? {
+            // Return the first canvas or the one that's currently first responder
+            for (_, canvasView) in canvasViews {
+                if canvasView.isFirstResponder {
+                    return canvasView
+                }
+            }
+            return canvasViews.first?.value
         }
     }
     
@@ -396,6 +417,14 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Otherwise do a full layout refresh
             print("🔄 Update #\(currentUpdate) - Need to create/remove PKCanvasViews, doing full layout")
             context.coordinator.layoutPages()
+        }
+        
+        // Add this to the updateUIView method
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("CoordinatorReady"),
+                object: context.coordinator
+            )
         }
     }
 }

@@ -35,6 +35,15 @@ struct NoteDetailView: View {
     
     @Environment(\.presentationMode) private var presentationMode
     
+    // Add these state variables to NoteDetailView
+    @State private var selectedTool: PKInkingTool.InkType = .pen
+    @State private var selectedColor: Color = .black
+    @State private var lineWidth: CGFloat = 2.0
+    @State private var showCustomToolbar = true
+    
+    // Add a reference to access the coordinator
+    @State private var scrollViewCoordinator: MultiPageUnifiedScrollView.Coordinator?
+    
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
         self.subjectID = subjectID
@@ -118,6 +127,17 @@ struct NoteDetailView: View {
                     
                     // Register for drawing state notifications
                     registerForDrawingNotifications()
+                    
+                    // Add this to onAppear
+                    NotificationCenter.default.addObserver(
+                        forName: NSNotification.Name("CoordinatorReady"),
+                        object: nil,
+                        queue: .main
+                    ) { notification in
+                        if let coordinator = notification.object as? MultiPageUnifiedScrollView.Coordinator {
+                            self.scrollViewCoordinator = coordinator
+                        }
+                    }
                 }
                 .onChange(of: note.pages) { _ in
                     // Save if pages change
@@ -200,6 +220,20 @@ struct NoteDetailView: View {
                     // Always save when view disappears
                     saveChanges()
                 }
+                .overlay(
+                    VStack {
+                        Spacer()
+                        if showCustomToolbar {
+                            CustomToolbar(
+                                coordinator: scrollViewCoordinator,
+                                selectedTool: $selectedTool,
+                                selectedColor: $selectedColor,
+                                lineWidth: $lineWidth
+                            )
+                            .padding(.bottom)
+                        }
+                    }
+                )
         }
     }
     
