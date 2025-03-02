@@ -87,6 +87,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     self.checkForNextPageNeeded(pageIndex: pageIndex, canvasView: canvasView)
                 }
             }
+            
+            // Notify that content changed
+            contentDidChange(for: pageID)
         }
         
         private func checkForNextPageNeeded(pageIndex: Int, canvasView: PKCanvasView) {
@@ -288,6 +291,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 }
             }
             return canvasViews.first?.value
+        }
+        
+        func contentDidChange(for noteID: UUID) {
+            // Invalidate thumbnail when content changes
+            ThumbnailGenerator.invalidateThumbnail(for: noteID)
         }
     }
     

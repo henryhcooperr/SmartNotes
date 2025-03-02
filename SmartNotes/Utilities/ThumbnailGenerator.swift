@@ -24,7 +24,8 @@ struct ThumbnailGenerator {
     
     static func generateThumbnail(
         from note: Note,
-        size: CGSize = CGSize(width: 300, height: 200)
+        size: CGSize = CGSize(width: 300, height: 200),
+        highQuality: Bool = true
     ) -> UIImage {
         
         print("🖼️ Generating thumbnail for note: \(note.id)")
@@ -79,50 +80,51 @@ struct ThumbnailGenerator {
                 return placeholder
             }
             
-            // --- FORCE FIRST-PAGE RECT (8.5" x 11") ---
-            let firstPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+            // Define the standard page size (8.5" x 11" at 72 DPI)
+            let standardPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
             
-            // 6. Figure out the scale so it fits in our thumbnail size
+            // QUALITY IMPROVEMENT: Generate at 2x the requested size for higher quality
+            let targetSize = CGSize(
+                width: size.width * (highQuality ? 2.0 : 1.0),
+                height: size.height * (highQuality ? 2.0 : 1.0)
+            )
+            
+            // Calculate scale based on aspect ratio
             let scale = min(
-                size.width / firstPageRect.width,
-                size.height / firstPageRect.height
+                targetSize.width / standardPageRect.width,
+                targetSize.height / standardPageRect.height
             )
             
-            // 7. Compute how big it will be once scaled down
-            let thumbnailRect = CGRect(
-                x: 0,
-                y: 0,
-                width: firstPageRect.width * scale,
-                height: firstPageRect.height * scale
-            )
+            // QUALITY IMPROVEMENT: Use a higher scale factor
+            let renderScale: CGFloat = highQuality ? max(scale, 0.4) : scale
             
-            // 8. Render the drawing from the forced first-page rect
-            let renderedImage = drawing.image(from: firstPageRect, scale: scale)
-            
-            // 9. Draw the rendered image centered into our final thumbnail
-            UIGraphicsBeginImageContextWithOptions(size, false, 0)
-            let context = UIGraphicsGetCurrentContext()
+            // Render the drawing with white background
+            UIGraphicsBeginImageContextWithOptions(targetSize, true, 0)
             
             // Fill background with white
-            context?.setFillColor(UIColor.white.cgColor)
-            context?.fill(CGRect(origin: .zero, size: size))
+            UIColor.white.setFill()
+            UIRectFill(CGRect(origin: .zero, size: targetSize))
             
-            // Center it
-            let drawX = (size.width - thumbnailRect.width) / 2
-            let drawY = (size.height - thumbnailRect.height) / 2
-            renderedImage.draw(in: CGRect(
-                x: drawX,
-                y: drawY,
-                width: thumbnailRect.width,
-                height: thumbnailRect.height
-            ))
+            // Calculate centered position
+            let drawingSize = CGSize(
+                width: standardPageRect.width * renderScale,
+                height: standardPageRect.height * renderScale
+            )
             
-            // 10. Get final image
-            let result = UIGraphicsGetImageFromCurrentImageContext()
-                ?? createPlaceholderImage(size: size, title: note.title)
+            let xOffset = (targetSize.width - drawingSize.width) / 2
+            let yOffset = (targetSize.height - drawingSize.height) / 2
+            
+            // Render the drawing
+            drawing.image(
+                from: standardPageRect,
+                scale: renderScale
+            ).draw(in: CGRect(origin: CGPoint(x: xOffset, y: yOffset), size: drawingSize))
+            
+            let result = UIGraphicsGetImageFromCurrentImageContext() ?? 
+                createPlaceholderImage(size: targetSize, title: note.title)
             UIGraphicsEndImageContext()
             
-            // Cache and return
+            // Cache the higher quality image
             thumbnailCache[note.id] = result
             return result
             
@@ -172,6 +174,18 @@ struct ThumbnailGenerator {
         } else {
             thumbnailCache.removeAll()
         }
+    }
+    
+    // Invalidate the thumbnail for a specific note
+    static func invalidateThumbnail(for noteID: UUID) {
+        thumbnailCache.removeValue(forKey: noteID)
+        print("🖼️ Thumbnail cache invalidated for note: \(noteID)")
+    }
+    
+    // Clears all cached thumbnails - use sparingly
+    static func clearAllCaches() {
+        thumbnailCache.removeAll()
+        print("🧹 All thumbnail caches cleared")
     }
 }
 

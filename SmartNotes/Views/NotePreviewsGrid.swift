@@ -364,22 +364,19 @@ fileprivate struct NoteCardView: View {
     // MARK: - Thumbnail Helper
     @ViewBuilder
     private var thumbnail: some View {
-        if !note.drawingData.isEmpty,
-           let drawing = try? PKDrawing(data: note.drawingData),
-           !drawing.strokes.isEmpty {
-            
-            let image = drawing.image(
-                from: CGRect(x: 0, y: 0, width: 612, height: 792),
-                scale: 0.2
-            )
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .clipped()
-        } else {
-            Rectangle()
-                .fill(Color.secondary.opacity(0.2))
-        }
+        Image(fromUIImage: ThumbnailGenerator.generateThumbnail(
+            from: note,
+            size: CGSize(width: 300, height: 200),
+            highQuality: true
+        ))
+        .resizable()
+        .aspectRatio(contentMode: .fill)
+        .clipped()
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+        )
+        .background(Color.white)
     }
     
     // MARK: - Selection Indicator

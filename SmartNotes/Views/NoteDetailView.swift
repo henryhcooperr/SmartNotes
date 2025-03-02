@@ -214,6 +214,10 @@ struct NoteDetailView: View {
                     TemplateSettingsView(template: $noteTemplate)
                 }
                 .onDisappear {
+                    // Invalidate the thumbnail when leaving the note editor
+                    // This ensures a fresh thumbnail will be generated when returning to the grid
+                    ThumbnailGenerator.invalidateThumbnail(for: note.id)
+                    
                     // Clean up drawing notifications
                     NotificationCenter.default.removeObserver(self)
                     

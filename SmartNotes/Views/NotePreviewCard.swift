@@ -33,20 +33,47 @@ struct NotePreviewCard: View {
             // Top section with thumbnail or placeholder
             ZStack(alignment: .topTrailing) {
                 if thumbnailImage.size.width > 0 {
+                    // IMPROVED DISPLAY: Better scaling and shadow
                     Image(uiImage: thumbnailImage)
                         .resizable()
-                        .scaledToFit()
+                        .aspectRatio(contentMode: .fill)
                         .frame(height: 110)
+                        .clipped()
                         .background(Color.white)
                         .overlay(
-                            Rectangle()
-                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                        )
+                        // Add subtle inner shadow
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.black.opacity(0.03), lineWidth: 1)
+                                .blur(radius: 1)
+                                .offset(y: 1)
+                                .mask(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(LinearGradient(
+                                            gradient: Gradient(colors: [.black, .clear]),
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        ))
+                                )
                         )
                 } else {
-                    // Fallback placeholder
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.2))
+                    // Improved placeholder
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.1))
                         .frame(height: 110)
+                        .overlay(
+                            VStack {
+                                Image(systemName: "note.text")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.secondary.opacity(0.5))
+                                Text("Empty")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                        )
                 }
                 
                 // Page count indicator if multiple pages
@@ -56,9 +83,12 @@ struct NotePreviewCard: View {
                         .fontWeight(.bold)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(Color.white)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.2), radius: 1, x: 0, y: 1)
+                        )
                         .foregroundColor(subject.color)
-                        .cornerRadius(6)
                         .padding(8)
                 }
             }
@@ -102,30 +132,11 @@ struct NotePreviewCard: View {
     
     // Get thumbnail image for the note - handling both legacy and multi-page formats
     private var noteImage: UIImage {
-        // Check for main drawing data first (legacy format)
-        if !note.drawingData.isEmpty {
-            let loadedDrawing = PKDrawing.fromData(note.drawingData)
-            if !loadedDrawing.strokes.isEmpty {
-                let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
-                let scale: CGFloat = 0.15
-                
-                return loadedDrawing.image(from: pageRect, scale: scale)
-            }
-        }
-        
-        // Check for multi-page drawing data
-        if !note.pages.isEmpty, let firstPage = note.pages.first,
-           !firstPage.drawingData.isEmpty {
-            let loadedDrawing = PKDrawing.fromData(firstPage.drawingData)
-            if !loadedDrawing.strokes.isEmpty {
-                let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
-                let scale: CGFloat = 0.15
-                
-                return loadedDrawing.image(from: pageRect, scale: scale)
-            }
-        }
-        
-        return UIImage()
+        return ThumbnailGenerator.generateThumbnail(
+            from: note,
+            size: CGSize(width: 300, height: 200),
+            highQuality: true
+        )
     }
     
     // Check if note has any drawing content - handling both formats
