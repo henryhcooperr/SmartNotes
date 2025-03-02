@@ -27,28 +27,53 @@ struct ThumbnailGenerator {
         size: CGSize = CGSize(width: 300, height: 200)
     ) -> UIImage {
         
+        print("🖼️ Generating thumbnail for note: \(note.id)")
+        
         // 1. Check if we have a cached thumbnail
         if let cachedImage = thumbnailCache[note.id] {
+            print("🖼️ Using cached thumbnail")
             return cachedImage
         }
         
-        // 2. If drawing data is empty, return a placeholder
-        if note.drawingData.isEmpty {
+        // 2. Check if there's any drawing data in the note (either in pages or legacy field)
+        let hasLegacyContent = !note.drawingData.isEmpty
+        let hasPageContent = !note.pages.isEmpty && note.pages.first?.drawingData.isEmpty == false
+        let hasContent = hasLegacyContent || hasPageContent
+        
+        print("🖼️ Note has legacy content: \(hasLegacyContent)")
+        print("🖼️ Note has page content: \(hasPageContent)")
+        print("🖼️ Note pages count: \(note.pages.count)")
+        
+        if !hasContent {
+            print("🖼️ No content found, creating placeholder")
             let placeholder = createPlaceholderImage(size: size, title: note.title)
             thumbnailCache[note.id] = placeholder
             return placeholder
         }
         
-        // 3. Decode the PKDrawing
+        // 3. Try to get drawing data from the first page (new structure) or fall back to note.drawingData (legacy)
+        let drawingData: Data
+        if hasPageContent {
+            drawingData = note.pages[0].drawingData
+            print("🖼️ Using drawing data from first page: \(drawingData.count) bytes")
+        } else {
+            drawingData = note.drawingData
+            print("🖼️ Using legacy drawing data: \(drawingData.count) bytes")
+        }
+        
+        // 4. Decode the PKDrawing
         do {
-            let drawing = try PKDrawing(data: note.drawingData)
+            let drawing = try PKDrawing(data: drawingData)
             
             // Debug logs
-            print("🖌️ Thumbnail debug: stroke count =", drawing.strokes.count)
-            print("🖌️ Thumbnail debug: drawing.bounds =", drawing.bounds)
+            print("🖼️ Stroke count: \(drawing.strokes.count)")
+            if !drawing.strokes.isEmpty {
+                print("🖼️ Drawing bounds: \(drawing.bounds)")
+            }
             
-            // 4. If no strokes, return a placeholder
-            guard !drawing.strokes.isEmpty else {
+            // 5. If no strokes, return a placeholder
+            if drawing.strokes.isEmpty {
+                print("🖼️ Drawing has no strokes, creating placeholder")
                 let placeholder = createPlaceholderImage(size: size, title: note.title)
                 thumbnailCache[note.id] = placeholder
                 return placeholder
@@ -57,13 +82,13 @@ struct ThumbnailGenerator {
             // --- FORCE FIRST-PAGE RECT (8.5" x 11") ---
             let firstPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
             
-            // 5. Figure out the scale so it fits in our thumbnail size
+            // 6. Figure out the scale so it fits in our thumbnail size
             let scale = min(
                 size.width / firstPageRect.width,
                 size.height / firstPageRect.height
             )
             
-            // 6. Compute how big it will be once scaled down
+            // 7. Compute how big it will be once scaled down
             let thumbnailRect = CGRect(
                 x: 0,
                 y: 0,
@@ -71,10 +96,10 @@ struct ThumbnailGenerator {
                 height: firstPageRect.height * scale
             )
             
-            // 7. Render the drawing from the forced first-page rect
+            // 8. Render the drawing from the forced first-page rect
             let renderedImage = drawing.image(from: firstPageRect, scale: scale)
             
-            // 8. Draw the rendered image centered into our final thumbnail
+            // 9. Draw the rendered image centered into our final thumbnail
             UIGraphicsBeginImageContextWithOptions(size, false, 0)
             let context = UIGraphicsGetCurrentContext()
             
@@ -92,7 +117,7 @@ struct ThumbnailGenerator {
                 height: thumbnailRect.height
             ))
             
-            // 9. Get final image
+            // 10. Get final image
             let result = UIGraphicsGetImageFromCurrentImageContext()
                 ?? createPlaceholderImage(size: size, title: note.title)
             UIGraphicsEndImageContext()

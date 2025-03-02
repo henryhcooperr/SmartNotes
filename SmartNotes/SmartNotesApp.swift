@@ -25,32 +25,36 @@ struct SmartNotesApp: App {
     
     var body: some Scene {
         WindowGroup {
-                // Normal app flow with debug button overlay
-                MainView()
-                    .environmentObject(dataManager)
-                    .overlay(
-                        VStack {
+            // Normal app flow with debug button overlay
+            MainView()
+                .environmentObject(dataManager)
+                .onAppear {
+                    // Force clear the thumbnail cache on app launch
+                    ThumbnailGenerator.clearCache()
+                }
+                .overlay(
+                    VStack {
+                        Spacer()
+                        HStack {
                             Spacer()
-                            HStack {
-                                Spacer()
-                                Button {
-                                    // This would normally trigger showing the debug mode
-                                    // but we'll implement that separately
-                                } label: {
-                                    Text("DEBUG")
-                                        .font(.caption)
-                                        .padding(8)
-                                        .background(Color.red)
-                                        .foregroundColor(.white)
-                                        .cornerRadius(8)
-                                }
-                                .padding()
+                            Button {
+                                // This would normally trigger showing the debug mode
+                                // but we'll implement that separately
+                            } label: {
+                                Text("DEBUG")
+                                    .font(.caption)
+                                    .padding(8)
+                                    .background(Color.red)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
                             }
+                            .padding()
                         }
-                    )
-            }
+                    }
+                )
         }
     }
+}
 
 // Main view that uses the DataManager
 struct MainView: View {

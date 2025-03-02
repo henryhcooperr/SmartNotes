@@ -84,7 +84,7 @@ class DataManager: ObservableObject {
                             decoded[subjectIndex].notes[noteIndex].pages = [newPage]
                             
                             // Optional: clear the old single-drawing data so
-                            // we don’t repeatedly migrate
+                            // we don't repeatedly migrate
                             decoded[subjectIndex].notes[noteIndex].drawingData = Data()
                         }
                     }
