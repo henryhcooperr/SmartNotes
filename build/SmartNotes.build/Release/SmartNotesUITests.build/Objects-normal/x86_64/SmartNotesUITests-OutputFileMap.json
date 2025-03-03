@@ -1,0 +1,20 @@
+{
+  "" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests-master.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests-master.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests-master.dia",
+    "emit-module-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests-master-emit-module.dia",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests-master.swiftdeps"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotesUITests/SmartNotesUITests.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITests.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotesUITests/SmartNotesUITestsLaunchTests.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITestsLaunchTests.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITestsLaunchTests.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesUITests.build/Objects-normal/x86_64/SmartNotesUITestsLaunchTests.o"
+  }
+}

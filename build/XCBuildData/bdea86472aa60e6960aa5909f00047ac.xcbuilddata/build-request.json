@@ -1,0 +1,48 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildAndRun"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "a54f150dd33667fc444fc4c48af8aed8b7ec3d13acf8e24c17e2c1db3044d9ef"
+    },
+    {
+      "guid" : "a54f150dd33667fc444fc4c48af8aed815b34500e7053fb27a0802780f345431"
+    },
+    {
+      "guid" : "a54f150dd33667fc444fc4c48af8aed8d4f19dcd25dad5bd1525b03d5585a9a3"
+    },
+    {
+      "guid" : "a54f150dd33667fc444fc4c48af8aed8b7ec3d13acf8e24c17e2c1db3044d9ef"
+    }
+  ],
+  "containerPath" : "/Users/henrycooper/Developer/SmartNotes/SmartNotes.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "NO"
+        }
+      }
+    }
+  },
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : false,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

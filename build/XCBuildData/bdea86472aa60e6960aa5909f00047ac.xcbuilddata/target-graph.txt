@@ -1,0 +1,6 @@
+Target dependency graph (3 targets)
+Target 'SmartNotesUITests' in project 'SmartNotes'
+➜ Explicit dependency on target 'SmartNotes' in project 'SmartNotes'
+Target 'SmartNotesTests' in project 'SmartNotes'
+➜ Explicit dependency on target 'SmartNotes' in project 'SmartNotes'
+Target 'SmartNotes' in project 'SmartNotes' (no dependencies)

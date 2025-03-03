@@ -1,0 +1,15 @@
+{
+  "" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests-master.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests-master.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests-master.dia",
+    "emit-module-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests-master-emit-module.dia",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests-master.swiftdeps"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotesTests/SmartNotesTests.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotesTests.build/Objects-normal/arm64/SmartNotesTests.o"
+  }
+}

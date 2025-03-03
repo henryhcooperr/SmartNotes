@@ -1,0 +1,170 @@
+{
+  "" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotes-master.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotes-master.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotes-master.dia",
+    "emit-module-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotes-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotes-master-emit-module.dia",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotes-master.swiftdeps"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/CanvasTemplate.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/CanvasTemplate.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/CanvasTemplate.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/CanvasTemplate.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Item.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Item.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Item.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Item.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/DrawingTool.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/DrawingTool.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/DrawingTool.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/DrawingTool.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/Note.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Note.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Note.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Note.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/Page.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Page.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Page.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Page.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/Subject.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Subject.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Subject.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/Subject.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/ToolbarPosition.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/SmartNotesApp.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotesApp.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotesApp.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SmartNotesApp.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/AppSettingsModel.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/AppSettingsModel.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/AppSettingsModel.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/AppSettingsModel.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/DataManager.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/DataManager.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/DataManager.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/DataManager.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/GlobalSettings.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/GlobalSettings.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/GlobalSettings.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/GlobalSettings.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PDFExporter.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PDFExporter.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PDFExporter.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PDFExporter.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PKCanvasViewExtensions.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PageThumbnailGenerator.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PerformanceMonitor.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PerformanceMonitor.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PerformanceMonitor.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PerformanceMonitor.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PreferenceKeys.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/SharedTypes.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SharedTypes.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SharedTypes.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SharedTypes.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/TemplateRenderer.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/TemplateRenderer.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/TemplateRenderer.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/TemplateRenderer.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/ThumbnailGenerator.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ThumbnailGenerator.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ThumbnailGenerator.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ThumbnailGenerator.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/ContentView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/ContentView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/CustomToolbar.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/CustomToolbar.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/CustomToolbar.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/CustomToolbar.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/MultiPageUnifiedScrollView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/MultiPageUnifiedScrollView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/MultiPageUnifiedScrollView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/MultiPageUnifiedScrollView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NoteDetailView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NoteDetailView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NoteDetailView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NoteDetailView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NoteListView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NoteListView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NoteListView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NoteListView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NotePreviewCard.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NotePreviewCard.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NotePreviewCard.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NotePreviewCard.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NotePreviewsGrid.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NotePreviewsGrid.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NotePreviewsGrid.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/NotePreviewsGrid.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/PageNavigatorView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PageNavigatorView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PageNavigatorView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PageNavigatorView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/PerformanceStatsOverlay.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PerformanceStatsOverlay.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PerformanceStatsOverlay.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/PerformanceStatsOverlay.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/SubjectListView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SubjectListView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SubjectListView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SubjectListView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/SubjectsSplitView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SubjectsSplitView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SubjectsSplitView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/SubjectsSplitView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/TemplateSettingsView.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/TemplateSettingsView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/TemplateSettingsView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/TemplateSettingsView.o"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Release/SmartNotes.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  }
+}

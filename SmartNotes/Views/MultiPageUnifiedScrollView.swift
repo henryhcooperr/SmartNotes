@@ -52,7 +52,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     // Minimal spacing so there's a slight boundary between pages
     let pageSpacing: CGFloat = 2 * GlobalSettings.resolutionScaleFactor  // base spacing * scale factor
     
-    class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate {
+    class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate, PKToolPickerObserver {
         var parent: MultiPageUnifiedScrollView
         var scrollView: UIScrollView?
         var containerView: UIView?
@@ -77,9 +77,24 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // Store initial size for later comparison
         var previousSize: CGSize?
         
+        // Add tracking for the currently visible page
+        var currentlyVisiblePageIndex: Int = 0
+        
         init(_ parent: MultiPageUnifiedScrollView) {
             self.parent = parent
             super.init()
+            
+            // Register for page navigation notifications
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(scrollToSelectedPage(_:)),
+                name: NSNotification.Name("ScrollToPage"),
+                object: nil
+            )
+        }
+        
+        deinit {
+            NotificationCenter.default.removeObserver(self)
         }
         
         // MARK: - UIScrollViewDelegate
@@ -202,26 +217,44 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // MARK: - PKCanvasViewDelegate
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            // Identify which page it belongs to
-            guard let pageID = canvasView.tagID,
-                  let pageIndex = parent.pages.firstIndex(where: { $0.id == pageID }) else {
+            // Don't update during initial loading
+            if isInitialLoad {
                 return
             }
             
-            // Save the updated drawing
-            let drawingData = canvasView.drawing.dataRepresentation()
-            
-            DispatchQueue.main.async {
-                self.parent.pages[pageIndex].drawingData = drawingData
+            // Find which page this canvas belongs to
+            if let pageID = canvasViews.first(where: { $0.value == canvasView })?.key,
+               let pageIndex = parent.pages.firstIndex(where: { $0.id == pageID }) {
                 
-                // Check if we need to add a page after updating the model
-                if !self.isInitialLoad {
-                    self.checkForNextPageNeeded(pageIndex: pageIndex, canvasView: canvasView)
+                // Get drawing data
+                let drawing = canvasView.drawing
+                let drawingData = try? drawing.dataRepresentation()
+                
+                if let drawingData = drawingData {
+                    // Update the page's drawing data
+                    parent.pages[pageIndex].drawingData = drawingData
+                    
+                    // Invalidate the thumbnail for this page
+                    PageThumbnailGenerator.clearCache(for: pageID)
+                    
+                    // Check if we need to add a page after updating the model
+                    checkForNextPageNeeded(pageIndex: pageIndex, canvasView: canvasView)
+                    
+                    // Post notification that drawing has changed
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("PageDrawingChanged"),
+                        object: pageID
+                    )
+                    
+                    // Also send a notification that can be used to trigger live updates
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("LiveDrawingUpdate"),
+                            object: pageID
+                        )
+                    }
                 }
             }
-            
-            // Notify that content changed
-            ThumbnailGenerator.invalidateThumbnail(for: pageID)
         }
         
         func checkForNextPageNeeded(pageIndex: Int, canvasView: PKCanvasView) {
@@ -377,6 +410,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             // Ensure no content insets on the canvas itself
             canvasView.contentInset = .zero
+            
+            // Ensure we're set as the delegate to get tool notifications
+            canvasView.delegate = self
+            
+            // We don't need to add an observer - we'll rely on delegate methods instead
         }
         
         /// Apply the template to the canvas
@@ -438,6 +476,100 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         func getAppSettings() -> AppSettingsModel? {
             return parent.appSettings
         }
+        
+        // Add a method to scroll to a specific page
+        @objc func scrollToSelectedPage(_ notification: Notification) {
+            guard let pageIndex = notification.object as? Int,
+                  pageIndex < parent.pages.count,
+                  let scrollView = scrollView,
+                  let container = containerView else {
+                return
+            }
+            
+            // Calculate the position to scroll to
+            var offsetY: CGFloat = 0
+            for i in 0..<pageIndex {
+                // Add the height of each preceding canvas plus spacing
+                if i < parent.pages.count {
+                    offsetY += parent.pageSize.height + parent.pageSpacing
+                }
+            }
+            
+            // Animate scrolling to the selected page
+            UIView.animate(withDuration: 0.3) {
+                scrollView.setContentOffset(CGPoint(x: 0, y: offsetY), animated: false)
+            }
+        }
+        
+        // Add a method to determine which page is currently visible
+        func determineVisiblePage() {
+            guard let scrollView = scrollView, parent.pages.count > 0 else { return }
+            
+            let offsetY = scrollView.contentOffset.y
+            let pageHeight = parent.pageSize.height + parent.pageSpacing
+            
+            // Calculate the visible page index based on the scroll position
+            let visiblePageIndex = min(
+                max(Int(round(offsetY / pageHeight)), 0),
+                parent.pages.count - 1
+            )
+            
+            // Only notify if the visible page has changed
+            if visiblePageIndex != currentlyVisiblePageIndex {
+                currentlyVisiblePageIndex = visiblePageIndex
+                
+                // Notify that the visible page has changed
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PageSelected"),
+                    object: visiblePageIndex
+                )
+            }
+        }
+        
+        // Update scrollViewDidScroll to determine the visible page
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            determineVisiblePage()
+        }
+        
+        // Add this method to the Coordinator class
+        func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
+            // Find which page this canvas belongs to
+            if let pageID = canvasViews.first(where: { $0.value == canvasView })?.key {
+                // Post notification that drawing has started
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("DrawingStarted"),
+                    object: pageID
+                )
+            }
+        }
+        
+        func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+            // Find which page this canvas belongs to
+            if let pageID = canvasViews.first(where: { $0.value == canvasView })?.key {
+                // Force an immediate thumbnail update when drawing ends
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PageDrawingChanged"),
+                    object: pageID
+                )
+            }
+        }
+        
+        // MARK: - PKToolPickerObserver
+        func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
+            // Implementation required by protocol
+        }
+        
+        func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
+            // Implementation required by protocol
+        }
+        
+        func toolPickerVisibilityDidChange(_ toolPicker: PKToolPicker) {
+            // Implementation required by protocol
+        }
+        
+        func toolPickerFramesObscuredDidChange(_ toolPicker: PKToolPicker) {
+            // Implementation required by protocol
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -451,7 +583,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         scrollView.delegate = context.coordinator
         
         // Simple zoom constraints matching the original code
-        scrollView.minimumZoomScale = 0.5
+        scrollView.minimumZoomScale = 0.3
         scrollView.maximumZoomScale = 3.0
         
         // Basic scrolling setup
