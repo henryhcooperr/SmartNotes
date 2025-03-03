@@ -57,26 +57,65 @@ struct CanvasTemplate: Codable, Equatable {
     // Computed property for spacing that accounts for the resolution scale factor
     var spacing: CGFloat {
         get {
-            return baseSpacing * GlobalSettings.resolutionScaleFactor
+            // Cap the resolution factor to prevent issues with extremely high values
+            let safeResolutionFactor = min(GlobalSettings.resolutionScaleFactor, 4.0)
+            let result = baseSpacing * safeResolutionFactor
+            
+            if GlobalSettings.debugModeEnabled {
+                print("🐞 Template spacing calculation: \(baseSpacing) × \(safeResolutionFactor) = \(result)")
+            }
+            
+            return result
         }
         set {
-            baseSpacing = newValue / GlobalSettings.resolutionScaleFactor
+            if GlobalSettings.resolutionScaleFactor > 0 {
+                baseSpacing = newValue / GlobalSettings.resolutionScaleFactor
+                if GlobalSettings.debugModeEnabled {
+                    print("🐞 Setting base spacing to \(baseSpacing) from \(newValue)")
+                }
+            } else {
+                baseSpacing = newValue
+                print("⚠️ Warning: Resolution scale factor is 0, using raw value for spacing")
+            }
         }
     }
     
     // Computed property for line width that accounts for the resolution scale factor
     var lineWidth: CGFloat {
         get {
-            return baseLineWidth * GlobalSettings.resolutionScaleFactor
+            // Cap the resolution factor to prevent issues with extremely high values
+            let safeResolutionFactor = min(GlobalSettings.resolutionScaleFactor, 4.0)
+            let result = baseLineWidth * safeResolutionFactor
+            
+            if GlobalSettings.debugModeEnabled {
+                print("🐞 Template line width calculation: \(baseLineWidth) × \(safeResolutionFactor) = \(result)")
+            }
+            
+            return result
         }
         set {
-            baseLineWidth = newValue / GlobalSettings.resolutionScaleFactor
+            if GlobalSettings.resolutionScaleFactor > 0 {
+                baseLineWidth = newValue / GlobalSettings.resolutionScaleFactor
+                if GlobalSettings.debugModeEnabled {
+                    print("🐞 Setting base line width to \(baseLineWidth) from \(newValue)")
+                }
+            } else {
+                baseLineWidth = newValue
+                print("⚠️ Warning: Resolution scale factor is 0, using raw value for line width")
+            }
         }
     }
     
     // Helper to convert hex to UIColor
     var color: UIColor {
-        UIColor(hex: colorHex) ?? .lightGray
+        let parsedColor = UIColor(hex: colorHex) ?? .lightGray
+        
+        // In debug mode, log the color
+        if GlobalSettings.debugModeEnabled {
+            print("🐞 Template color from hex \(colorHex): \(parsedColor.debugDescription)")
+        }
+        
+        return parsedColor
     }
     
     // Predefined templates

@@ -23,47 +23,108 @@ struct SmartNotesApp: App {
     // Create a shared instance of DataManager that will be used throughout the app
     @StateObject private var dataManager = DataManager()
     
-    // Set to true to enter debug mode
-    private let useDebugMode = false
+    // Initialize AppSettings for app-wide access to performance settings
+    @StateObject private var appSettings = AppSettingsModel()
     
-    // Print some diagnostic information about the resolution settings on launch
+    // Track whether the performance settings are visible
+    @State private var showPerformanceSettings = false
+    
+    // Use an initialization function to setup the app
     init() {
-        print("🖌️ SmartNotes launching with resolution scale factor: \(GlobalSettings.resolutionScaleFactor)")
-        print("🖌️ Standard page size: \(GlobalSettings.standardPageSize)")
-        print("🖌️ Scaled page size: \(GlobalSettings.scaledPageSize)")
-        print("🖌️ Min zoom scale: \(GlobalSettings.minimumZoomScale)")
-        print("🖌️ Max zoom scale: \(GlobalSettings.maximumZoomScale)")
+        // Print out our resolution settings for debugging
+        print("📏 Resolution scale factor: \(GlobalSettings.resolutionScaleFactor)")
+        print("📏 Standard page size: \(GlobalSettings.standardPageSize)")
+        print("📏 Scaled page size: \(GlobalSettings.scaledPageSize)")
+        print("📏 Minimum zoom scale: \(GlobalSettings.minimumZoomScale)")
+        print("📏 Maximum zoom scale: \(GlobalSettings.maximumZoomScale)")
+        
+        // Enable performance monitoring based on debug mode
+        PerformanceMonitor.shared.setMonitoringEnabled(GlobalSettings.debugModeEnabled)
+        
+        // Use performance monitor to measure app launch time
+        PerformanceMonitor.shared.startOperation("App launch")
     }
     
     var body: some Scene {
         WindowGroup {
-            // Normal app flow with debug button overlay
-            MainView()
-                .environmentObject(dataManager)
-                .onAppear {
-                    // Force clear the thumbnail cache on app launch
-                    ThumbnailGenerator.clearCache()
-                }
-                .overlay(
+            ZStack {
+                // Main app content
+                MainView()
+                    .environmentObject(dataManager)
+                    .environmentObject(appSettings)
+                    .onAppear {
+                        // Force clear the thumbnail cache on app launch
+                        ThumbnailGenerator.clearCache()
+                        // Mark the end of app launch
+                        PerformanceMonitor.shared.endOperation("App launch")
+                    }
+                    // Add a hidden gesture to toggle debug mode (long press with two fingers)
+                    .onLongPressGesture(minimumDuration: 2, maximumDistance: 50, pressing: nil) {
+                        // Toggle debug mode
+                        GlobalSettings.debugModeEnabled.toggle()
+                        
+                        // Update app settings if debug mode changed
+                        appSettings.showPerformanceStats = GlobalSettings.debugModeEnabled
+                    }
+                
+                // Only show debug UI elements if debug mode is enabled
+                if GlobalSettings.debugModeEnabled {
+                    // Performance stats overlay
+                    if appSettings.showPerformanceStats {
+                        VStack {
+                            PerformanceStatsOverlay()
+                                .environmentObject(appSettings)
+                            Spacer()
+                        }
+                        .zIndex(99)
+                    }
+                    
+                    // Performance settings sheet overlay
+                    if showPerformanceSettings {
+                        PerformanceSettingsView(isVisible: $showPerformanceSettings)
+                            .environmentObject(appSettings)
+                            .transition(.move(edge: .bottom))
+                            .zIndex(100)
+                    }
+                    
+                    // Debug button overlay
                     VStack {
                         Spacer()
                         HStack {
-                            Spacer()
+                            // Quick toggle for performance monitoring
                             Button {
-                                // This would normally trigger showing the debug mode
-                                // but we'll implement that separately
+                                appSettings.showPerformanceStats.toggle()
+                                PerformanceMonitor.shared.setMonitoringEnabled(appSettings.showPerformanceStats)
                             } label: {
-                                Text("DEBUG")
+                                Image(systemName: appSettings.showPerformanceStats ? "gauge.badge.minus" : "gauge.badge.plus")
                                     .font(.caption)
                                     .padding(8)
-                                    .background(Color.red)
+                                    .background(Color.gray)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                            }
+                            .padding()
+                            
+                            Spacer()
+                            
+                            Button {
+                                withAnimation {
+                                    showPerformanceSettings.toggle()
+                                }
+                            } label: {
+                                Text("PERFORMANCE")
+                                    .font(.caption)
+                                    .padding(8)
+                                    .background(Color.blue)
                                     .foregroundColor(.white)
                                     .cornerRadius(8)
                             }
                             .padding()
                         }
                     }
-                )
+                    .zIndex(101)
+                }
+            }
         }
     }
 }
@@ -78,6 +139,82 @@ struct MainView: View {
             dataManager.updateSubject(subject)
             dataManager.saveData()
         }
+    }
+}
+
+// Performance settings view
+struct PerformanceSettingsView: View {
+    @EnvironmentObject var appSettings: AppSettingsModel
+    @Binding var isVisible: Bool
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Text("Performance Settings")
+                    .font(.headline)
+                Spacer()
+                Button(action: {
+                    withAnimation {
+                        isVisible = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                }
+            }
+            .padding(.bottom)
+            
+            // Resolution settings
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Resolution").font(.subheadline).bold()
+                
+                Toggle("Adaptive Resolution", isOn: $appSettings.useAdaptiveResolution)
+                
+                if !appSettings.useAdaptiveResolution {
+                    VStack(alignment: .leading) {
+                        Text("Resolution Scale: \(String(format: "%.1f", appSettings.userResolutionFactor))x")
+                        
+                        Slider(value: $appSettings.userResolutionFactor, in: 1.0...3.0, step: 0.5)
+                    }
+                }
+                
+                Text("Current active resolution: \(String(format: "%.1f", GlobalSettings.resolutionScaleFactor))x")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical)
+            
+            // Performance optimization settings
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Optimizations").font(.subheadline).bold()
+                
+                Toggle("Template Caching", isOn: $appSettings.useTemplateCaching)
+                Toggle("Optimize During Scrolling", isOn: $appSettings.optimizeDuringInteraction)
+                Toggle("Show Performance Stats", isOn: $appSettings.showPerformanceStats)
+            }
+            .padding(.vertical)
+            
+            // Actions
+            VStack {
+                Button(action: { appSettings.clearAllCaches() }) {
+                    Text("Clear All Caches")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .frame(height: 450)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .shadow(radius: 10)
+        .padding()
     }
 }
 

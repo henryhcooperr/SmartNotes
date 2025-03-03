@@ -88,6 +88,37 @@ extension PKCanvasView {
         self.setNeedsDisplay()
     }
     
+    /// Temporarily reduces rendering quality during active interactions
+    /// Call this when beginning pan/zoom gestures and restore afterward
+    func setTemporaryLowResolutionMode(_ enabled: Bool) {
+        if enabled {
+            // Store the current scale factor for restoration later
+            let temporaryFactor = min(2.0, GlobalSettings.resolutionScaleFactor)
+            self.layer.contentsScale = UIScreen.main.scale * temporaryFactor
+            
+            // Lower rendering quality during interaction for better performance
+            if #available(iOS 14.0, *) {
+                self.drawingPolicy = .anyInput
+            }
+        } else {
+            // Restore full resolution after interaction ends
+            self.layer.contentsScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+            
+            // Restore quality based on current zoom
+            if let scrollView = self.superview as? UIScrollView {
+                adjustQualityForZoom(scrollView.zoomScale)
+            } else {
+                // Default back to high quality if not in a scroll view
+                if #available(iOS 14.0, *) {
+                    self.drawingPolicy = .pencilOnly
+                }
+            }
+        }
+        
+        // Force redraw with new quality settings
+        self.setNeedsDisplay()
+    }
+    
     /// Creates a higher resolution snapshot of the current visible area
     /// This can be used to create a higher quality view when needed
     func highResolutionSnapshot() -> UIImage? {

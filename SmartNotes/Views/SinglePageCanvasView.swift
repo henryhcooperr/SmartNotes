@@ -25,6 +25,9 @@ struct SinglePageCanvasView: UIViewRepresentable {
         // Track if we've done an initial load to avoid repeated calls
         var isInitialLoad = true
         
+        // Store the last template type to avoid unnecessary reapplications
+        var lastTemplateType: CanvasTemplate.TemplateType?
+        
         init(_ parent: SinglePageCanvasView) {
             self.parent = parent
         }
@@ -87,6 +90,8 @@ struct SinglePageCanvasView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> UIScrollView {
+        print("🖋️ Creating new SinglePageCanvasView")
+        
         // 1) Create a scroll view that allows pinch to zoom
         let scrollView = UIScrollView()
         scrollView.minimumZoomScale = GlobalSettings.minimumZoomScale
@@ -101,6 +106,8 @@ struct SinglePageCanvasView: UIViewRepresentable {
         canvasView.drawing = PKDrawing.fromData(page.drawingData)
         canvasView.delegate = context.coordinator
         canvasView.alwaysBounceVertical = false
+        
+        // Start with white background - template will be applied later
         canvasView.backgroundColor = .white
         
         // Configure for high-resolution rendering using our extension
@@ -129,6 +136,19 @@ struct SinglePageCanvasView: UIViewRepresentable {
         context.coordinator.scrollView = scrollView
         context.coordinator.canvasView = canvasView
         
+        // Apply the template immediately to ensure it's visible from the start
+        print("🖋️ Initial template application of type: \(noteTemplate.type.rawValue)")
+        TemplateRenderer.applyTemplateToCanvas(
+            canvasView,
+            template: noteTemplate,
+            pageSize: GlobalSettings.scaledPageSize,
+            numberOfPages: 1,
+            pageSpacing: 0
+        )
+        
+        // Store the initial template type
+        context.coordinator.lastTemplateType = noteTemplate.type
+        
         // 6) Mark initial load done after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             context.coordinator.isInitialLoad = false
@@ -145,14 +165,32 @@ struct SinglePageCanvasView: UIViewRepresentable {
                 canvasView.drawing = PKDrawing.fromData(page.drawingData)
             }
             
-            // Apply the template with correct scaled page size
-            TemplateRenderer.applyTemplateToCanvas(
-                canvasView,
-                template: noteTemplate,
-                pageSize: GlobalSettings.scaledPageSize,
-                numberOfPages: 1,
-                pageSpacing: 0
-            )
+            // Check if template has changed and apply it if needed
+            if context.coordinator.lastTemplateType != noteTemplate.type {
+                print("🖋️ Template changed from \(context.coordinator.lastTemplateType?.rawValue ?? "nil") to \(noteTemplate.type.rawValue), reapplying")
+                
+                // Clear any existing template and apply the new one
+                TemplateRenderer.applyTemplateToCanvas(
+                    canvasView,
+                    template: noteTemplate,
+                    pageSize: GlobalSettings.scaledPageSize,
+                    numberOfPages: 1,
+                    pageSpacing: 0
+                )
+                
+                // Update the stored template type
+                context.coordinator.lastTemplateType = noteTemplate.type
+            } else if GlobalSettings.debugModeEnabled {
+                // In debug mode, refresh template on every update to ensure it's visible
+                print("🐞 Debug mode: Refreshing template on update")
+                TemplateRenderer.applyTemplateToCanvas(
+                    canvasView,
+                    template: noteTemplate,
+                    pageSize: GlobalSettings.scaledPageSize,
+                    numberOfPages: 1,
+                    pageSpacing: 0
+                )
+            }
         }
     }
 }

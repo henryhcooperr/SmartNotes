@@ -17,6 +17,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     @Binding var pages: [Page]
     @Binding var template: CanvasTemplate
     
+    // Access app settings
+    @EnvironmentObject var appSettings: AppSettingsModel
+    
     // Use the scaled page size from GlobalSettings
     var pageSize: CGSize {
         return GlobalSettings.scaledPageSize
@@ -60,6 +63,72 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             // Update rendering quality based on zoom scale
             updateCanvasRenderingForZoomScale(scrollView.zoomScale)
+        }
+        
+        // Add these delegate methods for smoother performance
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            // Get a reference to the parent app settings
+            guard let appSettings = getAppSettings() else { return }
+            
+            // Only reduce resolution during scrolling if the optimization is enabled
+            if appSettings.optimizeDuringInteraction {
+                print("🔄 Reducing resolution during scrolling")
+                for (_, canvasView) in canvasViews {
+                    canvasView.setTemporaryLowResolutionMode(true)
+                }
+            }
+        }
+        
+        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            // Get a reference to the parent app settings
+            guard let appSettings = getAppSettings() else { return }
+            
+            if !decelerate && appSettings.optimizeDuringInteraction {
+                // If not decelerating, restore resolution immediately
+                print("🔄 Restoring resolution after drag")
+                for (_, canvasView) in canvasViews {
+                    canvasView.setTemporaryLowResolutionMode(false)
+                }
+            }
+        }
+        
+        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            // Get a reference to the parent app settings
+            guard let appSettings = getAppSettings() else { return }
+            
+            if appSettings.optimizeDuringInteraction {
+                // Restore resolution after scrolling stops
+                print("🔄 Restoring resolution after deceleration")
+                for (_, canvasView) in canvasViews {
+                    canvasView.setTemporaryLowResolutionMode(false)
+                }
+            }
+        }
+        
+        func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+            // Get a reference to the parent app settings
+            guard let appSettings = getAppSettings() else { return }
+            
+            if appSettings.optimizeDuringInteraction {
+                // Reduce resolution during zooming to improve performance
+                print("🔄 Reducing resolution during zooming")
+                for (_, canvasView) in canvasViews {
+                    canvasView.setTemporaryLowResolutionMode(true)
+                }
+            }
+        }
+        
+        func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+            // Get a reference to the parent app settings
+            guard let appSettings = getAppSettings() else { return }
+            
+            if appSettings.optimizeDuringInteraction {
+                // Restore resolution after zooming stops
+                print("🔄 Restoring resolution after zooming")
+                for (_, canvasView) in canvasViews {
+                    canvasView.setTemporaryLowResolutionMode(false)
+                }
+            }
         }
         
         private func centerContainer(scrollView: UIScrollView) {
@@ -333,6 +402,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             for (_, canvasView) in canvasViews {
                 canvasView.adjustQualityForZoom(scale)
             }
+        }
+        
+        // Helper to get the app settings
+        private func getAppSettings() -> AppSettingsModel? {
+            return parent.appSettings
         }
     }
     
