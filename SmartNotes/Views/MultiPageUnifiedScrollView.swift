@@ -17,10 +17,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     @Binding var pages: [Page]
     @Binding var template: CanvasTemplate
     
-    // The standard "paper" size for each page
-    let pageSize = CGSize(width: 1224, height: 1584)
+    // Use the scaled page size from GlobalSettings
+    var pageSize: CGSize {
+        return GlobalSettings.scaledPageSize
+    }
+    
     // Minimal spacing so there's a slight boundary between pages
-    let pageSpacing: CGFloat = 2
+    let pageSpacing: CGFloat = 2 * GlobalSettings.resolutionScaleFactor  // base spacing * scale factor
     
     class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate {
         var parent: MultiPageUnifiedScrollView
@@ -39,7 +42,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // Tool properties
         var selectedTool: PKInkingTool.InkType = .pen
         var selectedColor: UIColor = .black
-        var lineWidth: CGFloat = 2.0
+        var lineWidth: CGFloat = 2.0 * GlobalSettings.resolutionScaleFactor  // base width * scale factor
         
         init(_ parent: MultiPageUnifiedScrollView) {
             self.parent = parent
@@ -307,42 +310,28 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             ThumbnailGenerator.invalidateThumbnail(for: noteID)
         }
         
+        // MARK: - Canvas Configuration
         // Add this method to improve canvas view configuration
         private func configureCanvasForHighResolution(_ canvasView: PKCanvasView) {
-            // Ensure proper content scale factor for retina displays
-            canvasView.layer.contentsScale = UIScreen.main.scale
-            
-            // Set drawing policy (which affects how strokes are rendered)
-            if #available(iOS 16.0, *) {
-                canvasView.drawingPolicy = .anyInput
-            } else {
-                canvasView.allowsFingerDrawing = true
-            }
-            
-            // Force the canvas to use high-resolution rendering
-            if #available(iOS 14.0, *) {
-                // This is a custom extension we'll add to ensure high quality
-                canvasView.optimizeForHighQualityZoom()
-            }
+            // Use our new extension method to optimize the canvas for high resolution
+            canvasView.optimizeForHighResolution()
             
             // Update content insets to prevent drawing too close to edges
-            canvasView.contentInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+            // Scale insets by the resolution factor as well
+            let scaledInset = 10.0 * GlobalSettings.resolutionScaleFactor  // base inset * scale factor
+            canvasView.contentInset = UIEdgeInsets(
+                top: scaledInset,
+                left: scaledInset,
+                bottom: scaledInset,
+                right: scaledInset
+            )
         }
         
         // Add this method to adjust rendering quality based on zoom scale
         private func updateCanvasRenderingForZoomScale(_ scale: CGFloat) {
-            // For very high zoom levels, we need higher quality rendering
-            let qualityAdjustment: CGFloat = scale > 2.0 ? 2.0 : 1.0
-            
+            // Use our new extension method to adjust quality based on zoom
             for (_, canvasView) in canvasViews {
-                // Apply the quality adjustment based on zoom level
-                if #available(iOS 14.0, *) {
-                    // On iOS 14+ we can directly adjust the drawing quality
-                    canvasView.drawingPolicy = scale > 1.5 ? .pencilOnly : .anyInput
-                }
-                
-                // Force redraw with the new quality setting
-                canvasView.setNeedsDisplay()
+                canvasView.adjustQualityForZoom(scale)
             }
         }
     }
@@ -360,8 +349,10 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         let scrollView = UIScrollView()
         scrollView.delegate = context.coordinator
-        scrollView.minimumZoomScale = 0.25  // Allow zooming out further
-        scrollView.maximumZoomScale = 5.0   // Increase max zoom for detailed work
+        
+        // Apply zoom scales adjusted for the resolution factor
+        scrollView.minimumZoomScale = 0.25 / GlobalSettings.resolutionScaleFactor
+        scrollView.maximumZoomScale = 5.0 / GlobalSettings.resolutionScaleFactor
         
         // Set the background color so it's not pure black
         scrollView.backgroundColor = UIColor.systemGray5
@@ -382,6 +373,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 self.pages = [newPage]
             }
         }
+        
+        // Set initial zoom scale to maintain the same view size despite increased resolution
+        scrollView.zoomScale = 1.0 / GlobalSettings.resolutionScaleFactor
         
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("RefreshTemplate"),

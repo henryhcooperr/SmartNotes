@@ -80,13 +80,21 @@ struct ThumbnailGenerator {
                 return placeholder
             }
             
-            // Define the standard page size (8.5" x 11" at 72 DPI)
-            let standardPageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
+            // Use the standardPageSize from GlobalSettings
+            let standardPageRect = CGRect(
+                origin: .zero,
+                size: GlobalSettings.standardPageSize
+            )
             
-            // QUALITY IMPROVEMENT: Generate at 2x the requested size for higher quality
+            // QUALITY IMPROVEMENT: Generate at higher quality using both the requested 
+            // quality flag and our global resolution factor
+            let qualityMultiplier = highQuality ? 
+                GlobalSettings.resolutionScaleFactor : 
+                min(1.5, GlobalSettings.resolutionScaleFactor)
+                
             let targetSize = CGSize(
-                width: size.width * (highQuality ? 2.0 : 1.0),
-                height: size.height * (highQuality ? 2.0 : 1.0)
+                width: size.width * qualityMultiplier,
+                height: size.height * qualityMultiplier
             )
             
             // Calculate scale based on aspect ratio
@@ -96,10 +104,15 @@ struct ThumbnailGenerator {
             )
             
             // QUALITY IMPROVEMENT: Use a higher scale factor
-            let renderScale: CGFloat = highQuality ? max(scale, 0.4) : scale
+            // Increase the minimum scale to ensure better quality
+            let renderScale: CGFloat = max(scale, 0.4 * GlobalSettings.resolutionScaleFactor)
             
             // Render the drawing with white background
-            UIGraphicsBeginImageContextWithOptions(targetSize, true, 0)
+            UIGraphicsBeginImageContextWithOptions(
+                targetSize,
+                true,
+                UIScreen.main.scale * GlobalSettings.resolutionScaleFactor  // Use the device scale * scale factor
+            )
             
             // Fill background with white
             UIColor.white.setFill()
@@ -114,7 +127,7 @@ struct ThumbnailGenerator {
             let xOffset = (targetSize.width - drawingSize.width) / 2
             let yOffset = (targetSize.height - drawingSize.height) / 2
             
-            // Render the drawing
+            // Render the drawing with high quality
             drawing.image(
                 from: standardPageRect,
                 scale: renderScale
@@ -137,7 +150,8 @@ struct ThumbnailGenerator {
     }
     
     static private func createPlaceholderImage(size: CGSize, title: String) -> UIImage {
-        UIGraphicsBeginImageContextWithOptions(size, false, 0)
+        // For placeholders, no need to use high resolution since they don't contain detail
+        UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
         let context = UIGraphicsGetCurrentContext()
         
         // Fill with light gray background
@@ -146,7 +160,7 @@ struct ThumbnailGenerator {
         
         // Draw a placeholder text with the note title
         let displayTitle = title.isEmpty ? "Untitled Note" : title
-        let font = UIFont.systemFont(ofSize: 16)
+        let font = UIFont.systemFont(ofSize: 16 * min(1.5, GlobalSettings.resolutionScaleFactor))
         let textAttributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: UIColor.gray

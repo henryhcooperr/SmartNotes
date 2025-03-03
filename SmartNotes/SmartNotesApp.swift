@@ -15,6 +15,9 @@
 //
 import SwiftUI
 
+// Make sure we import our utilities
+import PencilKit
+
 @main
 struct SmartNotesApp: App {
     // Create a shared instance of DataManager that will be used throughout the app
@@ -22,6 +25,15 @@ struct SmartNotesApp: App {
     
     // Set to true to enter debug mode
     private let useDebugMode = false
+    
+    // Print some diagnostic information about the resolution settings on launch
+    init() {
+        print("🖌️ SmartNotes launching with resolution scale factor: \(GlobalSettings.resolutionScaleFactor)")
+        print("🖌️ Standard page size: \(GlobalSettings.standardPageSize)")
+        print("🖌️ Scaled page size: \(GlobalSettings.scaledPageSize)")
+        print("🖌️ Min zoom scale: \(GlobalSettings.minimumZoomScale)")
+        print("🖌️ Max zoom scale: \(GlobalSettings.maximumZoomScale)")
+    }
     
     var body: some Scene {
         WindowGroup {

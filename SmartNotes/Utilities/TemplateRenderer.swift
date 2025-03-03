@@ -63,10 +63,10 @@ class TemplateRenderer {
         }
         
         // Calculate safe drawing size
-        let safeWidth = min(canvasView.frame.width, 2000)
+        let safeWidth = min(canvasView.frame.width, 2000 * GlobalSettings.resolutionScaleFactor)
         let totalHeight = (CGFloat(numberOfPages) * pageSize.height)
                         + (CGFloat(numberOfPages - 1) * pageSpacing)
-        let safeHeight = min(totalHeight, 10_000)
+        let safeHeight = min(totalHeight, 10_000 * GlobalSettings.resolutionScaleFactor)
         
         // Build the template image
         guard let templateImage = createTemplateImage(
@@ -86,6 +86,8 @@ class TemplateRenderer {
         templateLayer.name = "TemplateLayer"
         templateLayer.contents = templateImage.cgImage
         templateLayer.frame = CGRect(x: 0, y: 0, width: safeWidth, height: safeHeight)
+        // Use high-resolution content scale
+        templateLayer.contentsScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
         templateLayer.zPosition = -100
         canvasView.layer.insertSublayer(templateLayer, at: 0)
         
@@ -94,6 +96,8 @@ class TemplateRenderer {
         backgroundView.tag = 888
         backgroundView.frame = CGRect(x: 0, y: 0, width: safeWidth, height: safeHeight)
         backgroundView.contentMode = .topLeft
+        // Set high resolution content scale
+        backgroundView.contentScaleFactor = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
         canvasView.insertSubview(backgroundView, at: 0)
         
         // APPROACH 3: Set a background pattern color
@@ -136,8 +140,14 @@ class TemplateRenderer {
         numberOfPages: Int,
         pageSpacing: CGFloat
     ) -> UIImage? {
-        // Create a new bitmap context
-        UIGraphicsBeginImageContextWithOptions(CGSize(width: width, height: height), true, 0)
+        // Create a new bitmap context with high resolution
+        // The last parameter (0) means use the scale of the main screen,
+        // but we'll manually set it higher to match our resolution factor
+        UIGraphicsBeginImageContextWithOptions(
+            CGSize(width: width, height: height),
+            true,
+            UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        )
         guard let context = UIGraphicsGetCurrentContext() else {
             return nil
         }
@@ -146,13 +156,13 @@ class TemplateRenderer {
         context.setFillColor(UIColor.white.cgColor)
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         
-        // Set line color and width
+        // Set line color and width, scaled by our resolution factor
         context.setStrokeColor(template.color.cgColor)
         context.setFillColor(template.color.cgColor)
-        context.setLineWidth(template.lineWidth)
+        context.setLineWidth(template.lineWidth * GlobalSettings.resolutionScaleFactor)
         
-        // Make sure spacing is reasonable
-        let spacing = max(min(template.spacing, 100), 10)
+        // Make sure spacing is reasonable and scale by our resolution factor
+        let spacing = max(min(template.spacing, 100), 10) * GlobalSettings.resolutionScaleFactor
         
         // For each page, draw the lines/dots
         for i in 0..<numberOfPages {
@@ -193,10 +203,10 @@ class TemplateRenderer {
                 }
                 
             case .dotted:
-                // Draw dots
+                // Draw dots - scale dot size by resolution factor
                 for y in stride(from: pageRect.minY + spacing, to: pageRect.maxY, by: spacing) {
                     for x in stride(from: pageRect.minX + spacing, to: pageRect.maxX, by: spacing) {
-                        let dotSize = max(min(template.lineWidth * 2, 5), 1)
+                        let dotSize = max(min(template.lineWidth * 2, 5), 1) * GlobalSettings.resolutionScaleFactor
                         let dotRect = CGRect(
                             x: x - dotSize / 2,
                             y: y - dotSize / 2,
