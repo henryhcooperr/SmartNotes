@@ -37,6 +37,7 @@ struct NoteDetailView: View {
     // Add state for page navigator
     @State private var isPageNavigatorVisible = false
     @State private var selectedPageIndex = 0
+    @State private var isPageSelectionActive = false
     
     @Environment(\.presentationMode) private var presentationMode
     
@@ -68,7 +69,8 @@ struct NoteDetailView: View {
             if isPageNavigatorVisible {
                 PageNavigatorView(
                     pages: $note.pages,
-                    selectedPageIndex: $selectedPageIndex
+                    selectedPageIndex: $selectedPageIndex,
+                    isSelectionActive: $isPageSelectionActive
                 )
                 .transition(.move(edge: .leading))
                 
@@ -207,7 +209,8 @@ struct NoteDetailView: View {
                         }
                         .onChange(of: selectedPageIndex) { _, newIndex in
                             // Notify MultiPageUnifiedScrollView to scroll to the selected page
-                            if !isInitialLoad && newIndex < note.pages.count {
+                            // Only trigger scrolling if the selection was made by clicking a thumbnail
+                            if !isInitialLoad && newIndex < note.pages.count && isPageSelectionActive {
                                 NotificationCenter.default.post(
                                     name: NSNotification.Name("ScrollToPage"),
                                     object: newIndex

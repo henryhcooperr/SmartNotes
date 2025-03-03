@@ -625,25 +625,29 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Remove the grid view after we've calculated the position
             gridView.removeFromSuperview()
             
-            // Animate scrolling to the selected page with slower animation
+            // Animate the scroll to the selected page
             UIView.animate(withDuration: 0.75, 
-                      delay: 0,
-                      options: [.curveEaseInOut],
-                      animations: {
+                          delay: 0,
+                          options: [.curveEaseInOut],
+                          animations: {
                 scrollView.setContentOffset(CGPoint(x: currentOffset.x, y: newOffsetY), animated: false)
-            }, completion: { _ in
+            }) { completed in
                 // After scrolling completes, update the current visible page and deselect
-                self.currentlyVisiblePageIndex = pageIndex
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if completed {
+                    self.currentlyVisiblePageIndex = pageIndex
+                    
                     // Post notification to deactivate page selection
                     NotificationCenter.default.post(
                         name: NSNotification.Name("PageSelectionDeactivated"),
                         object: nil
                     )
+                    
+                    // Reset the navigation lock
+                    self.isPageNavigationLockedToSelection = false
+                    
                     print("📜 Scrolled to page \(pageIndex+1) - automatically deselecting")
                 }
-            })
+            }
         }
         
         // Helper method to show debug markers for visualizing scrolling
@@ -688,6 +692,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 print("📄 Visible page changed to: \(visiblePageIndex + 1) of \(parent.pages.count)")
                 
                 // Always send a notification about the visible page changing for UI updates
+                // This will highlight the page in the navigator but won't trigger scrolling
                 NotificationCenter.default.post(
                     name: NSNotification.Name("PageSelected"),
                     object: visiblePageIndex
@@ -699,7 +704,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     isPageNavigationLockedToSelection = true
                     
                     // Post notification to scroll to this page (with a small delay to avoid interrupting ongoing scrolling)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         NotificationCenter.default.post(
                             name: NSNotification.Name("ScrollToPage"),
                             object: visiblePageIndex
@@ -817,7 +822,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     // End of a page - use red
                     line.backgroundColor = UIColor.red.withAlphaComponent(0.5)
                     line.frame.size.height = 4 // Thicker line
-                } else {
+            } else {
                     // Regular grid line - use blue
                     line.backgroundColor = UIColor.blue.withAlphaComponent(0.3)
                 }
@@ -1070,7 +1075,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 pageNumber: 1
             )
             // Use immediate assignment rather than async to ensure it's available during initialization
-            self.pages = [newPage]
+                self.pages = [newPage]
             print("📄 Created initial page for new note with ID: \(newPage.id)")
         }
         

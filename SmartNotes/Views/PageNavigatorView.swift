@@ -11,10 +11,8 @@ import PencilKit
 struct PageNavigatorView: View {
     @Binding var pages: [Page]
     @Binding var selectedPageIndex: Int
+    @Binding var isSelectionActive: Bool
     @State private var draggedItem: Page?
-    
-    // Add a state to track whether a page selection is active
-    @State private var isSelectionActive: Bool = false
     
     // Size constants for the navigator
     private let thumbnailWidth: CGFloat = 120
