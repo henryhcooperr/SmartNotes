@@ -83,6 +83,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // Track whether page navigation is locked to selection
         var isPageNavigationLockedToSelection: Bool = true
         
+        // Add a coordinate grid to the view
+        @objc var gridView: UIView?
+        
         init(_ parent: MultiPageUnifiedScrollView) {
             self.parent = parent
             super.init()
@@ -111,15 +114,37 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             // Still update rendering quality for different zoom levels
             updateCanvasRenderingForZoomScale(scrollView.zoomScale)
+            
+            // Update grid if it exists
+            if let container = containerView, 
+               container.subviews.contains(where: { $0.tag == 7777 }) {
+                // Just refresh the grid with the new bounds
+                addCoordinateGrid()
+            }
+            
+            // Log container position for debugging
+            if let container = containerView {
+                print("📐 Container after zoom: origin=(\(container.frame.origin.x), \(container.frame.origin.y)), size=(\(container.frame.size.width), \(container.frame.size.height)), zoom=\(scrollView.zoomScale)")
+            }
         }
         
         // Simplified centering function from the older version
         func centerContainer(scrollView: UIScrollView) {
             guard let container = containerView else { return }
+            
+            // Calculate the offsets to center the content in the scroll view
             let offsetX = max((scrollView.bounds.width - container.frame.width * scrollView.zoomScale) * 0.5, 0)
             let offsetY = max((scrollView.bounds.height - container.frame.height * scrollView.zoomScale) * 0.5, 0)
             
+            // Store previous position for logging
+            let previousInset = scrollView.contentInset
+            let previousFrame = container.frame
+            
+            // Apply the content insets to center the content
             scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: offsetY, right: offsetX)
+            
+            // Log the centering changes
+            print("📐 Container position: before=(\(Int(previousFrame.origin.x)), \(Int(previousFrame.origin.y))), inset before=(\(Int(previousInset.left)), \(Int(previousInset.top))), inset after=(\(Int(offsetX)), \(Int(offsetY))), zoom=\(scrollView.zoomScale)")
         }
         
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -441,6 +466,14 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 }
             }
             
+            // After layout is complete (at the end of the method):
+            if GlobalSettings.debugModeEnabled {
+                // Add coordinate grid for debugging scaling issues
+                if let container = containerView {
+                    addCoordinateGrid()
+                }
+            }
+            
             // Reset layout flag
             isLayoutingPages = false
         }
@@ -524,7 +557,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             return parent.appSettings
         }
         
-        // Add a method to scroll to a specific page
+        // Add a helper method to visualize container-to-scrollview coordinate conversion
+        func visualizeContainerCoordinates(in scrollView: UIScrollView, container: UIView, pageIndex: Int) {
+            // Coordinate visualization disabled - this method now does nothing
+            // Previously, this would display coordinate information for debugging purposes
+        }
+        
         @objc func scrollToSelectedPage(_ notification: Notification) {
             // Add early safety check for initial loading state
             guard !isInitialLoad, !isLayoutingPages else {
@@ -543,33 +581,60 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 return
             }
             
-            // Calculate the position to scroll to
-            var offsetY: CGFloat = 0
-            for i in 0..<pageIndex {
-                // Add the height of each preceding canvas plus spacing
-                if i < parent.pages.count {
-                    offsetY += parent.pageSize.height + parent.pageSpacing
-                }
-            }
+            // Debug output of current state
+            print("🔍 Debug - Current visible page: \(currentlyVisiblePageIndex+1), Target: \(pageIndex+1), Zoom: \(scrollView.zoomScale)")
             
-            // Critical fix: Adjust for current zoom scale
-            // When zoomed out, we need to reduce the offset proportionally
-            offsetY = offsetY * scrollView.zoomScale
+            // Create a grid view with container bounds - this is similar to how we visualize the coordinates
+            let gridView = UIView(frame: container.bounds)
+            container.addSubview(gridView)
+            
+            // Calculate the Y position for the target page, explicitly using page height and spacing
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let totalPageHeight = pageHeight + pageSpacing
+            
+            // Calculate target position using the total height of each page including spacing
+            let targetY = CGFloat(pageIndex) * totalPageHeight
+            
+            // Position a reference point at the target page's position
+            // We're targeting the center of the page for better centering in the view
+            let referencePoint = CGPoint(x: container.bounds.width / 2, y: targetY + (pageHeight / 2))
+            
+            // Get the target point in scroll view coordinates
+            let targetPointInScroll = container.convert(referencePoint, to: scrollView)
+            
+            // Get current scroll position
+            let currentOffset = scrollView.contentOffset
+            
+            // Calculate new offset, centering the page in the scroll view if possible
+            let scrollViewHeight = scrollView.bounds.height
+            let pageHeightWithZoom = pageHeight * scrollView.zoomScale
+            
+            // Center the page in the visible area
+            let proposedOffsetY = targetPointInScroll.y - (scrollViewHeight / 2)
             
             // Ensure we don't scroll beyond content bounds
-            let maxPossibleOffset = scrollView.contentSize.height * scrollView.zoomScale - scrollView.bounds.height
-            offsetY = min(offsetY, max(0, maxPossibleOffset))
+            let maxPossibleOffsetY = max(0, scrollView.contentSize.height - scrollViewHeight)
+            let newOffsetY = min(max(0, proposedOffsetY), maxPossibleOffsetY)
             
-            print("📏 Scrolling to page \(pageIndex+1): offsetY = \(offsetY), zoom = \(scrollView.zoomScale), resolution factor = \(GlobalSettings.resolutionScaleFactor)")
+            print("📏 Coordinate details: Page \(pageIndex+1)")
+            print("📏 Page height = \(pageHeight), spacing = \(pageSpacing), total = \(totalPageHeight)")
+            print("📏 Target Y in container = \(targetY), converted to scrollView = \(targetPointInScroll.y)")
+            print("📏 Scrolling from Y=\(currentOffset.y) to Y=\(newOffsetY) (proposed: \(proposedOffsetY), max: \(maxPossibleOffsetY))")
+            
+            // Remove the grid view after we've calculated the position
+            gridView.removeFromSuperview()
             
             // Animate scrolling to the selected page with slower animation
             UIView.animate(withDuration: 0.75, 
                       delay: 0,
                       options: [.curveEaseInOut],
                       animations: {
-                scrollView.setContentOffset(CGPoint(x: 0, y: offsetY), animated: false)
+                scrollView.setContentOffset(CGPoint(x: currentOffset.x, y: newOffsetY), animated: false)
             }, completion: { _ in
-                // After scrolling completes, deselect the page
+                // After scrolling completes, update the current visible page and deselect
+                self.currentlyVisiblePageIndex = pageIndex
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     // Post notification to deactivate page selection
                     NotificationCenter.default.post(
@@ -579,6 +644,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     print("📜 Scrolled to page \(pageIndex+1) - automatically deselecting")
                 }
             })
+        }
+        
+        // Helper method to show debug markers for visualizing scrolling
+        func showDebugMarkers(scrollView: UIScrollView, currentY: CGFloat, targetY: CGFloat) {
+            // Debug markers disabled - this method now does nothing
+            // Previously, this would show red and green markers for current and target scroll positions
         }
         
         // Add a method to determine which page is currently visible
@@ -616,12 +687,25 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 // Print the current visible page
                 print("📄 Visible page changed to: \(visiblePageIndex + 1) of \(parent.pages.count)")
                 
-                // Notify that the visible page has changed - this only updates the highlight
-                // in the navigator but doesn't trigger automatic scrolling
+                // Always send a notification about the visible page changing for UI updates
                 NotificationCenter.default.post(
                     name: NSNotification.Name("PageSelected"),
                     object: visiblePageIndex
                 )
+                
+                // Only auto-scroll to the page if the setting is enabled
+                if GlobalSettings.autoScrollToDetectedPages {
+                    // Enable auto-scrolling to the detected page
+                    isPageNavigationLockedToSelection = true
+                    
+                    // Post notification to scroll to this page (with a small delay to avoid interrupting ongoing scrolling)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ScrollToPage"),
+                            object: visiblePageIndex
+                        )
+                    }
+                }
             }
         }
         
@@ -669,6 +753,283 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         func toolPickerFramesObscuredDidChange(_ toolPicker: PKToolPicker) {
             // Implementation required by protocol
+        }
+        
+        // Add this method to the Coordinator class
+        func setupPositionIndicators(scrollView: UIScrollView) {
+            // Method intentionally empty - position indicators disabled
+            // The previously displayed indicators with scroll position, zoom level, and container Y are now removed
+        }
+        
+        // Add a coordinate grid to the view
+        @objc func addCoordinateGrid(_ notification: Notification? = nil) {
+            guard let scrollView = scrollView, let container = containerView else { return }
+            
+            // If gridView already exists, just toggle visibility
+            if let existingGrid = gridView {
+                existingGrid.isHidden.toggle()
+                
+                // Notify about grid state change
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("GridStateChanged"),
+                    object: !existingGrid.isHidden
+                )
+                
+                print("📐 Coordinate grid visibility toggled: \(!existingGrid.isHidden)")
+                return
+            }
+            
+            print("📐 Creating coordinate grid overlay")
+            
+            // Create the grid view that will contain all grid elements
+            let gridView = UIView(frame: container.bounds)
+            gridView.tag = 999
+            gridView.isUserInteractionEnabled = false
+            container.addSubview(gridView)
+            self.gridView = gridView
+            
+            // Grid lines every 100 points
+            let gridSize: CGFloat = 100
+            
+            // Calculate how many grid lines we need in each direction
+            let horizontalLines = Int(ceil(container.bounds.height / gridSize))
+            let verticalLines = Int(ceil(container.bounds.width / gridSize))
+            
+            // Add horizontal grid lines
+            for i in 0...horizontalLines {
+                let y = CGFloat(i) * gridSize
+                
+                let line = UIView(frame: CGRect(x: 0, y: y, width: container.bounds.width, height: 2))
+                
+                // Highlight page boundaries with different colors
+                let isPageBoundary = isPageBoundary(y: y)
+                let isPageStart = isPageStart(y: y)
+                let isSpacingArea = isSpacingArea(y: y)
+                
+                if isPageStart {
+                    // Start of a page - use green
+                    line.backgroundColor = UIColor.green.withAlphaComponent(0.5)
+                    line.frame.size.height = 4 // Thicker line
+                } else if isSpacingArea {
+                    // Inside spacing area - use yellow
+                    line.backgroundColor = UIColor.yellow.withAlphaComponent(0.5)
+                } else if isPageBoundary {
+                    // End of a page - use red
+                    line.backgroundColor = UIColor.red.withAlphaComponent(0.5)
+                    line.frame.size.height = 4 // Thicker line
+                } else {
+                    // Regular grid line - use blue
+                    line.backgroundColor = UIColor.blue.withAlphaComponent(0.3)
+                }
+                
+                gridView.addSubview(line)
+                
+                // Add coordinate label
+                let label = UILabel()
+                label.text = "\(Int(y))"
+                label.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .bold)
+                label.textColor = UIColor.white
+                label.backgroundColor = isPageBoundary ? UIColor.red.withAlphaComponent(0.7) : 
+                                      isPageStart ? UIColor.green.withAlphaComponent(0.7) :
+                                      UIColor.blue.withAlphaComponent(0.7)
+                label.textAlignment = .center
+                label.sizeToFit()
+                
+                if isPageStart || isPageBoundary {
+                    let pageIndex = getPageIndex(for: y)
+                    if isPageStart {
+                        label.text = "Page \(pageIndex + 1) Start: \(Int(y))"
+                    } else if isPageBoundary {
+                        label.text = "Page \(pageIndex) End: \(Int(y))"
+                    }
+                    label.font = UIFont.monospacedSystemFont(ofSize: 11, weight: .bold)
+                    label.sizeToFit()
+                }
+                
+                label.frame = CGRect(
+                    x: 10,
+                    y: y - (label.frame.height / 2),
+                    width: label.frame.width + 8,
+                    height: label.frame.height
+                )
+                label.layer.cornerRadius = 3
+                label.layer.masksToBounds = true
+                
+                gridView.addSubview(label)
+            }
+            
+            // Add vertical grid lines
+            for i in 0...verticalLines {
+                let x = CGFloat(i) * gridSize
+                
+                let line = UIView(frame: CGRect(x: x, y: 0, width: 1, height: container.bounds.height))
+                line.backgroundColor = UIColor.blue.withAlphaComponent(0.3)
+                gridView.addSubview(line)
+                
+                // Add coordinate label
+                let label = UILabel()
+                label.text = "\(Int(x))"
+                label.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .bold)
+                label.textColor = UIColor.white
+                label.backgroundColor = UIColor.blue.withAlphaComponent(0.7)
+                label.textAlignment = .center
+                label.sizeToFit()
+                
+                label.frame = CGRect(
+                    x: x - (label.frame.width / 2),
+                    y: 10,
+                    width: label.frame.width + 8,
+                    height: label.frame.height
+                )
+                label.layer.cornerRadius = 3
+                label.layer.masksToBounds = true
+                
+                gridView.addSubview(label)
+            }
+            
+            // Add scale indicator at the bottom
+            addScaleIndicator(to: gridView, in: container)
+            
+            // Notify about grid state change
+            NotificationCenter.default.post(
+                name: NSNotification.Name("GridStateChanged"),
+                object: true
+            )
+        }
+        
+        // Helpers for page boundary detection in grid
+        private func isPageBoundary(y: CGFloat) -> Bool {
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let totalPageHeight = pageHeight + pageSpacing
+            
+            // Check if this y position is at the end of a page
+            for i in 0..<parent.pages.count {
+                let pageStartY = CGFloat(i) * totalPageHeight
+                let pageEndY = pageStartY + pageHeight
+                
+                // Use a small tolerance to account for floating point precision
+                if abs(y - pageEndY) < 5 {
+                    return true
+                }
+            }
+            return false
+        }
+        
+        private func isPageStart(y: CGFloat) -> Bool {
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let totalPageHeight = pageHeight + pageSpacing
+            
+            // Check if this y position is at the start of a page
+            for i in 0..<parent.pages.count {
+                let pageStartY = CGFloat(i) * totalPageHeight
+                
+                // Use a small tolerance to account for floating point precision
+                if abs(y - pageStartY) < 5 {
+                    return true
+                }
+            }
+            return false
+        }
+        
+        private func isSpacingArea(y: CGFloat) -> Bool {
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let totalPageHeight = pageHeight + pageSpacing
+            
+            // Check if this y position is within the spacing between pages
+            for i in 0..<(parent.pages.count - 1) {
+                let pageStartY = CGFloat(i) * totalPageHeight
+                let pageEndY = pageStartY + pageHeight
+                let nextPageStartY = pageEndY + pageSpacing
+                
+                if y > pageEndY && y < nextPageStartY {
+                    return true
+                }
+            }
+            return false
+        }
+        
+        private func getPageIndex(for y: CGFloat) -> Int {
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let totalPageHeight = pageHeight + pageSpacing
+            
+            let index = Int(y / totalPageHeight)
+            return min(max(0, index), parent.pages.count - 1)
+        }
+        
+        // Add a method to add scale indicator to the grid
+        private func addScaleIndicator(to gridView: UIView, in container: UIView) {
+            // Add scale indicator at the bottom
+            let scaleLabel = UILabel()
+            scaleLabel.backgroundColor = UIColor.black.withAlphaComponent(0.8)  // Increased opacity
+            scaleLabel.textColor = UIColor.white
+            scaleLabel.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .bold)
+            scaleLabel.layer.cornerRadius = 8
+            scaleLabel.layer.masksToBounds = true
+            scaleLabel.textAlignment = .center
+            scaleLabel.frame = CGRect(x: 10, y: container.bounds.height - 30, width: 250, height: 30)  // Increased size
+            gridView.addSubview(scaleLabel)
+            
+            // Create timer to update scale label periodically
+            let timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak scrollView, weak container] _ in
+                guard let scrollView = scrollView, let container = container else { return }
+                
+                // Get current zoom and position
+                let zoom = scrollView.zoomScale
+                let offset = scrollView.contentOffset
+                let containerPos = container.frame.origin
+                
+                // Calculate pixels-per-point at current zoom
+                let pixelsPerPoint = UIScreen.main.scale * zoom
+                
+                // Get page dimensions and spacing
+                let pageHeight = self.parent.pageSize.height
+                let pageSpacing = self.parent.pageSpacing
+                let totalPageHeight = pageHeight + pageSpacing
+                
+                // Calculate visible page
+                let visiblePage = self.determinePageForOffset(offset.y)
+                
+                // Update the label with current information
+                scaleLabel.text = String(format: "ZOOM: %.2f (%.1f PPI) | CONTAINER: (%.0f, %.0f) | PAGE: %d/%d | PAGE HEIGHT: %.0f + %.0f spacing",
+                                  zoom, pixelsPerPoint, containerPos.x, containerPos.y, visiblePage + 1, self.parent.pages.count, pageHeight, pageSpacing)
+                
+                scaleLabel.sizeToFit()
+                
+                var frame = scaleLabel.frame
+                frame.size.width = min(max(frame.size.width + 8, 250), container.bounds.width - 20)
+                frame.size.height += 4
+                frame.origin.y = container.bounds.height - frame.height - 10
+                scaleLabel.frame = frame
+            }
+            
+            // Run the timer immediately for initial display
+            timer.fire()
+            
+            // Store timer as associated object
+            objc_setAssociatedObject(gridView, "scaleUpdateTimer", timer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+        
+        // Helper method to determine the page index for a given Y offset
+        private func determinePageForOffset(_ offsetY: CGFloat) -> Int {
+            guard let scrollView = scrollView, let container = containerView else {
+                return 0
+            }
+            
+            // First convert the offset to a point in the container's coordinate system
+            let pointInContainer = scrollView.convert(CGPoint(x: 0, y: offsetY + scrollView.bounds.height/2), to: container)
+            
+            // Calculate the visible page based on the container coordinates
+            let pageHeight = parent.pageSize.height
+            let pageSpacing = parent.pageSpacing
+            let totalPageHeight = pageHeight + pageSpacing
+            
+            // Calculate page index, but clamp it to valid range
+            let pageIndex = Int(pointInContainer.y / totalPageHeight)
+            return min(max(0, pageIndex), parent.pages.count - 1)
         }
     }
     
@@ -769,6 +1130,17 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             context.coordinator.isInitialLoad = false
         }
         
+        // Position indicators disabled - removed setupPositionIndicators call
+        
+        // In makeUIView, add a notification listener for toggling the grid
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleCoordinateGrid"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            context.coordinator.addCoordinateGrid()
+        }
+        
         return scrollView
     }
     
@@ -824,6 +1196,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 name: NSNotification.Name("CoordinatorReady"),
                 object: context.coordinator
             )
+        }
+        
+        // Update grid if it exists and debug mode is enabled
+        if GlobalSettings.debugModeEnabled, 
+           let container = context.coordinator.containerView,
+           container.subviews.contains(where: { $0.tag == 7777 }) {
+            context.coordinator.addCoordinateGrid()
         }
     }
 }

@@ -94,226 +94,231 @@ struct NoteDetailView: View {
                 Divider().padding(.horizontal)
                 
                 // Unified multi-page scroll
-                MultiPageUnifiedScrollView(pages: $note.pages, template: $noteTemplate)
-                    .sheet(isPresented: $showingTemplateSheet) {
-                        TemplateSettingsView(template: $noteTemplate)
-                    }
-                    .onAppear {
-                        print("📝 NoteDetailView appeared for note ID: \(note.id)")
-                        
-                        // Always close sidebar when opening a note to ensure proper canvas positioning
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("CloseSidebar"),
-                                object: nil
-                            )
+                ZStack {
+                    MultiPageUnifiedScrollView(pages: $note.pages, template: $noteTemplate)
+                        .sheet(isPresented: $showingTemplateSheet) {
+                            TemplateSettingsView(template: $noteTemplate)
                         }
-                        
-                        // Migrate older single-drawing data to pages if needed
-                        migrateIfNeeded()
-                        
-                        // CRITICAL FIX: Ensure there's at least one page for new notes
-                        if note.pages.isEmpty {
-                            print("📝 Creating initial empty page for new note")
-                            let newPage = Page(
-                                drawingData: Data(),
-                                template: nil,
-                                pageNumber: 1
-                            )
-                            note.pages = [newPage]
+                        .onAppear {
+                            print("📝 NoteDetailView appeared for note ID: \(note.id)")
                             
-                            // Save changes immediately to prevent issues if user closes note too quickly
-                            DispatchQueue.main.async {
-                                saveChanges()
-                            }
-                        }
-                        
-                        // Get template from note
-                        if let savedTemplate = note.noteTemplate {
-                            noteTemplate = savedTemplate
-                            print("📝 Loaded template from note: \(savedTemplate.type.rawValue)")
-                        } else {
-                            noteTemplate = .none
-                            print("📝 No template found in note, using default")
-                        }
-                        
-                        // Load from UserDefaults as fallback
-                        loadNoteTemplateIfWanted()
-                        
-                        // Force template refresh after a short delay to ensure views are ready
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("RefreshTemplate"),
-                                object: nil
-                            )
-                            
-                            // Mark initial load complete
-                            isInitialLoad = false
-                        }
-                        
-                        // Register for drawing state notifications
-                        registerForDrawingNotifications()
-                        
-                        // Register for coordinator ready notification
-                        NotificationCenter.default.addObserver(
-                            forName: NSNotification.Name("CoordinatorReady"),
-                            object: nil,
-                            queue: .main
-                        ) { notification in
-                            if let coordinator = notification.object as? MultiPageUnifiedScrollView.Coordinator {
-                                self.scrollViewCoordinator = coordinator
-                            }
-                        }
-                        
-                        // Listen for page selection changes
-                        NotificationCenter.default.addObserver(
-                            forName: NSNotification.Name("PageSelected"),
-                            object: nil,
-                            queue: .main
-                        ) { notification in
-                            if let pageIndex = notification.object as? Int {
-                                self.selectedPageIndex = pageIndex
-                            }
-                        }
-                        
-                        // Listen for toggle sidebar notifications
-                        NotificationCenter.default.addObserver(
-                            forName: NSNotification.Name("ToggleSidebar"),
-                            object: nil,
-                            queue: .main
-                        ) { notification in
-                            withAnimation {
-                                self.isPageNavigatorVisible.toggle()
-                            }
-                        }
-                        
-                        // Listen for close sidebar notifications
-                        NotificationCenter.default.addObserver(
-                            forName: NSNotification.Name("CloseSidebar"),
-                            object: nil,
-                            queue: .main
-                        ) { notification in
-                            withAnimation {
-                                self.isPageNavigatorVisible = false
-                            }
-                        }
-                    }
-                    .onChange(of: note.pages) { _ in
-                        // Save if pages change
-                        if !isInitialLoad {
-                            saveChanges()
-                        }
-                    }
-                    .onChange(of: selectedPageIndex) { _, newIndex in
-                        // Notify MultiPageUnifiedScrollView to scroll to the selected page
-                        if !isInitialLoad && newIndex < note.pages.count {
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("ScrollToPage"),
-                                object: newIndex
-                            )
-                        }
-                    }
-                    .onChange(of: noteTemplate) { oldValue, newValue in
-                        print("🔍 NoteDetailView - Template changed from \(oldValue.type.rawValue) to \(newValue.type.rawValue)")
-                        // Reapply template changes
-                        if !isInitialLoad {
-                            // Update the note model immediately
-                            note.noteTemplate = newValue
-                            
-                            // Save changes to persist the update
-                            saveChanges()
-                            
-                            // Force a refresh of the template - use ForceTemplateRefresh for more thorough refresh
+                            // Always close sidebar when opening a note to ensure proper canvas positioning
                             DispatchQueue.main.async {
                                 NotificationCenter.default.post(
-                                    name: NSNotification.Name("ForceTemplateRefresh"),
+                                    name: NSNotification.Name("CloseSidebar"),
                                     object: nil
                                 )
                             }
-                        }
-                    }
-                // Navigation
-                    .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        // Toggle page navigator button
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button(action: {
-                                withAnimation {
-                                    isPageNavigatorVisible.toggle()
+                            
+                            // Migrate older single-drawing data to pages if needed
+                            migrateIfNeeded()
+                            
+                            // CRITICAL FIX: Ensure there's at least one page for new notes
+                            if note.pages.isEmpty {
+                                print("📝 Creating initial empty page for new note")
+                                let newPage = Page(
+                                    drawingData: Data(),
+                                    template: nil,
+                                    pageNumber: 1
+                                )
+                                note.pages = [newPage]
+                                
+                                // Save changes immediately to prevent issues if user closes note too quickly
+                                DispatchQueue.main.async {
+                                    saveChanges()
                                 }
-                            }) {
-                                Image(systemName: isPageNavigatorVisible ? "sidebar.left" : "sidebar.leading")
+                            }
+                            
+                            // Get template from note
+                            if let savedTemplate = note.noteTemplate {
+                                noteTemplate = savedTemplate
+                                print("📝 Loaded template from note: \(savedTemplate.type.rawValue)")
+                            } else {
+                                noteTemplate = .none
+                                print("📝 No template found in note, using default")
+                            }
+                            
+                            // Load from UserDefaults as fallback
+                            loadNoteTemplateIfWanted()
+                            
+                            // Force template refresh after a short delay to ensure views are ready
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("RefreshTemplate"),
+                                    object: nil
+                                )
+                                
+                                // Mark initial load complete
+                                isInitialLoad = false
+                            }
+                            
+                            // Register for drawing state notifications
+                            registerForDrawingNotifications()
+                            
+                            // Register for coordinator ready notification
+                            NotificationCenter.default.addObserver(
+                                forName: NSNotification.Name("CoordinatorReady"),
+                                object: nil,
+                                queue: .main
+                            ) { notification in
+                                if let coordinator = notification.object as? MultiPageUnifiedScrollView.Coordinator {
+                                    self.scrollViewCoordinator = coordinator
+                                }
+                            }
+                            
+                            // Listen for page selection changes
+                            NotificationCenter.default.addObserver(
+                                forName: NSNotification.Name("PageSelected"),
+                                object: nil,
+                                queue: .main
+                            ) { notification in
+                                if let pageIndex = notification.object as? Int {
+                                    self.selectedPageIndex = pageIndex
+                                }
+                            }
+                            
+                            // Listen for toggle sidebar notifications
+                            NotificationCenter.default.addObserver(
+                                forName: NSNotification.Name("ToggleSidebar"),
+                                object: nil,
+                                queue: .main
+                            ) { notification in
+                                withAnimation {
+                                    self.isPageNavigatorVisible.toggle()
+                                }
+                            }
+                            
+                            // Listen for close sidebar notifications
+                            NotificationCenter.default.addObserver(
+                                forName: NSNotification.Name("CloseSidebar"),
+                                object: nil,
+                                queue: .main
+                            ) { notification in
+                                withAnimation {
+                                    self.isPageNavigatorVisible = false
+                                }
                             }
                         }
-                        
-                        // Done button
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") {
+                        .onChange(of: note.pages) { _ in
+                            // Save if pages change
+                            if !isInitialLoad {
                                 saveChanges()
-                                presentationMode.wrappedValue.dismiss()
                             }
                         }
-                        
-                        // Template settings button
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button(action: {
-                                showingTemplateSettings = true
-                            }) {
-                                Image(systemName: "ellipsis")
+                        .onChange(of: selectedPageIndex) { _, newIndex in
+                            // Notify MultiPageUnifiedScrollView to scroll to the selected page
+                            if !isInitialLoad && newIndex < note.pages.count {
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("ScrollToPage"),
+                                    object: newIndex
+                                )
                             }
                         }
-                        
-                        // Export button
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button(action: {
-                                showExportOptions = true
-                            }) {
-                                Image(systemName: "square.and.arrow.up")
+                        .onChange(of: noteTemplate) { oldValue, newValue in
+                            print("🔍 NoteDetailView - Template changed from \(oldValue.type.rawValue) to \(newValue.type.rawValue)")
+                            // Reapply template changes
+                            if !isInitialLoad {
+                                // Update the note model immediately
+                                note.noteTemplate = newValue
+                                
+                                // Save changes to persist the update
+                                saveChanges()
+                                
+                                // Force a refresh of the template - use ForceTemplateRefresh for more thorough refresh
+                                DispatchQueue.main.async {
+                                    NotificationCenter.default.post(
+                                        name: NSNotification.Name("ForceTemplateRefresh"),
+                                        object: nil
+                                    )
+                                }
                             }
                         }
-                    }
-                    .actionSheet(isPresented: $showExportOptions) {
-                        ActionSheet(
-                            title: Text("Export Note"),
-                            message: Text("Choose export format"),
-                            buttons: [
-                                .default(Text("PDF")) {
-                                    exportToPDF()
-                                },
-                                .default(Text("Image")) {
-                                    print("Image export requested (not implemented yet)")
-                                },
-                                .cancel()
-                            ]
-                        )
-                    }
-                    .sheet(isPresented: $showingTemplateSettings) {
-                        // Present the template settings sheet
-                        TemplateSettingsView(template: $noteTemplate)
-                    }
-                    .onDisappear {
-                        // Invalidate the thumbnail when leaving the note editor
-                        // This ensures a fresh thumbnail will be generated when returning to the grid
-                        ThumbnailGenerator.invalidateThumbnail(for: note.id)
-                        
-                        // Clean up drawing notifications
-                        NotificationCenter.default.removeObserver(self)
-                        
-                        // Always save when view disappears
-                        saveChanges()
-                    }
-                    .overlay(
-                        ZStack {
-                            CustomToolbar(
-                                coordinator: scrollViewCoordinator,
-                                selectedTool: $selectedTool,
-                                selectedColor: $selectedColor,
-                                lineWidth: $lineWidth
+                    // Navigation
+                        .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            // Toggle page navigator button
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button(action: {
+                                    withAnimation {
+                                        isPageNavigatorVisible.toggle()
+                                    }
+                                }) {
+                                    Image(systemName: isPageNavigatorVisible ? "sidebar.left" : "sidebar.leading")
+                                }
+                            }
+                            
+                            // Done button
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") {
+                                    saveChanges()
+                                    presentationMode.wrappedValue.dismiss()
+                                }
+                            }
+                            
+                            // Template settings button
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showingTemplateSettings = true
+                                }) {
+                                    Image(systemName: "ellipsis")
+                                }
+                            }
+                            
+                            // Export button
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showExportOptions = true
+                                }) {
+                                    Image(systemName: "square.and.arrow.up")
+                                }
+                            }
+                        }
+                        .actionSheet(isPresented: $showExportOptions) {
+                            ActionSheet(
+                                title: Text("Export Note"),
+                                message: Text("Choose export format"),
+                                buttons: [
+                                    .default(Text("PDF")) {
+                                        exportToPDF()
+                                    },
+                                    .default(Text("Image")) {
+                                        print("Image export requested (not implemented yet)")
+                                    },
+                                    .cancel()
+                                ]
                             )
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    )
+                        .sheet(isPresented: $showingTemplateSettings) {
+                            // Present the template settings sheet
+                            TemplateSettingsView(template: $noteTemplate)
+                        }
+                        .onDisappear {
+                            // Invalidate the thumbnail when leaving the note editor
+                            // This ensures a fresh thumbnail will be generated when returning to the grid
+                            ThumbnailGenerator.invalidateThumbnail(for: note.id)
+                            
+                            // Clean up drawing notifications
+                            NotificationCenter.default.removeObserver(self)
+                            
+                            // Always save when view disappears
+                            saveChanges()
+                        }
+                        .overlay(
+                            ZStack {
+                                CustomToolbar(
+                                    coordinator: scrollViewCoordinator,
+                                    selectedTool: $selectedTool,
+                                    selectedColor: $selectedColor,
+                                    lineWidth: $lineWidth
+                                )
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        )
+                    
+                    // Add debug overlay in the corner
+                    DebugOverlayView()
+                }
             }
         }
     }

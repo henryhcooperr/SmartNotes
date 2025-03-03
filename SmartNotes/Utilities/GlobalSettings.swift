@@ -21,10 +21,10 @@ class GlobalSettings {
     
     /// Global debug mode setting that controls visibility of debugging tools
     /// and level of console output throughout the app
-    private static var _debugModeEnabled: Bool = false
+    private static var _debugModeEnabled: Bool = true
     static var debugModeEnabled: Bool {
         get {
-            // Load from UserDefaults if not explicitly set yet
+            // Load from UserDefaults if needed
             if !_hasLoadedDebugSetting {
                 _debugModeEnabled = UserDefaults.standard.bool(forKey: "debugModeEnabled")
                 _hasLoadedDebugSetting = true
@@ -35,6 +35,12 @@ class GlobalSettings {
             if _debugModeEnabled != newValue {
                 _debugModeEnabled = newValue
                 UserDefaults.standard.set(newValue, forKey: "debugModeEnabled")
+                
+                // Notify observers
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("DebugModeChanged"),
+                    object: newValue
+                )
                 
                 // When debug mode changes, update related systems
                 updateDebugSystems()
@@ -196,4 +202,34 @@ class GlobalSettings {
     static var defaultZoomScale: CGFloat {
         return 1.0 / resolutionScaleFactor
     }
+    
+    // MARK: - Page Navigation Settings
+    
+    /// Controls whether the app automatically scrolls to newly detected pages during scrolling
+    private static var _autoScrollToDetectedPages: Bool = false
+    static var autoScrollToDetectedPages: Bool {
+        get {
+            // Load from UserDefaults if not initialized
+            if !_hasLoadedAutoScrollSetting {
+                _autoScrollToDetectedPages = UserDefaults.standard.bool(forKey: "autoScrollToDetectedPages")
+                _hasLoadedAutoScrollSetting = true
+            }
+            return _autoScrollToDetectedPages
+        }
+        set {
+            if _autoScrollToDetectedPages != newValue {
+                _autoScrollToDetectedPages = newValue
+                UserDefaults.standard.set(newValue, forKey: "autoScrollToDetectedPages")
+                
+                // Notify observers about the change
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("AutoScrollSettingChanged"),
+                    object: newValue
+                )
+            }
+        }
+    }
+    
+    /// Tracks if we've loaded auto-scroll setting from storage
+    private static var _hasLoadedAutoScrollSetting: Bool = false
 } 
