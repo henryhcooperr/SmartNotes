@@ -32,30 +32,6 @@ class MultiPageScrollView: UIScrollView {
     func drawPages() {
         context?.layoutPages()
     }
-    
-    // Handle view size changes by updating zoom constraints
-    func updateMinZoomScaleForSize(_ size: CGSize) {
-        guard let containerView = context?.containerView, 
-              size.width > 0, size.height > 0 else { return }
-    
-        let containerSize = containerView.frame.size
-        let widthScale = size.width / containerSize.width
-        let heightScale = size.height / containerSize.height
-    
-        // Use the smaller scale to ensure content fits within view
-        let minScale = max(0.25, min(widthScale, heightScale))
-    
-        minimumZoomScale = minScale
-        
-        // If current zoom is less than new minimum, update it
-        if zoomScale < minScale {
-            zoomScale = minScale
-        }
-        
-        // After changing zoom scale, update content insets and centering
-        context?.updateContentInsetsForZoom(self)
-        context?.centerContentIfNeeded(self)
-    }
 }
 
 struct MultiPageUnifiedScrollView: UIViewRepresentable {
@@ -112,62 +88,101 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         }
         
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
-            // DO NOT force centering during active zooming as that fights with iOS's natural pinch behavior
-            // Instead, just update the content insets to provide proper padding if needed
-            updateContentInsetsForZoom(scrollView)
+            // Use the simpler centering approach
+            centerContainer(scrollView: scrollView)
             
             // Still update rendering quality for different zoom levels
             updateCanvasRenderingForZoomScale(scrollView.zoomScale)
         }
         
+        // Simplified centering function from the older version
+        func centerContainer(scrollView: UIScrollView) {
+            guard let container = containerView else { return }
+            let offsetX = max((scrollView.bounds.width - container.frame.width * scrollView.zoomScale) * 0.5, 0)
+            let offsetY = max((scrollView.bounds.height - container.frame.height * scrollView.zoomScale) * 0.5, 0)
+            
+            scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: offsetY, right: offsetX)
+        }
+        
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
-            // Reduce resolution during scrolling for better performance
+            // Simple flag for reducing quality during scrolling
             for (_, canvasView) in canvasViews {
-                canvasView.setTemporaryLowResolutionMode(true)
+                // Lower quality during scrolling
+                if #available(iOS 16.0, *) {
+                    canvasView.drawingPolicy = .pencilOnly
+                } else {
+                    canvasView.allowsFingerDrawing = false
+                }
             }
         }
         
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
-            // If not decelerating, restore resolution immediately
+            // If not decelerating, restore quality immediately
             if !decelerate {
                 for (_, canvasView) in canvasViews {
-                    canvasView.setTemporaryLowResolutionMode(false)
+                    // Restore normal quality
+                    let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+                    if #available(iOS 16.0, *) {
+                        canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+                    } else {
+                        canvasView.allowsFingerDrawing = !disableFingerDrawing
+                    }
                 }
                 
-                // Re-center and enforce bounds if not continuing to decelerate
-                centerContentInScrollView()
+                // Re-center content
+                centerContainer(scrollView: scrollView)
             }
         }
         
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
-            // Restore resolution after scrolling stops
+            // Restore quality after scrolling stops
             for (_, canvasView) in canvasViews {
-                canvasView.setTemporaryLowResolutionMode(false)
+                // Restore normal quality
+                let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+                if #available(iOS 16.0, *) {
+                    canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+                } else {
+                    canvasView.allowsFingerDrawing = !disableFingerDrawing
+                }
             }
+            
+            // Re-center when done
+            centerContainer(scrollView: scrollView)
         }
         
         func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
-            // Reduce resolution during zooming for better performance
+            // Lower quality during zooming
             for (_, canvasView) in canvasViews {
-                canvasView.setTemporaryLowResolutionMode(true)
+                // Lower quality during zooming
+                if #available(iOS 16.0, *) {
+                    canvasView.drawingPolicy = .pencilOnly
+                } else {
+                    canvasView.allowsFingerDrawing = false
+                }
             }
         }
         
         func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
             guard let appSettings = getAppSettings() else { return }
             
-            // Always restore resolution after zooming stops
+            // Restore quality after zooming stops
             if appSettings.optimizeDuringInteraction {
                 for (_, canvasView) in canvasViews {
-                    canvasView.setTemporaryLowResolutionMode(false)
+                    // Restore normal quality
+                    let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+                    if #available(iOS 16.0, *) {
+                        canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+                    } else {
+                        canvasView.allowsFingerDrawing = !disableFingerDrawing
+                    }
                 }
             }
             
@@ -176,188 +191,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 print("🔎 Final zoom scale: \(scale)")
             }
             
-            // AFTER zooming completes:
-            // 1. Center the content if it's smaller than the view
-            // 2. Enforce scroll bounds to prevent scrolling past edges
-            centerContentIfNeeded(scrollView)
-            
-            // Set the appropriate directional lock based on content size
-            updateDirectionalLock(scrollView)
-        }
-        
-        // Center content but only if needed (smaller than view or past bounds)
-        func centerContentIfNeeded(_ scrollView: UIScrollView) {
-            guard let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            let scaledHeight = containerSize.height * scrollView.zoomScale
-            
-            // When content is smaller than view, we rely on content insets to center it
-            // We should NOT explicitly set contentOffset.x = -scrollView.contentInset.left
-            if scaledWidth <= scrollViewSize.width {
-                // Only update directional lock - don't force contentOffset changes
-                scrollView.isDirectionalLockEnabled = true
-                
-                // Only reset the offset if it's significantly off-center and user isn't interacting
-                if !scrollView.isTracking && !scrollView.isDecelerating && !scrollView.isZooming {
-                    // When content fits, offset should be 0 (letting contentInset handle centering)
-                    let targetX: CGFloat = 0.0
-                    let currentX = scrollView.contentOffset.x
-                    
-                    // Only reset if significantly off
-                    if abs(currentX - targetX) > 1.0 {
-                        scrollView.contentOffset.x = 0.0
-                    }
-                }
-            } else {
-                // Content is wider than view - enforce min/max bounds
-                let minOffsetX: CGFloat = 0.0  // The left edge of the content (not -contentInset.left)
-                let maxOffsetX = scaledWidth - scrollViewSize.width
-                
-                if scrollView.contentOffset.x < minOffsetX {
-                    scrollView.contentOffset.x = minOffsetX
-                } else if scrollView.contentOffset.x > maxOffsetX {
-                    scrollView.contentOffset.x = maxOffsetX
-                }
-            }
-            
-            // Handle vertical centering with the same principle
-            if scaledHeight <= scrollViewSize.height {
-                // Only reset the offset if significantly off and user isn't interacting
-                if !scrollView.isTracking && !scrollView.isDecelerating && !scrollView.isZooming {
-                    // When content fits height, offset should be 0 (insets handle centering)
-                    let targetY: CGFloat = 0.0
-                    let currentY = scrollView.contentOffset.y
-                    
-                    // Only reset if significantly off
-                    if abs(currentY - targetY) > 1.0 {
-                        scrollView.contentOffset.y = 0.0
-                    }
-                }
-            }
-            
-            // Update scroll indicators after centering
-            updateScrollIndicatorPosition()
-        }
-        
-        // Update directional lock based on content size relative to view
-        func updateDirectionalLock(_ scrollView: UIScrollView) {
-            guard let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            
-            // Only enable directional lock when content fits within the view width
-            scrollView.isDirectionalLockEnabled = (scaledWidth <= scrollViewSize.width)
+            // Re-center when zooming completes
+            centerContainer(scrollView: scrollView)
         }
         
         func scrollViewDidLayoutSubviews(_ scrollView: UIScrollView) {
-            // Update insets to maintain proper padding when layout changes
-            updateContentInsetsForZoom(scrollView)
-            
-            // After layout changes (like rotation), we can safely center content if needed
-            centerContentIfNeeded(scrollView)
-        }
-        
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            // We want to be careful about enforcing bounds during scrolling
-            // Don't interfere with active user interaction
-            if !scrollView.isTracking && !scrollView.isDecelerating && !scrollView.isZooming {
-                // Only enforce bounds when the user isn't actively interacting
-                enforceScrollBoundsIfNeeded(scrollView)
-            }
-        }
-        
-        // A less aggressive bounds enforcer that only acts when clearly needed
-        func enforceScrollBoundsIfNeeded(_ scrollView: UIScrollView) {
-            guard let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            
-            // Only apply constraints if content is smaller than view
-            // (iOS handles the rest correctly for larger content)
-            if scaledWidth <= scrollViewSize.width {
-                // Center horizontally when content is smaller than view
-                // Instead of setting to -contentInset.left, set to 0 to let insets handle centering
-                scrollView.contentOffset.x = 0.0
-            }
-            
-            let scaledHeight = containerSize.height * scrollView.zoomScale
-            if scaledHeight <= scrollViewSize.height {
-                // Center vertically when content is smaller than view height
-                // Use 0 instead of -contentInset.top
-                scrollView.contentOffset.y = 0.0
-            }
-        }
-        
-        // MARK: - Content Positioning
-        
-        // A simpler, more reliable approach to centering
-        func centerContentInScrollView() {
-            guard let scrollView = scrollView, let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            
-            // Calculate the scaled container size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            let scaledHeight = containerSize.height * scrollView.zoomScale
-            
-            // Set the content insets to center the content
-            let horizontalInset = max((scrollViewSize.width - scaledWidth) / 2, 0.0)
-            let verticalInset = max((scrollViewSize.height - scaledHeight) / 2, 0.0)
-            
-            // Apply the insets
-            scrollView.contentInset = UIEdgeInsets(
-                top: verticalInset,
-                left: horizontalInset,
-                bottom: verticalInset,
-                right: horizontalInset
-            )
-            
-            // Update scroll indicators to match content boundaries
-            updateScrollIndicatorPosition()
-            
-            // Additional handling for centering based on current zoom level
-            // When content fits within view, keep it centered
-            if scaledWidth < scrollViewSize.width {
-                // Disable horizontal scrolling when content is smaller than the view.
-                if !scrollView.isTracking && !scrollView.isDecelerating {
-                    // Set to 0 instead of manipulating with content insets
-                    scrollView.contentOffset.x = 0.0
-                    scrollView.isDirectionalLockEnabled = true
-                }
-            } else {
-                // Content is wider than the scroll view; clamp the offset to the valid range
-                let maxOffsetX = scaledWidth - scrollViewSize.width
-                if !scrollView.isTracking && !scrollView.isDecelerating {
-                    if scrollView.contentOffset.x < 0.0 {
-                        scrollView.contentOffset.x = 0.0
-                    } else if scrollView.contentOffset.x > maxOffsetX {
-                        scrollView.contentOffset.x = maxOffsetX
-                    }
-                }
-                scrollView.isDirectionalLockEnabled = false
-            }
-            
-            // When content height is less than view height, center vertically
-            if scaledHeight < scrollViewSize.height {
-                if !scrollView.isTracking && !scrollView.isDecelerating {
-                    // Set to 0 to let content insets handle centering
-                    scrollView.contentOffset.y = 0.0
-                }
-            }
-            
-            // After setting insets and initial position, enforce bounds
-            // This ensures we don't end up in an invalid scroll position
-            if !scrollView.isTracking && !scrollView.isDecelerating {
-                enforceScrollBounds()
-            }
+            // After layout changes (like rotation), re-center content
+            centerContainer(scrollView: scrollView)
         }
         
         // MARK: - PKCanvasViewDelegate
@@ -500,8 +340,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Update container frame
             let totalHeight = max(1, CGFloat(parent.pages.count)) * (parent.pageSize.height + parent.pageSpacing) - parent.pageSpacing
             
-            // SIMPLIFY: Keep the container size exactly matching the content
-            // This ensures content and scroll indicators align correctly
+            // Simpler container setup, matching old version
             container.frame = CGRect(
                 x: 0, 
                 y: 0, 
@@ -509,25 +348,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 height: totalHeight
             )
             
-            // Position the pages within the container
-            for (index, page) in parent.pages.enumerated() {
-                if let cv = canvasViews[page.id] {
-                    let yPos = CGFloat(index) * (parent.pageSize.height + parent.pageSpacing)
-                    // Center horizontally within the container
-                    cv.frame = CGRect(
-                        x: 0,
-                        y: yPos,
-                        width: parent.pageSize.width,
-                        height: parent.pageSize.height
-                    )
-                }
-            }
-            
             // Update scroll view content size to match the container size exactly
             scrollView.contentSize = container.frame.size
             
-            // Calculate and update insets for proper centering
-            centerContentInScrollView()
+            // Use simpler centering approach
+            centerContainer(scrollView: scrollView)
             
             // Make the first canvas the first responder
             if let firstCanvas = canvasViews.first?.value {
@@ -542,19 +367,16 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         /// Configure a canvas for optimal display
         func configureCanvas(_ canvasView: PKCanvasView) {
-            // Optimize for high resolution
-            canvasView.optimizeForHighResolution()
-            
-            // Ensure no content insets on the canvas itself
-            canvasView.contentInset = .zero
-            
-            // Configure finger drawing
+            // Apply finger drawing policy based on settings
             let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
             if #available(iOS 16.0, *) {
                 canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
             } else {
                 canvasView.allowsFingerDrawing = !disableFingerDrawing
             }
+            
+            // Ensure no content insets on the canvas itself
+            canvasView.contentInset = .zero
         }
         
         /// Apply the template to the canvas
@@ -603,134 +425,18 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // MARK: - Rendering Quality
         
-        /// Update canvas rendering quality based on zoom scale
+        /// Update canvas rendering quality based on zoom scale - simpler version
         func updateCanvasRenderingForZoomScale(_ scale: CGFloat) {
-            for (_, canvasView) in canvasViews {
-                canvasView.adjustQualityForZoom(scale)
+            // We can adjust quality based on zoom if needed in the future
+            // In this simpler implementation, we don't need complex adjustments
+            if GlobalSettings.debugModeEnabled {
+                print("📏 Zoom scale: \(scale)")
             }
         }
         
         /// Get app settings
         func getAppSettings() -> AppSettingsModel? {
             return parent.appSettings
-        }
-        
-        // A separate method just to enforce scroll bounds without changing the center
-        func enforceScrollBounds() {
-            guard let scrollView = scrollView, let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            
-            // When content is narrower than the view, keep it centered and prevent any horizontal movement
-            if scaledWidth <= scrollViewSize.width {
-                // Content fits within view - it should be perfectly centered horizontally
-                // Use 0 instead of -scrollView.contentInset.left to let insets handle centering
-                scrollView.contentOffset.x = 0.0
-                
-                // Disable horizontal scrolling entirely when content fits in view
-                scrollView.isDirectionalLockEnabled = true
-            } else {
-                // Content is wider than view - enforce min/max bounds
-                
-                // Calculate left bound (minimum x offset)
-                let minOffsetX: CGFloat = 0.0 // Use 0 instead of -scrollView.contentInset.left
-                
-                // Calculate right bound (maximum x offset)
-                // This needs to account for content size but not insets anymore
-                let maxOffsetX = scaledWidth - scrollViewSize.width
-                
-                // Log the bounds for debugging
-                if GlobalSettings.debugModeEnabled {
-                    print("📏 Scroll bounds: min=\(minOffsetX), max=\(maxOffsetX), current=\(scrollView.contentOffset.x)")
-                }
-                
-                // Apply bounds restrictions symmetrically
-                if scrollView.contentOffset.x < minOffsetX {
-                    scrollView.contentOffset.x = minOffsetX
-                } else if scrollView.contentOffset.x > maxOffsetX {
-                    scrollView.contentOffset.x = maxOffsetX
-                }
-                
-                // Allow free scrolling when zoomed in
-                scrollView.isDirectionalLockEnabled = false
-            }
-            
-            // Similarly, enforce vertical bounds
-            let scaledHeight = containerSize.height * scrollView.zoomScale
-            if scaledHeight <= scrollViewSize.height {
-                // Center vertically - use 0 instead of -scrollView.contentInset.top
-                scrollView.contentOffset.y = 0.0
-            }
-            
-            // Update scroll indicator position after enforcing bounds
-            updateScrollIndicatorPosition()
-        }
-        
-        // Add dedicated method for updating scroll indicator position
-        func updateScrollIndicatorPosition() {
-            guard let scrollView = scrollView, let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            let scaledHeight = containerSize.height * scrollView.zoomScale
-            
-            // Calculate the horizontal and vertical insets for content centering
-            let horizontalInset = max((scrollViewSize.width - scaledWidth) / 2, 0.0)
-            let verticalInset = max((scrollViewSize.height - scaledHeight) / 2, 0.0)
-            
-            // Always keep scroll indicators at the boundary of the actual content, not the scrollView
-            // This makes the indicators match the visible content edges
-            scrollView.scrollIndicatorInsets = UIEdgeInsets(
-                top: verticalInset,
-                left: horizontalInset,
-                bottom: verticalInset,
-                right: horizontalInset
-            )
-            
-            // Force immediate update of scroll indicator
-            scrollView.flashScrollIndicators()
-        }
-        
-        // Add a dedicated method for updating content insets without repositioning content
-        func updateContentInsetsForZoom(_ scrollView: UIScrollView) {
-            guard let containerView = containerView else { return }
-            
-            let containerSize = containerView.frame.size
-            let scrollViewSize = scrollView.bounds.size
-            
-            // Calculate the scaled content size
-            let scaledWidth = containerSize.width * scrollView.zoomScale
-            let scaledHeight = containerSize.height * scrollView.zoomScale
-            
-            // Calculate insets (positive only when content is smaller than view)
-            let horizontalInset = max((scrollViewSize.width - scaledWidth) / 2, 0.0)
-            let verticalInset = max((scrollViewSize.height - scaledHeight) / 2, 0.0)
-            
-            // Apply insets without changing the content offset during zoom
-            // UIScrollView automatically centers content with these insets
-            // when the content is smaller than the view
-            let newInsets = UIEdgeInsets(
-                top: verticalInset,
-                left: horizontalInset,
-                bottom: verticalInset,
-                right: horizontalInset
-            )
-            
-            // Only update insets if they changed significantly to avoid visual glitches
-            let currentInsets = scrollView.contentInset
-            if abs(newInsets.left - currentInsets.left) > 0.5 ||
-               abs(newInsets.top - currentInsets.top) > 0.5 ||
-               abs(newInsets.right - currentInsets.right) > 0.5 ||
-               abs(newInsets.bottom - currentInsets.bottom) > 0.5 {
-                scrollView.contentInset = newInsets
-            }
-            
-            // Update scroll indicator insets to match content insets
-            // This ensures they're always aligned with the actual content boundaries
-            updateScrollIndicatorPosition()
         }
     }
     
@@ -744,30 +450,15 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         let scrollView = MultiPageScrollView()
         scrollView.delegate = context.coordinator
         
-        // Set more reasonable zoom constraints
-        // Minimum zoom: shouldn't be able to zoom out much beyond fitting the page
-        // Because we're using a resolution scale factor for drawing quality,
-        // we need to adjust our zoom limits accordingly
+        // Simple zoom constraints matching the original code
+        scrollView.minimumZoomScale = 0.5
+        scrollView.maximumZoomScale = 3.0
         
-        // For minimum zoom, we want to limit to approximately 90% of original size
-        // this prevents excessive zooming out while still allowing some flexibility
-        scrollView.minimumZoomScale = 0.9 / GlobalSettings.resolutionScaleFactor
-        
-        // For maximum zoom, 4x is usually sufficient for detailed work
-        scrollView.maximumZoomScale = 4.0 / GlobalSettings.resolutionScaleFactor
-        
-        // Improve scrolling behavior
-        scrollView.alwaysBounceVertical = true
+        // Basic scrolling setup
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = true
-        scrollView.indicatorStyle = .black  // Makes them more visible against light backgrounds
+        scrollView.indicatorStyle = .black
         scrollView.backgroundColor = UIColor.systemGray5
-        
-        // Disable bouncing for more precise control
-        scrollView.bounces = false
-        
-        // Set zoom to center on tapped point
-        scrollView.bouncesZoom = false
         
         // Create container view for all canvases
         let container = UIView()
@@ -786,13 +477,8 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             }
         }
         
-        // Set initial zoom scale
-        scrollView.zoomScale = 1.0 / GlobalSettings.resolutionScaleFactor
-        
-        // Initialize scroll indicators with proper positioning
-        // This prevents them from appearing in the wrong position initially
-        scrollView.scrollIndicatorInsets = .zero
-        scrollView.verticalScrollIndicatorInsets = .zero
+        // Set initial zoom scale to 1.0
+        scrollView.zoomScale = 1.0
         
         // Store initial size for later comparison
         context.coordinator.previousSize = scrollView.bounds.size
@@ -803,13 +489,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             object: nil,
             queue: .main
         ) { _ in
-            // Add a small delay to ensure bindings have updated
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 if self.pages.isEmpty { return }
                 
-                // Force refresh by clearing and rebuilding canvas views
                 if let container = context.coordinator.containerView {
-                    // Remove all existing canvas views
+                    // Force refresh by clearing and rebuilding canvas views
                     for subview in container.subviews {
                         subview.removeFromSuperview()
                     }
@@ -821,36 +505,21 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             }
         }
         
-        // Listen for sidebar open/close notifications that might affect centering
+        // Listen for sidebar visibility changes
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("SidebarVisibilityChanged"),
             object: nil, 
             queue: .main
         ) { _ in
-            // Re-center after sidebar visibility changes with our improved centering logic
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                // Update content insets first
-                context.coordinator.updateContentInsetsForZoom(scrollView)
-                // Then center the content
-                context.coordinator.centerContentIfNeeded(scrollView)
+                context.coordinator.centerContainer(scrollView: scrollView)
             }
         }
         
         // Perform initial layout with a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             context.coordinator.layoutPages()
-            
-            // Calculate and set appropriate min zoom after layout
-            if let container = context.coordinator.containerView {
-                // Initialize with proper content insets
-                context.coordinator.updateContentInsetsForZoom(scrollView)
-                
-                // Properly center after layout
-                context.coordinator.centerContentIfNeeded(scrollView)
-                
-                // Mark initial load complete after layout
-                context.coordinator.isInitialLoad = false
-            }
+            context.coordinator.isInitialLoad = false
         }
         
         return scrollView
@@ -885,7 +554,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             let newSize = scrollView.bounds.size
             if context.coordinator.previousSize != newSize && !newSize.width.isZero && !newSize.height.isZero {
                 context.coordinator.previousSize = newSize
-                multiPageScrollView.updateMinZoomScaleForSize(newSize)
+                
+                // Simply call centerContainer instead of the more complex logic
+                context.coordinator.centerContainer(scrollView: scrollView)
             }
         }
         
@@ -895,7 +566,6 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         if pagesWithoutViews.isEmpty && existingViewCount == pages.count {
             // We have all the views we need, just update templates if needed
-            // This section left intentionally empty - templates are updated only when needed
         } else {
             // Do a full layout refresh
             context.coordinator.layoutPages()
