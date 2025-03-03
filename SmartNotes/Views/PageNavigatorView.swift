@@ -13,6 +13,9 @@ struct PageNavigatorView: View {
     @Binding var selectedPageIndex: Int
     @State private var draggedItem: Page?
     
+    // Add a state to track whether a page selection is active
+    @State private var isSelectionActive: Bool = false
+    
     // Size constants for the navigator
     private let thumbnailWidth: CGFloat = 120
     private let thumbnailHeight: CGFloat = 160
@@ -31,9 +34,11 @@ struct PageNavigatorView: View {
                     ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
                         PageThumbnailView(
                             page: page,
-                            isSelected: index == selectedPageIndex,
+                            isSelected: index == selectedPageIndex && isSelectionActive,
                             onTap: {
+                                // Always select the page to trigger scrolling
                                 selectedPageIndex = index
+                                isSelectionActive = true
                             },
                             onBookmarkToggle: {
                                 toggleBookmark(for: index)
@@ -78,6 +83,22 @@ struct PageNavigatorView: View {
             for (index, _) in pages.enumerated() {
                 pages[index].pageNumber = index + 1
             }
+        }
+        // Listen for page selection notifications from the scroll view
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PageSelected"))) { notification in
+            if let pageIndex = notification.object as? Int {
+                // Only update the index but don't activate selection
+                // This allows highlighting which page is visible without navigating
+                selectedPageIndex = pageIndex
+                
+                // We don't set isSelectionActive here to prevent scroll changes
+                // from triggering navigation logic
+            }
+        }
+        // Add a separate listener for page selection deactivation
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PageSelectionDeactivated"))) { _ in
+            // Deactivate selection when requested
+            isSelectionActive = false
         }
     }
     

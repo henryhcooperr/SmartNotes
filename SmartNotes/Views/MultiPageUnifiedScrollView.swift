@@ -49,8 +49,8 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         return GlobalSettings.scaledPageSize
     }
     
-    // Minimal spacing so there's a slight boundary between pages
-    let pageSpacing: CGFloat = 2 * GlobalSettings.resolutionScaleFactor  // base spacing * scale factor
+    // Increased spacing between pages for better visual separation
+    let pageSpacing: CGFloat = 12 * GlobalSettings.resolutionScaleFactor  // Increased from 2 to 12
     
     class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate, PKToolPickerObserver {
         var parent: MultiPageUnifiedScrollView
@@ -79,6 +79,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Add tracking for the currently visible page
         var currentlyVisiblePageIndex: Int = 0
+        
+        // Track whether page navigation is locked to selection
+        var isPageNavigationLockedToSelection: Bool = true
         
         init(_ parent: MultiPageUnifiedScrollView) {
             self.parent = parent
@@ -328,6 +331,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 }
             }
             
+            // Add a defensive safety check to reset currentlyVisiblePageIndex if invalid
+            if currentlyVisiblePageIndex >= parent.pages.count {
+                currentlyVisiblePageIndex = max(0, min(parent.pages.count - 1, 0))
+                print("⚠️ Reset currentlyVisiblePageIndex to \(currentlyVisiblePageIndex) because it was out of range")
+            }
+            
             // Ensure each page has a PKCanvasView
             var newViewsCreated = 0
             var existingViewsUpdated = 0
@@ -363,6 +372,44 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     width: parent.pageSize.width,
                     height: parent.pageSize.height
                 )
+                
+                // Enhance shadow for better contrast between pages and background
+                cv.layer.shadowColor = UIColor.black.cgColor
+                cv.layer.shadowOpacity = 0.3  // Increased from 0.15 to 0.3
+                cv.layer.shadowOffset = CGSize(width: 0, height: 4)  // Increased from 2 to 4
+                cv.layer.shadowRadius = 50  // Increased from 6 to 10
+                cv.layer.cornerRadius = 40
+                cv.backgroundColor = UIColor.white
+                
+                // Add page number to top right corner
+                let pageNumberLabel = UILabel()
+                pageNumberLabel.text = "\(index + 1)"
+                pageNumberLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+                pageNumberLabel.textColor = UIColor.darkGray
+                pageNumberLabel.backgroundColor = UIColor(white: 0.95, alpha: 0.8)
+                pageNumberLabel.textAlignment = .center
+                pageNumberLabel.layer.cornerRadius = 12
+                pageNumberLabel.layer.masksToBounds = true
+                pageNumberLabel.sizeToFit()
+                
+                // Set fixed size for consistent appearance
+                let labelSize = CGSize(width: max(pageNumberLabel.bounds.width + 12, 24), height: 24)
+                pageNumberLabel.frame = CGRect(
+                    x: parent.pageSize.width - labelSize.width - 12,
+                    y: 12,
+                    width: labelSize.width,
+                    height: labelSize.height
+                )
+                
+                // Remove any existing page number labels before adding a new one
+                for subview in cv.subviews {
+                    if subview.tag == 999 {
+                        subview.removeFromSuperview()
+                    }
+                }
+                
+                pageNumberLabel.tag = 999
+                cv.addSubview(pageNumberLabel)
                 
                 // Apply the template lines/dots
                 applyTemplate(to: cv)
@@ -479,10 +526,20 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Add a method to scroll to a specific page
         @objc func scrollToSelectedPage(_ notification: Notification) {
+            // Add early safety check for initial loading state
+            guard !isInitialLoad, !isLayoutingPages else {
+                print("⚠️ Warning: Ignoring page selection during initial load or layout")
+                return
+            }
+        
             guard let pageIndex = notification.object as? Int,
-                  pageIndex < parent.pages.count,
+                  pageIndex >= 0 && pageIndex < parent.pages.count,  // Add range validation
                   let scrollView = scrollView,
-                  let container = containerView else {
+                  let container = containerView,
+                  parent.pages.count > 0,  // Ensure we have pages
+                  scrollView.contentSize.height > 0  // Ensure content size is valid
+            else {
+                print("⚠️ Warning: Invalid state for page scrolling. Pages: \(parent.pages.count), Index: \(notification.object as? Int ?? -1)")
                 return
             }
             
@@ -495,30 +552,72 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 }
             }
             
-            // Animate scrolling to the selected page
-            UIView.animate(withDuration: 0.3) {
+            // Critical fix: Adjust for current zoom scale
+            // When zoomed out, we need to reduce the offset proportionally
+            offsetY = offsetY * scrollView.zoomScale
+            
+            // Ensure we don't scroll beyond content bounds
+            let maxPossibleOffset = scrollView.contentSize.height * scrollView.zoomScale - scrollView.bounds.height
+            offsetY = min(offsetY, max(0, maxPossibleOffset))
+            
+            print("📏 Scrolling to page \(pageIndex+1): offsetY = \(offsetY), zoom = \(scrollView.zoomScale), resolution factor = \(GlobalSettings.resolutionScaleFactor)")
+            
+            // Animate scrolling to the selected page with slower animation
+            UIView.animate(withDuration: 0.75, 
+                      delay: 0,
+                      options: [.curveEaseInOut],
+                      animations: {
                 scrollView.setContentOffset(CGPoint(x: 0, y: offsetY), animated: false)
-            }
+            }, completion: { _ in
+                // After scrolling completes, deselect the page
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Post notification to deactivate page selection
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("PageSelectionDeactivated"),
+                        object: nil
+                    )
+                    print("📜 Scrolled to page \(pageIndex+1) - automatically deselecting")
+                }
+            })
         }
         
         // Add a method to determine which page is currently visible
         func determineVisiblePage() {
-            guard let scrollView = scrollView, parent.pages.count > 0 else { return }
+            // Add safety check to prevent crash on empty pages
+            guard let scrollView = scrollView, 
+                  parent.pages.count > 0, 
+                  !isInitialLoad, 
+                  !isLayoutingPages else { return }
             
+            // Get the scroll view's current vertical position
             let offsetY = scrollView.contentOffset.y
+            
+            // Account for zoom scale when calculating page position
+            let effectiveOffsetY = offsetY / scrollView.zoomScale
+            
             let pageHeight = parent.pageSize.height + parent.pageSpacing
             
-            // Calculate the visible page index based on the scroll position
+            // Calculate the visible page index based on the scroll position, adjusted for zoom
             let visiblePageIndex = min(
-                max(Int(round(offsetY / pageHeight)), 0),
+                max(Int(round(effectiveOffsetY / pageHeight)), 0),
                 parent.pages.count - 1
             )
+            
+            // Add safety check before accessing arrays
+            guard visiblePageIndex >= 0 && visiblePageIndex < parent.pages.count else {
+                print("⚠️ Warning: Calculated visible page index \(visiblePageIndex) is out of range (pages count: \(parent.pages.count))")
+                return
+            }
             
             // Only notify if the visible page has changed
             if visiblePageIndex != currentlyVisiblePageIndex {
                 currentlyVisiblePageIndex = visiblePageIndex
                 
-                // Notify that the visible page has changed
+                // Print the current visible page
+                print("📄 Visible page changed to: \(visiblePageIndex + 1) of \(parent.pages.count)")
+                
+                // Notify that the visible page has changed - this only updates the highlight
+                // in the navigator but doesn't trigger automatic scrolling
                 NotificationCenter.default.post(
                     name: NSNotification.Name("PageSelected"),
                     object: visiblePageIndex
@@ -528,6 +627,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Update scrollViewDidScroll to determine the visible page
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            // Always determine which page is visible
             determineVisiblePage()
         }
         
@@ -590,11 +690,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.indicatorStyle = .black
-        scrollView.backgroundColor = UIColor.systemGray5
+        scrollView.backgroundColor = UIColor.systemGray6  // Lighter background color for better contrast
         
         // Create container view for all canvases
         let container = UIView()
-        container.backgroundColor = UIColor.systemGray5
+        container.backgroundColor = UIColor.systemGray6  // Matching background
         scrollView.addSubview(container)
         
         // Save references
@@ -603,10 +703,14 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // If pages is empty, create at least one page
         if pages.isEmpty {
-            let newPage = Page()
-            DispatchQueue.main.async {
-                self.pages = [newPage]
-            }
+            let newPage = Page(
+                drawingData: Data(),
+                template: nil,
+                pageNumber: 1
+            )
+            // Use immediate assignment rather than async to ensure it's available during initialization
+            self.pages = [newPage]
+            print("📄 Created initial page for new note with ID: \(newPage.id)")
         }
         
         // Set initial zoom scale to 1.0
@@ -646,6 +750,17 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 context.coordinator.centerContainer(scrollView: scrollView)
             }
+        }
+        
+        // Listen for page selection deactivation
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("PageSelectionDeactivated"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            // Unlock page navigation from selection
+            context.coordinator.isPageNavigationLockedToSelection = false
+            print("📜 Page selection deactivated - free scrolling enabled")
         }
         
         // Perform initial layout with a delay
