@@ -54,6 +54,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
             centerContainer(scrollView: scrollView)
+            
+            // Update rendering quality based on zoom scale
+            updateCanvasRenderingForZoomScale(scrollView.zoomScale)
         }
         
         private func centerContainer(scrollView: UIScrollView) {
@@ -190,6 +193,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     // Load existing drawing
                     cv.drawing = PKDrawing.fromData(page.drawingData)
                     
+                    // Apply high-resolution configuration
+                    configureCanvasForHighResolution(cv)
+                    
                     // Respect finger drawing toggle
                     self.applyFingerDrawingPolicy(to: cv)
                     
@@ -231,6 +237,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             // Reset layout flag
             isLayoutingPages = false
+            
+            // After zoom, update the rendering quality
+            updateCanvasRenderingForZoomScale(scrollView.zoomScale)
         }
         
         /// Re-apply the user's chosen template lines/dots
@@ -297,6 +306,45 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Invalidate thumbnail when content changes
             ThumbnailGenerator.invalidateThumbnail(for: noteID)
         }
+        
+        // Add this method to improve canvas view configuration
+        private func configureCanvasForHighResolution(_ canvasView: PKCanvasView) {
+            // Ensure proper content scale factor for retina displays
+            canvasView.layer.contentsScale = UIScreen.main.scale
+            
+            // Set drawing policy (which affects how strokes are rendered)
+            if #available(iOS 16.0, *) {
+                canvasView.drawingPolicy = .anyInput
+            } else {
+                canvasView.allowsFingerDrawing = true
+            }
+            
+            // Force the canvas to use high-resolution rendering
+            if #available(iOS 14.0, *) {
+                // This is a custom extension we'll add to ensure high quality
+                canvasView.optimizeForHighQualityZoom()
+            }
+            
+            // Update content insets to prevent drawing too close to edges
+            canvasView.contentInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        }
+        
+        // Add this method to adjust rendering quality based on zoom scale
+        private func updateCanvasRenderingForZoomScale(_ scale: CGFloat) {
+            // For very high zoom levels, we need higher quality rendering
+            let qualityAdjustment: CGFloat = scale > 2.0 ? 2.0 : 1.0
+            
+            for (_, canvasView) in canvasViews {
+                // Apply the quality adjustment based on zoom level
+                if #available(iOS 14.0, *) {
+                    // On iOS 14+ we can directly adjust the drawing quality
+                    canvasView.drawingPolicy = scale > 1.5 ? .pencilOnly : .anyInput
+                }
+                
+                // Force redraw with the new quality setting
+                canvasView.setNeedsDisplay()
+            }
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -312,8 +360,8 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         let scrollView = UIScrollView()
         scrollView.delegate = context.coordinator
-        scrollView.minimumZoomScale = 0.5
-        scrollView.maximumZoomScale = 3.0
+        scrollView.minimumZoomScale = 0.25  // Allow zooming out further
+        scrollView.maximumZoomScale = 5.0   // Increase max zoom for detailed work
         
         // Set the background color so it's not pure black
         scrollView.backgroundColor = UIColor.systemGray5

@@ -63,6 +63,18 @@ struct SinglePageCanvasView: UIViewRepresentable {
         
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
             centerCanvas(scrollView: scrollView)
+            
+            // Update quality based on zoom level
+            if let canvasView = canvasView {
+                // For high zoom levels, increase rendering quality
+                if scrollView.zoomScale > 2.0 {
+                    canvasView.layer.contentsScale = UIScreen.main.scale * 2.0
+                    canvasView.setNeedsDisplay()
+                } else {
+                    canvasView.layer.contentsScale = UIScreen.main.scale
+                    canvasView.setNeedsDisplay()
+                }
+            }
         }
         
         private func centerCanvas(scrollView: UIScrollView) {
@@ -82,8 +94,8 @@ struct SinglePageCanvasView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIScrollView {
         // 1) Create a scroll view that allows pinch to zoom
         let scrollView = UIScrollView()
-        scrollView.minimumZoomScale = 0.5
-        scrollView.maximumZoomScale = 3.0
+        scrollView.minimumZoomScale = 0.25  // Allow zooming out further
+        scrollView.maximumZoomScale = 5.0   // Increase max zoom for detailed work
         scrollView.delegate = context.coordinator
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = true
@@ -95,6 +107,13 @@ struct SinglePageCanvasView: UIViewRepresentable {
         canvasView.delegate = context.coordinator
         canvasView.alwaysBounceVertical = false
         canvasView.backgroundColor = .white
+        
+        // Configure for high-resolution rendering
+        canvasView.layer.contentsScale = UIScreen.main.scale
+        if let window = UIApplication.shared.windows.first {
+            canvasView.layer.contentsScale = window.screen.scale
+        }
+        
         // If iOS 16 or above:
         if #available(iOS 16.0, *) {
             canvasView.drawingPolicy = .anyInput
