@@ -83,6 +83,14 @@ struct NoteDetailView: View {
                 .onAppear {
                     print("📝 NoteDetailView appeared for note ID: \(note.id)")
                     
+                    // Always close sidebar when opening a note to ensure proper canvas positioning
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("CloseSidebar"),
+                            object: nil
+                        )
+                    }
+                    
                     // Migrate older single-drawing data to pages if needed
                     migrateIfNeeded()
                     

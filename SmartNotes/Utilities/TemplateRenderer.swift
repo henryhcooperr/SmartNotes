@@ -319,8 +319,8 @@ class TemplateRenderer {
             
             switch template.type {
             case .lined:
-                // Draw horizontal lines
-                for y in stride(from: pageRect.minY + spacing, to: pageRect.maxY, by: spacing) {
+                // Draw horizontal lines starting from the page edge
+                for y in stride(from: pageRect.minY, to: pageRect.maxY, by: spacing) {
                     context.beginPath()
                     context.move(to: CGPoint(x: pageRect.minX, y: y))
                     context.addLine(to: CGPoint(x: pageRect.maxX, y: y))
@@ -328,15 +328,15 @@ class TemplateRenderer {
                 }
                 
             case .graph:
-                // Draw horizontal lines
-                for y in stride(from: pageRect.minY + spacing, to: pageRect.maxY, by: spacing) {
+                // Draw horizontal lines starting from the page edge
+                for y in stride(from: pageRect.minY, to: pageRect.maxY, by: spacing) {
                     context.beginPath()
                     context.move(to: CGPoint(x: pageRect.minX, y: y))
                     context.addLine(to: CGPoint(x: pageRect.maxX, y: y))
                     context.strokePath()
                 }
-                // Draw vertical lines
-                for x in stride(from: pageRect.minX + spacing, to: pageRect.maxX, by: spacing) {
+                // Draw vertical lines starting from the page edge
+                for x in stride(from: pageRect.minX, to: pageRect.maxX, by: spacing) {
                     context.beginPath()
                     context.move(to: CGPoint(x: x, y: pageRect.minY))
                     context.addLine(to: CGPoint(x: x, y: pageRect.maxY))
@@ -344,9 +344,9 @@ class TemplateRenderer {
                 }
                 
             case .dotted:
-                // Draw dots - scale dot size by resolution factor
-                for y in stride(from: pageRect.minY + spacing, to: pageRect.maxY, by: spacing) {
-                    for x in stride(from: pageRect.minX + spacing, to: pageRect.maxX, by: spacing) {
+                // Draw dots starting from the page edge
+                for y in stride(from: pageRect.minY, to: pageRect.maxY, by: spacing) {
+                    for x in stride(from: pageRect.minX, to: pageRect.maxX, by: spacing) {
                         let dotSize = max(min(template.lineWidth * 2, 5), 1) * GlobalSettings.resolutionScaleFactor
                         let dotRect = CGRect(
                             x: x - dotSize / 2,
