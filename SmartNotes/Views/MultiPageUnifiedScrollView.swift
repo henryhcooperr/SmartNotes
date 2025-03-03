@@ -10,6 +10,30 @@ import SwiftUI
 import PencilKit
 import ObjectiveC
 
+// Add the missing PageViewModel class
+class PageViewModel {
+    var horizontalSizeClass: UserInterfaceSizeClass?
+    var verticalSizeClass: UserInterfaceSizeClass?
+    
+    init(_ horizontalSizeClass: UserInterfaceSizeClass?, _ verticalSizeClass: UserInterfaceSizeClass?) {
+        self.horizontalSizeClass = horizontalSizeClass
+        self.verticalSizeClass = verticalSizeClass
+    }
+}
+
+// A custom scroll view subclass that can store additional context
+class MultiPageScrollView: UIScrollView {
+    // These properties store page data so the view can update itself
+    var pages: [Page] = []
+    var pageViewModels: [UUID: PageViewModel] = [:]
+    var context: MultiPageUnifiedScrollView.Coordinator?
+    
+    // Called by the coordinator to draw pages on demand
+    func drawPages() {
+        context?.layoutPages()
+    }
+}
+
 struct MultiPageUnifiedScrollView: UIViewRepresentable {
     // Track which updates are coming from where
     private static var updateCounter = 0
@@ -17,10 +41,16 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     @Binding var pages: [Page]
     @Binding var template: CanvasTemplate
     
-    // The standard "paper" size for each page
-    let pageSize = CGSize(width: 1224, height: 1584)
+    // Access app settings
+    @EnvironmentObject var appSettings: AppSettingsModel
+    
+    // Use the scaled page size from GlobalSettings
+    var pageSize: CGSize {
+        return GlobalSettings.scaledPageSize
+    }
+    
     // Minimal spacing so there's a slight boundary between pages
-    let pageSpacing: CGFloat = 2
+    let pageSpacing: CGFloat = 2 * GlobalSettings.resolutionScaleFactor  // base spacing * scale factor
     
     class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate {
         var parent: MultiPageUnifiedScrollView
@@ -29,6 +59,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Keep references to each PKCanvasView by page ID
         var canvasViews: [UUID: PKCanvasView] = [:]
+        
+        // Keep track of page view models by page ID
+        var pageViewModels: [UUID: PageViewModel] = [:]
         
         // Avoid repeated triggers during initial load
         var isInitialLoad = true
@@ -39,7 +72,10 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // Tool properties
         var selectedTool: PKInkingTool.InkType = .pen
         var selectedColor: UIColor = .black
-        var lineWidth: CGFloat = 2.0
+        var lineWidth: CGFloat = 2.0 * GlobalSettings.resolutionScaleFactor
+        
+        // Store initial size for later comparison
+        var previousSize: CGSize?
         
         init(_ parent: MultiPageUnifiedScrollView) {
             self.parent = parent
@@ -48,23 +84,120 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // MARK: - UIScrollViewDelegate
         func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-            // We'll scale the entire container of pages
             return containerView
         }
         
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            // Use the simpler centering approach
             centerContainer(scrollView: scrollView)
             
-            // Update rendering quality based on zoom scale
+            // Still update rendering quality for different zoom levels
             updateCanvasRenderingForZoomScale(scrollView.zoomScale)
         }
         
-        private func centerContainer(scrollView: UIScrollView) {
+        // Simplified centering function from the older version
+        func centerContainer(scrollView: UIScrollView) {
             guard let container = containerView else { return }
             let offsetX = max((scrollView.bounds.width - container.frame.width * scrollView.zoomScale) * 0.5, 0)
             let offsetY = max((scrollView.bounds.height - container.frame.height * scrollView.zoomScale) * 0.5, 0)
             
             scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: offsetY, right: offsetX)
+        }
+        
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
+            
+            // Simple flag for reducing quality during scrolling
+            for (_, canvasView) in canvasViews {
+                // Lower quality during scrolling
+                if #available(iOS 16.0, *) {
+                    canvasView.drawingPolicy = .pencilOnly
+                } else {
+                    canvasView.allowsFingerDrawing = false
+                }
+            }
+        }
+        
+        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
+            
+            // If not decelerating, restore quality immediately
+            if !decelerate {
+                for (_, canvasView) in canvasViews {
+                    // Restore normal quality
+                    let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+                    if #available(iOS 16.0, *) {
+                        canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+                    } else {
+                        canvasView.allowsFingerDrawing = !disableFingerDrawing
+                    }
+                }
+                
+                // Re-center content
+                centerContainer(scrollView: scrollView)
+            }
+        }
+        
+        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
+            
+            // Restore quality after scrolling stops
+            for (_, canvasView) in canvasViews {
+                // Restore normal quality
+                let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+                if #available(iOS 16.0, *) {
+                    canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+                } else {
+                    canvasView.allowsFingerDrawing = !disableFingerDrawing
+                }
+            }
+            
+            // Re-center when done
+            centerContainer(scrollView: scrollView)
+        }
+        
+        func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
+            
+            // Lower quality during zooming
+            for (_, canvasView) in canvasViews {
+                // Lower quality during zooming
+                if #available(iOS 16.0, *) {
+                    canvasView.drawingPolicy = .pencilOnly
+                } else {
+                    canvasView.allowsFingerDrawing = false
+                }
+            }
+        }
+        
+        func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+            guard let appSettings = getAppSettings() else { return }
+            
+            // Restore quality after zooming stops
+            if appSettings.optimizeDuringInteraction {
+                for (_, canvasView) in canvasViews {
+                    // Restore normal quality
+                    let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+                    if #available(iOS 16.0, *) {
+                        canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+                    } else {
+                        canvasView.allowsFingerDrawing = !disableFingerDrawing
+                    }
+                }
+            }
+            
+            // Log the final zoom scale for debugging
+            if GlobalSettings.debugModeEnabled {
+                print("🔎 Final zoom scale: \(scale)")
+            }
+            
+            // Re-center when zooming completes
+            centerContainer(scrollView: scrollView)
+        }
+        
+        func scrollViewDidLayoutSubviews(_ scrollView: UIScrollView) {
+            // After layout changes (like rotation), re-center content
+            centerContainer(scrollView: scrollView)
         }
         
         // MARK: - PKCanvasViewDelegate
@@ -78,26 +211,20 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Save the updated drawing
             let drawingData = canvasView.drawing.dataRepresentation()
             
-            // Print debug info about the drawing
-            print("🖌️ Drawing changed on page \(pageIndex+1): \(canvasView.drawing.strokes.count) strokes")
-            
             DispatchQueue.main.async {
                 self.parent.pages[pageIndex].drawingData = drawingData
                 
-                // IMPORTANT: Check if we need to add a page AFTER updating the model
+                // Check if we need to add a page after updating the model
                 if !self.isInitialLoad {
-                    // Always check for new pages needed after drawing changes on any page
                     self.checkForNextPageNeeded(pageIndex: pageIndex, canvasView: canvasView)
                 }
             }
             
             // Notify that content changed
-            contentDidChange(for: pageID)
+            ThumbnailGenerator.invalidateThumbnail(for: pageID)
         }
         
-        private func checkForNextPageNeeded(pageIndex: Int, canvasView: PKCanvasView) {
-            print("🔍 Checking if new page needed: current page \(pageIndex+1) of \(parent.pages.count)")
-            
+        func checkForNextPageNeeded(pageIndex: Int, canvasView: PKCanvasView) {
             // We want to add a new page if:
             // 1. This is the last page (pageIndex == parent.pages.count - 1)
             // 2. There are strokes on this page (canvasView.drawing.strokes.count > 0)
@@ -109,13 +236,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 if !hasLastPageAlready {
                     print("📝 Last page has content, adding a new blank page")
                     addPage()
-                } else {
-                    print("📝 Extra page already exists, no need to add another")
                 }
             }
         }
         
-        private func addPage() {
+        func addPage() {
             print("📄 Creating new page #\(parent.pages.count + 1)")
             let newPage = Page(
                 drawingData: Data(),
@@ -134,11 +259,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             }
         }
         
-        // Called by updateUIView whenever pages or template changes
+        // MARK: - Page Layout & Setup
+        
+        // Simplified layout method with clearer positioning logic
         func layoutPages() {
             // Prevent re-entrancy
             if isLayoutingPages {
-                print("⚠️ Avoiding recursive layoutPages call")
                 return
             }
             
@@ -146,33 +272,27 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             guard let container = containerView,
                   let scrollView = scrollView else {
-                print("⚠️ layoutPages() called but container or scrollView is nil")
                 isLayoutingPages = false
                 return
             }
             
             print("📄 Beginning layout of \(parent.pages.count) pages with template \(parent.template.type.rawValue)")
             
-            // Check for empty pages array - this shouldn't happen now with our fix
+            // Check for empty pages array
             if parent.pages.isEmpty {
-                print("⚠️ Warning: layoutPages() called with empty pages array. No canvas views will be created.")
+                print("⚠️ Warning: layoutPages() called with empty pages array.")
                 isLayoutingPages = false
-                return // Exit early instead of continuing
+                return
             }
             
             // Remove subviews for any pages that no longer exist
-            var removedViews = 0
             for subview in container.subviews {
                 if let cv = subview as? PKCanvasView {
                     if let tagID = cv.tagID, !parent.pages.contains(where: { $0.id == tagID }) {
                         cv.removeFromSuperview()
                         canvasViews.removeValue(forKey: tagID)
-                        removedViews += 1
                     }
                 }
-            }
-            if removedViews > 0 {
-                print("🧹 Removed \(removedViews) canvas views that no longer have pages")
             }
             
             // Ensure each page has a PKCanvasView
@@ -193,11 +313,8 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     // Load existing drawing
                     cv.drawing = PKDrawing.fromData(page.drawingData)
                     
-                    // Apply high-resolution configuration
-                    configureCanvasForHighResolution(cv)
-                    
-                    // Respect finger drawing toggle
-                    self.applyFingerDrawingPolicy(to: cv)
+                    // Configure high resolution canvas
+                    configureCanvas(cv)
                     
                     // Save reference
                     canvasViews[page.id] = cv
@@ -205,11 +322,10 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     newViewsCreated += 1
                 }
                 
-                // Frame it at the correct vertical offset
-                let xPos: CGFloat = 0
+                // Position the canvas vertically
                 let yPos = CGFloat(index) * (parent.pageSize.height + parent.pageSpacing)
                 cv.frame = CGRect(
-                    x: xPos,
+                    x: 0,
                     y: yPos,
                     width: parent.pageSize.width,
                     height: parent.pageSize.height
@@ -221,11 +337,21 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             print("📄 Layout complete: created \(newViewsCreated) new canvas views, updated \(existingViewsUpdated) existing views")
             
-            // Update container/frame/scroll content
+            // Update container frame
             let totalHeight = max(1, CGFloat(parent.pages.count)) * (parent.pageSize.height + parent.pageSpacing) - parent.pageSpacing
-            container.frame = CGRect(x: 0, y: 0, width: parent.pageSize.width, height: totalHeight)
+            
+            // Simpler container setup, matching old version
+            container.frame = CGRect(
+                x: 0, 
+                y: 0, 
+                width: parent.pageSize.width,
+                height: totalHeight
+            )
+            
+            // Update scroll view content size to match the container size exactly
             scrollView.contentSize = container.frame.size
             
+            // Use simpler centering approach
             centerContainer(scrollView: scrollView)
             
             // Make the first canvas the first responder
@@ -237,31 +363,36 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             // Reset layout flag
             isLayoutingPages = false
-            
-            // After zoom, update the rendering quality
-            updateCanvasRenderingForZoomScale(scrollView.zoomScale)
         }
         
-        /// Re-apply the user's chosen template lines/dots
-        func applyTemplate(to canvasView: PKCanvasView) {
-            // Log which template is being applied for debugging
-            print("🖋️ Applying template \(parent.template.type.rawValue) to canvas")
+        /// Configure a canvas for optimal display
+        func configureCanvas(_ canvasView: PKCanvasView) {
+            // Apply finger drawing policy based on settings
+            let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
+            if #available(iOS 16.0, *) {
+                canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
+            } else {
+                canvasView.allowsFingerDrawing = !disableFingerDrawing
+            }
             
-            // First, make sure to remove any existing template layers
+            // Ensure no content insets on the canvas itself
+            canvasView.contentInset = .zero
+        }
+        
+        /// Apply the template to the canvas
+        func applyTemplate(to canvasView: PKCanvasView) {
+            // First remove any existing template
             if let sublayers = canvasView.layer.sublayers {
-                for layer in sublayers {
-                    if layer.name == "TemplateLayer" {
-                        layer.removeFromSuperlayer()
-                    }
+                for layer in sublayers where layer.name == "TemplateLayer" {
+                    layer.removeFromSuperlayer()
                 }
             }
             
-            // Also remove any existing template image views
             for subview in canvasView.subviews where subview.tag == 888 {
                 subview.removeFromSuperview()
             }
             
-            // Now apply the template with a fresh slate
+            // Apply the template
             TemplateRenderer.applyTemplateToCanvas(
                 canvasView,
                 template: parent.template,
@@ -271,29 +402,19 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             )
         }
         
-        private func applyFingerDrawingPolicy(to canvasView: PKCanvasView) {
-            let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
-            if #available(iOS 16.0, *) {
-                canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
-            } else {
-                canvasView.allowsFingerDrawing = !disableFingerDrawing
-            }
-        }
+        // MARK: - Tool Management
         
-        // Add this method to the Coordinator class
+        /// Set a custom tool on all canvases
         func setCustomTool(type: PKInkingTool.InkType, color: UIColor, width: CGFloat) {
-            // Create the inking tool with the color that's already been converted
             let inkingTool = PKInkingTool(type, color: color, width: width)
             
-            // Apply to each canvas view
             for (_, canvasView) in canvasViews {
                 canvasView.tool = inkingTool
             }
         }
         
-        // Method to get active canvas
+        /// Get the currently active canvas
         func getActiveCanvasView() -> PKCanvasView? {
-            // Return the first canvas or the one that's currently first responder
             for (_, canvasView) in canvasViews {
                 if canvasView.isFirstResponder {
                     return canvasView
@@ -302,48 +423,20 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             return canvasViews.first?.value
         }
         
-        func contentDidChange(for noteID: UUID) {
-            // Invalidate thumbnail when content changes
-            ThumbnailGenerator.invalidateThumbnail(for: noteID)
+        // MARK: - Rendering Quality
+        
+        /// Update canvas rendering quality based on zoom scale - simpler version
+        func updateCanvasRenderingForZoomScale(_ scale: CGFloat) {
+            // We can adjust quality based on zoom if needed in the future
+            // In this simpler implementation, we don't need complex adjustments
+            if GlobalSettings.debugModeEnabled {
+                print("📏 Zoom scale: \(scale)")
+            }
         }
         
-        // Add this method to improve canvas view configuration
-        private func configureCanvasForHighResolution(_ canvasView: PKCanvasView) {
-            // Ensure proper content scale factor for retina displays
-            canvasView.layer.contentsScale = UIScreen.main.scale
-            
-            // Set drawing policy (which affects how strokes are rendered)
-            if #available(iOS 16.0, *) {
-                canvasView.drawingPolicy = .anyInput
-            } else {
-                canvasView.allowsFingerDrawing = true
-            }
-            
-            // Force the canvas to use high-resolution rendering
-            if #available(iOS 14.0, *) {
-                // This is a custom extension we'll add to ensure high quality
-                canvasView.optimizeForHighQualityZoom()
-            }
-            
-            // Update content insets to prevent drawing too close to edges
-            canvasView.contentInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
-        }
-        
-        // Add this method to adjust rendering quality based on zoom scale
-        private func updateCanvasRenderingForZoomScale(_ scale: CGFloat) {
-            // For very high zoom levels, we need higher quality rendering
-            let qualityAdjustment: CGFloat = scale > 2.0 ? 2.0 : 1.0
-            
-            for (_, canvasView) in canvasViews {
-                // Apply the quality adjustment based on zoom level
-                if #available(iOS 14.0, *) {
-                    // On iOS 14+ we can directly adjust the drawing quality
-                    canvasView.drawingPolicy = scale > 1.5 ? .pencilOnly : .anyInput
-                }
-                
-                // Force redraw with the new quality setting
-                canvasView.setNeedsDisplay()
-            }
+        /// Get app settings
+        func getAppSettings() -> AppSettingsModel? {
+            return parent.appSettings
         }
     }
     
@@ -352,60 +445,55 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> UIScrollView {
-        // Increment update counter for debugging
         MultiPageUnifiedScrollView.updateCounter += 1
-        let currentCreate = MultiPageUnifiedScrollView.updateCounter
         
-        print("🔄 makeUIView #\(currentCreate) called with \(pages.count) pages")
-        
-        let scrollView = UIScrollView()
+        let scrollView = MultiPageScrollView()
         scrollView.delegate = context.coordinator
-        scrollView.minimumZoomScale = 0.25  // Allow zooming out further
-        scrollView.maximumZoomScale = 5.0   // Increase max zoom for detailed work
         
-        // Set the background color so it's not pure black
+        // Simple zoom constraints matching the original code
+        scrollView.minimumZoomScale = 0.5
+        scrollView.maximumZoomScale = 3.0
+        
+        // Basic scrolling setup
+        scrollView.showsVerticalScrollIndicator = true
+        scrollView.showsHorizontalScrollIndicator = true
+        scrollView.indicatorStyle = .black
         scrollView.backgroundColor = UIColor.systemGray5
         
+        // Create container view for all canvases
         let container = UIView()
         container.backgroundColor = UIColor.systemGray5
-        
         scrollView.addSubview(container)
         
+        // Save references
         context.coordinator.scrollView = scrollView
         context.coordinator.containerView = container
         
         // If pages is empty, create at least one page
         if pages.isEmpty {
-            print("⚠️ makeUIView: pages array is empty, creating initial page")
             let newPage = Page()
             DispatchQueue.main.async {
                 self.pages = [newPage]
             }
         }
         
+        // Set initial zoom scale to 1.0
+        scrollView.zoomScale = 1.0
+        
+        // Store initial size for later comparison
+        context.coordinator.previousSize = scrollView.bounds.size
+        
+        // Listen for template refresh notifications
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("RefreshTemplate"),
             object: nil,
             queue: .main
         ) { _ in
-            print("🔄 Refresh template notification received")
-            
-            // Log current state for debugging
-            print("🔍 Current template: \(self.template.type.rawValue)")
-            print("🔍 Current page count: \(self.pages.count)")
-            
-            // Add a small delay to ensure bindings have updated
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // If no pages, notify developer
-                if self.pages.isEmpty {
-                    print("⚠️ Warning: Attempting to refresh template but pages array is empty!")
-                    return
-                }
+                if self.pages.isEmpty { return }
                 
-                // Force refresh by clearing and rebuilding canvas views
                 if let container = context.coordinator.containerView {
-                    print("🔄 Clearing existing canvas views and rebuilding...")
-                    // Remove all existing canvas views
+                    // Force refresh by clearing and rebuilding canvas views
                     for subview in container.subviews {
                         subview.removeFromSuperview()
                     }
@@ -413,67 +501,77 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     
                     // Force full redraw
                     context.coordinator.layoutPages()
-                    
-                    // Additional refresh after a short delay for reliability
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        context.coordinator.layoutPages()
-                    }
                 }
             }
         }
         
-        // Layout pages next runloop with a small delay to ensure initial setup is complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            print("🔄 Initial layout of pages (delayed)")
-            context.coordinator.layoutPages()
-            
-            // Mark initial load complete after layout
+        // Listen for sidebar visibility changes
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("SidebarVisibilityChanged"),
+            object: nil, 
+            queue: .main
+        ) { _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                context.coordinator.isInitialLoad = false
-                print("🔄 Initial load completed")
+                context.coordinator.centerContainer(scrollView: scrollView)
             }
+        }
+        
+        // Perform initial layout with a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            context.coordinator.layoutPages()
+            context.coordinator.isInitialLoad = false
         }
         
         return scrollView
     }
     
     func updateUIView(_ scrollView: UIScrollView, context: Context) {
-        // Increment update counter for debugging
         MultiPageUnifiedScrollView.updateCounter += 1
-        let currentUpdate = MultiPageUnifiedScrollView.updateCounter
         
-        print("🔄 updateUIView #\(currentUpdate) called with \(pages.count) pages, template: \(template.type.rawValue)")
-        
-        // CRITICAL: Don't allow updates while initial load is in progress
+        // Skip updates during initial load
         if context.coordinator.isInitialLoad {
-            print("⚠️ Update #\(currentUpdate) skipped - initial load in progress")
             return
         }
         
         // Skip update if pages array is empty
         if pages.isEmpty {
-            print("⚠️ Update #\(currentUpdate) skipped - pages array is empty")
             return
         }
         
-        // Avoid redundant updates by checking if any PKCanvasViews actually need to be created
-        // or if we just need to refresh templates
+        // Pass our scroll view to the coordinator
+        context.coordinator.scrollView = scrollView
+        
+        // Check if size has changed 
+        if let multiPageScrollView = scrollView as? MultiPageScrollView {
+            // Set context for the scroll view
+            multiPageScrollView.context = context.coordinator
+            
+            // Update pages reference
+            multiPageScrollView.pages = pages
+            multiPageScrollView.pageViewModels = context.coordinator.pageViewModels
+            
+            // Check for size changes
+            let newSize = scrollView.bounds.size
+            if context.coordinator.previousSize != newSize && !newSize.width.isZero && !newSize.height.isZero {
+                context.coordinator.previousSize = newSize
+                
+                // Simply call centerContainer instead of the more complex logic
+                context.coordinator.centerContainer(scrollView: scrollView)
+            }
+        }
+        
+        // Check if we need to do a full layout update
         let existingViewCount = context.coordinator.canvasViews.count
         let pagesWithoutViews = pages.filter { !context.coordinator.canvasViews.keys.contains($0.id) }
         
         if pagesWithoutViews.isEmpty && existingViewCount == pages.count {
-            // If we have all the views we need, just update templates
-            print("🔄 Update #\(currentUpdate) - All PKCanvasViews exist, only refreshing templates")
-            for (_, _) in context.coordinator.canvasViews {
-                //context.coordinator.applyTemplate(to: canvasView)
-            }
+            // We have all the views we need, just update templates if needed
         } else {
-            // Otherwise do a full layout refresh
-            print("🔄 Update #\(currentUpdate) - Need to create/remove PKCanvasViews, doing full layout")
+            // Do a full layout refresh
             context.coordinator.layoutPages()
         }
         
-        // Add this to the updateUIView method
+        // Post coordinator ready notification
         DispatchQueue.main.async {
             NotificationCenter.default.post(
                 name: NSNotification.Name("CoordinatorReady"),
@@ -483,7 +581,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     }
 }
 
-// A helper so we can store the page ID on each PKCanvasView
+// A helper to store the page ID on each PKCanvasView
 fileprivate extension PKCanvasView {
     private struct AssociatedKeys {
         static var tagIDKey = "tagIDKey"

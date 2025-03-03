@@ -5,6 +5,7 @@
 
 import SwiftUI
 import PencilKit
+import Foundation
 
 struct SinglePageCanvasView: UIViewRepresentable {
     @Binding var page: Page
@@ -23,6 +24,9 @@ struct SinglePageCanvasView: UIViewRepresentable {
         
         // Track if we've done an initial load to avoid repeated calls
         var isInitialLoad = true
+        
+        // Store the last template type to avoid unnecessary reapplications
+        var lastTemplateType: CanvasTemplate.TemplateType?
         
         init(_ parent: SinglePageCanvasView) {
             self.parent = parent
@@ -66,14 +70,8 @@ struct SinglePageCanvasView: UIViewRepresentable {
             
             // Update quality based on zoom level
             if let canvasView = canvasView {
-                // For high zoom levels, increase rendering quality
-                if scrollView.zoomScale > 2.0 {
-                    canvasView.layer.contentsScale = UIScreen.main.scale * 2.0
-                    canvasView.setNeedsDisplay()
-                } else {
-                    canvasView.layer.contentsScale = UIScreen.main.scale
-                    canvasView.setNeedsDisplay()
-                }
+                // Use our extension method to adjust quality based on zoom
+                canvasView.adjustQualityForZoom(scrollView.zoomScale)
             }
         }
         
@@ -92,10 +90,12 @@ struct SinglePageCanvasView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> UIScrollView {
+        print("🖋️ Creating new SinglePageCanvasView")
+        
         // 1) Create a scroll view that allows pinch to zoom
         let scrollView = UIScrollView()
-        scrollView.minimumZoomScale = 0.25  // Allow zooming out further
-        scrollView.maximumZoomScale = 5.0   // Increase max zoom for detailed work
+        scrollView.minimumZoomScale = GlobalSettings.minimumZoomScale
+        scrollView.maximumZoomScale = GlobalSettings.maximumZoomScale
         scrollView.delegate = context.coordinator
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = true
@@ -106,32 +106,23 @@ struct SinglePageCanvasView: UIViewRepresentable {
         canvasView.drawing = PKDrawing.fromData(page.drawingData)
         canvasView.delegate = context.coordinator
         canvasView.alwaysBounceVertical = false
+        
+        // Start with white background - template will be applied later
         canvasView.backgroundColor = .white
         
-        // Configure for high-resolution rendering
-        canvasView.layer.contentsScale = UIScreen.main.scale
-        if let window = UIApplication.shared.windows.first {
-            canvasView.layer.contentsScale = window.screen.scale
-        }
-        
-        // If iOS 16 or above:
-        if #available(iOS 16.0, *) {
-            canvasView.drawingPolicy = .anyInput
-        } else {
-            canvasView.allowsFingerDrawing = true
-        }
+        // Configure for high-resolution rendering using our extension
+        canvasView.optimizeForHighResolution()
         
         // 3) Set a fixed frame for the canvas matching "a single page"
-        //    This might be ~8.5" x 11" at 72 dpi = 612 x 792
-        //    or you can go bigger, e.g. 1000 points tall to have extra space.
-        let pageWidth: CGFloat = 612
-        let pageHeight: CGFloat = 792
-        
-        canvasView.frame = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
+        // Use the scaled page size from GlobalSettings
+        canvasView.frame = CGRect(x: 0, y: 0, width: GlobalSettings.scaledPageSize.width, height: GlobalSettings.scaledPageSize.height)
         
         // 4) Add the canvas as a subview of the scrollView
         scrollView.addSubview(canvasView)
         scrollView.contentSize = canvasView.frame.size
+        
+        // Set initial zoom scale to maintain the same view size
+        scrollView.zoomScale = GlobalSettings.defaultZoomScale
         
         // 5) Tool picker
         let toolPicker = PKToolPicker()
@@ -144,6 +135,19 @@ struct SinglePageCanvasView: UIViewRepresentable {
         
         context.coordinator.scrollView = scrollView
         context.coordinator.canvasView = canvasView
+        
+        // Apply the template immediately to ensure it's visible from the start
+        print("🖋️ Initial template application of type: \(noteTemplate.type.rawValue)")
+        TemplateRenderer.applyTemplateToCanvas(
+            canvasView,
+            template: noteTemplate,
+            pageSize: GlobalSettings.scaledPageSize,
+            numberOfPages: 1,
+            pageSpacing: 0
+        )
+        
+        // Store the initial template type
+        context.coordinator.lastTemplateType = noteTemplate.type
         
         // 6) Mark initial load done after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -160,14 +164,33 @@ struct SinglePageCanvasView: UIViewRepresentable {
             if currentData != page.drawingData {
                 canvasView.drawing = PKDrawing.fromData(page.drawingData)
             }
-        }
-        
-        TemplateRenderer.applyTemplateToCanvas(
+            
+            // Check if template has changed and apply it if needed
+            if context.coordinator.lastTemplateType != noteTemplate.type {
+                print("🖋️ Template changed from \(context.coordinator.lastTemplateType?.rawValue ?? "nil") to \(noteTemplate.type.rawValue), reapplying")
+                
+                // Clear any existing template and apply the new one
+                TemplateRenderer.applyTemplateToCanvas(
                     canvasView,
                     template: noteTemplate,
-                    pageSize: CGSize(width: 612, height: 792),  // or your dynamic size
+                    pageSize: GlobalSettings.scaledPageSize,
                     numberOfPages: 1,
                     pageSpacing: 0
                 )
+                
+                // Update the stored template type
+                context.coordinator.lastTemplateType = noteTemplate.type
+            } else if GlobalSettings.debugModeEnabled {
+                // In debug mode, refresh template on every update to ensure it's visible
+                print("🐞 Debug mode: Refreshing template on update")
+                TemplateRenderer.applyTemplateToCanvas(
+                    canvasView,
+                    template: noteTemplate,
+                    pageSize: GlobalSettings.scaledPageSize,
+                    numberOfPages: 1,
+                    pageSpacing: 0
+                )
+            }
+        }
     }
 }

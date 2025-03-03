@@ -18,6 +18,9 @@ struct SubjectsSplitView: View {
     @State private var selectedSubject: Subject?
     @State private var searchText: String = ""
     
+    // Add state for sidebar visibility
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    
     // States for adding a new subject
     @State private var isAddingNewSubject = false
     @State private var newSubjectName = ""
@@ -40,7 +43,7 @@ struct SubjectsSplitView: View {
     }
     
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             sidebarView
         } detail: {
             detailView
@@ -54,6 +57,28 @@ struct SubjectsSplitView: View {
                 selectedSubject = subjects[0]
                 isInitialSelection = false
             }
+            
+            // Listen for notifications to close the sidebar
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("CloseSidebar"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                // Close the sidebar by setting visibility to detailOnly
+                columnVisibility = .detailOnly
+                
+                // Report this change so scroll views can recenter
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("SidebarVisibilityChanged"),
+                        object: nil
+                    )
+                }
+            }
+        }
+        .onDisappear {
+            // Clean up the observer when this view disappears
+            NotificationCenter.default.removeObserver(self)
         }
     }
     
