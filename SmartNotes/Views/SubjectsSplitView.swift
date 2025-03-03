@@ -14,12 +14,13 @@ import SwiftUI
 struct SubjectsSplitView: View {
     @Binding var subjects: [Subject]
     var onSubjectChange: (Subject) -> Void
+    var onNoteSelected: ((Note, UUID) -> Void)? = nil
     
     @State private var selectedSubject: Subject?
     @State private var searchText: String = ""
     
     // Add state for sidebar visibility
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var columnVisibility: NavigationSplitViewVisibility = .detailOnly
     
     // States for adding a new subject
     @State private var isAddingNewSubject = false
@@ -37,8 +38,9 @@ struct SubjectsSplitView: View {
         "music.note.list", "bag", "doc.text.magnifyingglass", "envelope", "guitar"
     ]
     
-    init(subjects: Binding<[Subject]>, onSubjectChange: @escaping (Subject) -> Void) {
+    init(subjects: Binding<[Subject]>, onNoteSelected: ((Note, UUID) -> Void)? = nil, onSubjectChange: @escaping (Subject) -> Void) {
         self._subjects = subjects
+        self.onNoteSelected = onNoteSelected
         self.onSubjectChange = onSubjectChange
     }
     
@@ -177,7 +179,12 @@ struct SubjectsSplitView: View {
                     let subjectBinding = $subjects[index]
                     
                     NavigationStack {
-                        NotePreviewsGrid(subject: subjectBinding)
+                        NotePreviewsGrid(subject: subjectBinding, onNoteSelected: { note in
+                            // Forward the selected note to our caller via the callback
+                            if let callback = onNoteSelected {
+                                callback(note, subject.id)
+                            }
+                        })
                     }
                 } else {
                     Text("Subject not found")

@@ -15,6 +15,8 @@ struct NoteDetailView: View {
     @Binding var note: Note
     @EnvironmentObject var dataManager: DataManager
     let subjectID: UUID
+    var onDismiss: (() -> Void)? = nil
+    
     @State private var showingTemplateSheet = false
     // Local copy of the note title
     @State private var localTitle: String
@@ -50,9 +52,11 @@ struct NoteDetailView: View {
     // Add a reference to access the coordinator
     @State private var scrollViewCoordinator: MultiPageUnifiedScrollView.Coordinator?
     
-    init(note: Binding<Note>, subjectID: UUID) {
+    init(note: Binding<Note>, subjectID: UUID, onDismiss: (() -> Void)? = nil) {
         self._note = note
         self.subjectID = subjectID
+        self.onDismiss = onDismiss
+        
         // Start localTitle with whatever is in the note
         self._localTitle = State(initialValue: note.wrappedValue.title)
         
@@ -79,21 +83,67 @@ struct NoteDetailView: View {
             
             // Main Content
             VStack(spacing: 0) {
-                // Title area
-                TextField("Note Title", text: $localTitle)
-                    .font(.title)
-                    .padding()
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: localTitle) { oldValue, newValue in
-                        // Only update the note model after initial load
-                        if !isInitialLoad {
-                            note.title = newValue
-                            saveChanges()
+                // Modern Title Bar
+                VStack(spacing: 0) {
+                    ZStack(alignment: .leading) {
+                        // Background with very subtle gradient
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(.systemBackground).opacity(0.98),
+                                Color(.systemBackground).opacity(0.95)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        HStack {
+                            HStack(spacing: 12) {
+                                // Document/Note icon
+                                Image(systemName: "doc.text")
+                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 14))
+                                
+                                // Title field
+                                TextField("Note Title", text: $localTitle)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .onChange(of: localTitle) { oldValue, newValue in
+                                        // Only update the note model after initial load
+                                        if !isInitialLoad {
+                                            note.title = newValue
+                                            saveChanges()
+                                        }
+                                    }
+                                    .textFieldStyle(PlainTextFieldStyle())
+                            }
+                            
+                            Spacer()
+                            
+                            // Close button
+                            Button {
+                                // Save any changes before dismissing
+                                saveChanges()
+                                
+                                // Call the dismiss callback if provided
+                                if let dismiss = onDismiss {
+                                    dismiss()
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 18))
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            .padding(.trailing, 10)
                         }
+                        .padding(.horizontal, 12)
                     }
-                    .padding(.horizontal)
-                
-                Divider().padding(.horizontal)
+                    .frame(height: 28)
+                    
+                    Divider()
+                }
+                .background(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.07), radius: 0.5, x: 0, y: 0.5)
                 
                 // Unified multi-page scroll
                 ZStack {

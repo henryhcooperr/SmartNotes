@@ -1050,7 +1050,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Simple zoom constraints matching the original code
         scrollView.minimumZoomScale = 0.3
-        scrollView.maximumZoomScale = 3.0
+        scrollView.maximumZoomScale = 2.9
         
         // Basic scrolling setup
         scrollView.showsVerticalScrollIndicator = true

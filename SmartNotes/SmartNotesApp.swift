@@ -133,12 +133,56 @@ struct SmartNotesApp: App {
 struct MainView: View {
     @EnvironmentObject var dataManager: DataManager
     
+    // Add state to manage the currently selected note and subject
+    @State private var selectedNote: Note? = nil
+    @State private var selectedSubjectID: UUID? = nil
+    @State private var isNoteDetailPresented = false
+    
     var body: some View {
-        SubjectsSplitView(subjects: $dataManager.subjects) { subject in
-            // This is the onChange handler that will be passed to SubjectsSplitView
-            dataManager.updateSubject(subject)
-            dataManager.saveData()
+        ZStack {
+            // Show SubjectsSplitView as primary content
+            SubjectsSplitView(
+                subjects: $dataManager.subjects,
+                onNoteSelected: { note, subjectID in
+                    // When a note is selected, capture it and show modal
+                    selectedNote = note
+                    selectedSubjectID = subjectID
+                    isNoteDetailPresented = true
+                }
+            ) { subject in
+                dataManager.updateSubject(subject)
+                dataManager.saveData()
+            }
+            
+            // Full-screen modal for note detail
+            if let note = selectedNote, let subjectID = selectedSubjectID, isNoteDetailPresented {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                
+                // Present NoteDetailView as a full screen modal
+                NoteDetailView(
+                    note: Binding(
+                        get: { note },
+                        set: { newNote in
+                            // Update the note in the dataManager
+                            if let subjectIndex = dataManager.subjects.firstIndex(where: { $0.id == subjectID }),
+                               let noteIndex = dataManager.subjects[subjectIndex].notes.firstIndex(where: { $0.id == note.id }) {
+                                dataManager.subjects[subjectIndex].notes[noteIndex] = newNote
+                                dataManager.saveData()
+                            }
+                        }
+                    ),
+                    subjectID: subjectID,
+                    onDismiss: {
+                        isNoteDetailPresented = false
+                    }
+                )
+                .transition(.move(edge: .bottom))
+                .zIndex(1) // Ensure it's above other content
+            }
         }
+        .animation(.easeInOut, value: isNoteDetailPresented)
     }
 }
 

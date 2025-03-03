@@ -3,6 +3,7 @@ import PencilKit
 
 struct NotePreviewsGrid: View {
     @Binding var subject: Subject
+    var onNoteSelected: ((Note) -> Void)? = nil
     
     @State private var viewMode: ViewMode = .bigGrid
     @Namespace private var animationNamespace
@@ -26,8 +27,9 @@ struct NotePreviewsGrid: View {
         }
     }
     
-    init(subject: Binding<Subject>) {
+    init(subject: Binding<Subject>, onNoteSelected: ((Note) -> Void)? = nil) {
         self._subject = subject
+        self.onNoteSelected = onNoteSelected
     }
     
     var body: some View {
@@ -102,9 +104,12 @@ struct NotePreviewsGrid: View {
                 ForEach(subject.notes.indices, id: \.self) { i in
                     let note = subject.notes[i]
                     
-                    // Always use a NavigationLink for normal taps
-                    NavigationLink {
-                        NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                    // Use a Button instead of NavigationLink
+                    Button {
+                        // Use the callback if provided
+                        if let callback = onNoteSelected {
+                            callback(note)
+                        }
                     } label: {
                         NoteCardView(
                             note: note,
@@ -129,8 +134,12 @@ struct NotePreviewsGrid: View {
         List {
             ForEach(subject.notes.indices, id: \.self) { i in
                 let note = subject.notes[i]
-                NavigationLink {
-                    NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                // Use a Button instead of NavigationLink
+                Button {
+                    // Use the callback if provided
+                    if let callback = onNoteSelected {
+                        callback(note)
+                    }
                 } label: {
                     NoteCardView(
                         note: note,
@@ -153,8 +162,12 @@ struct NotePreviewsGrid: View {
             LazyVStack(spacing: 8) {
                 ForEach(subject.notes.indices, id: \.self) { i in
                     let note = subject.notes[i]
-                    NavigationLink {
-                        NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                    // Use a Button instead of NavigationLink
+                    Button {
+                        // Use the callback if provided
+                        if let callback = onNoteSelected {
+                            callback(note)
+                        }
                     } label: {
                         NoteCardView(
                             note: note,
