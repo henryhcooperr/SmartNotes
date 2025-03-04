@@ -39,8 +39,6 @@ struct NoteDetailView: View {
     @State private var selectedPageIndex = 0
     @State private var isPageSelectionActive = false
     
-    @Environment(\.presentationMode) private var presentationMode
-    
     // Add these state variables to NoteDetailView
     @State private var selectedTool: PKInkingTool.InkType = .pen
     @State private var selectedColor: Color = .black
@@ -103,14 +101,6 @@ struct NoteDetailView: View {
                         }
                         .onAppear {
                             print("📝 NoteDetailView appeared for note ID: \(note.id)")
-                            
-                            // Always close sidebar when opening a note to ensure proper canvas positioning
-                            DispatchQueue.main.async {
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("CloseSidebar"),
-                                    object: nil
-                                )
-                            }
                             
                             // Migrate older single-drawing data to pages if needed
                             migrateIfNeeded()
@@ -189,17 +179,6 @@ struct NoteDetailView: View {
                                     self.isPageNavigatorVisible.toggle()
                                 }
                             }
-                            
-                            // Listen for close sidebar notifications
-                            NotificationCenter.default.addObserver(
-                                forName: NSNotification.Name("CloseSidebar"),
-                                object: nil,
-                                queue: .main
-                            ) { notification in
-                                withAnimation {
-                                    self.isPageNavigatorVisible = false
-                                }
-                            }
                         }
                         .onChange(of: note.pages) { _ in
                             // Save if pages change
@@ -248,14 +227,6 @@ struct NoteDetailView: View {
                                     }
                                 }) {
                                     Image(systemName: isPageNavigatorVisible ? "sidebar.left" : "sidebar.leading")
-                                }
-                            }
-                            
-                            // Done button
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Done") {
-                                    saveChanges()
-                                    presentationMode.wrappedValue.dismiss()
                                 }
                             }
                             

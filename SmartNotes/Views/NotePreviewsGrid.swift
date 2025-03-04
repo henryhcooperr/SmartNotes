@@ -3,6 +3,7 @@ import PencilKit
 
 struct NotePreviewsGrid: View {
     @Binding var subject: Subject
+    @EnvironmentObject private var navigationManager: NavigationStateManager
     
     @State private var viewMode: ViewMode = .bigGrid
     @Namespace private var animationNamespace
@@ -102,9 +103,9 @@ struct NotePreviewsGrid: View {
                 ForEach(subject.notes.indices, id: \.self) { i in
                     let note = subject.notes[i]
                     
-                    // Always use a NavigationLink for normal taps
-                    NavigationLink {
-                        NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                    // Use Button instead of NavigationLink
+                    Button {
+                        navigationManager.navigateToNote(noteIndex: i, in: subject.id)
                     } label: {
                         NoteCardView(
                             note: note,
@@ -129,8 +130,8 @@ struct NotePreviewsGrid: View {
         List {
             ForEach(subject.notes.indices, id: \.self) { i in
                 let note = subject.notes[i]
-                NavigationLink {
-                    NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                Button {
+                    navigationManager.navigateToNote(noteIndex: i, in: subject.id)
                 } label: {
                     NoteCardView(
                         note: note,
@@ -143,6 +144,7 @@ struct NotePreviewsGrid: View {
                     )
                     .matchedGeometryEffect(id: note.id, in: animationNamespace)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -153,8 +155,8 @@ struct NotePreviewsGrid: View {
             LazyVStack(spacing: 8) {
                 ForEach(subject.notes.indices, id: \.self) { i in
                     let note = subject.notes[i]
-                    NavigationLink {
-                        NoteDetailView(note: $subject.notes[i], subjectID: subject.id)
+                    Button {
+                        navigationManager.navigateToNote(noteIndex: i, in: subject.id)
                     } label: {
                         NoteCardView(
                             note: note,
