@@ -7,12 +7,19 @@
 
 import SwiftUI
 import PencilKit
+import UniformTypeIdentifiers
+
+// MARK: - Notification Names
+extension NSNotification.Name {
+    static let pageReorderingNotification = NSNotification.Name("PageReordering")
+}
 
 struct PageNavigatorView: View {
     @Binding var pages: [Page]
     @Binding var selectedPageIndex: Int
     @Binding var isSelectionActive: Bool
     @State private var draggedItem: Page?
+    @State private var visiblePageIndex: Int = 0  // Track which page is currently visible
     
     // Size constants for the navigator
     private let thumbnailWidth: CGFloat = 120
@@ -33,6 +40,7 @@ struct PageNavigatorView: View {
                         PageThumbnailView(
                             page: page,
                             isSelected: index == selectedPageIndex && isSelectionActive,
+                            isVisible: index == visiblePageIndex,
                             onTap: {
                                 // Always select the page to trigger scrolling
                                 selectedPageIndex = index
@@ -52,18 +60,6 @@ struct PageNavigatorView: View {
                             draggedItem: $draggedItem)
                         )
                     }
-                    
-                    Button(action: addNewPage) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Add New Page")
-                        }
-                        .padding()
-                        .frame(width: thumbnailWidth, height: 44)
-                        .background(Color(UIColor.systemGray6))
-                        .cornerRadius(8)
-                    }
-                    .padding(.top, 10)
                 }
                 .padding()
             }
@@ -76,17 +72,35 @@ struct PageNavigatorView: View {
                 PageThumbnailGenerator.clearCache(for: page.id)
             }
         }
-        .onChange(of: pages) { _, _ in
+        .onChange(of: pages) { _, newPages in
             // Ensure page numbers are updated correctly
-            for (index, _) in pages.enumerated() {
+            for (index, _) in newPages.enumerated() {
                 pages[index].pageNumber = index + 1
+            }
+            
+            // If a page was selected, find its new index and maintain selection
+            if isSelectionActive && selectedPageIndex < newPages.count {
+                let selectedPageID = newPages[selectedPageIndex].id
+                if let newIndex = newPages.firstIndex(where: { $0.id == selectedPageID }),
+                   newIndex != selectedPageIndex {
+                    // Update selection if index changed
+                    selectedPageIndex = newIndex
+                    // This notification will be caught by the coordinator
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("PageSelected"),
+                        object: newIndex
+                    )
+                }
             }
         }
         // Listen for page selection notifications from the scroll view
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PageSelected"))) { notification in
             if let pageIndex = notification.object as? Int {
-                // Only update the index but don't activate selection
-                // This allows highlighting which page is visible without navigating
+                // Update which page is visible
+                visiblePageIndex = pageIndex
+                
+                // Also update selectedPageIndex but don't activate selection
+                // This helps coordinate both states for UI consistency
                 selectedPageIndex = pageIndex
                 
                 // We don't set isSelectionActive here to prevent scroll changes
@@ -114,6 +128,23 @@ struct PageNavigatorView: View {
             pageNumber: pages.count + 1
         )
         pages.append(newPage)
+        
+        // Select the newly added page
+        selectedPageIndex = pages.count - 1
+        isSelectionActive = true
+        
+        // Post notification that a new page was added
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PageAdded"),
+            object: newPage.id
+        )
+        
+        // Also post a notification that this page is now selected
+        // This ensures the main content view will show the new page
+        NotificationCenter.default.post(
+            name: NSNotification.Name("PageSelectedByUser"),
+            object: selectedPageIndex
+        )
     }
 }
 
@@ -122,6 +153,7 @@ struct PageNavigatorView: View {
 struct PageThumbnailView: View {
     let page: Page
     let isSelected: Bool
+    let isVisible: Bool
     let onTap: () -> Void
     let onBookmarkToggle: () -> Void
     
@@ -140,9 +172,13 @@ struct PageThumbnailView: View {
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 0.5)
+                            .stroke(
+                                isSelected ? Color.blue : 
+                                (isVisible ? Color.green : Color.gray.opacity(0.3)), 
+                                lineWidth: isSelected ? 2 : (isVisible ? 1.5 : 0.5)
+                            )
                     )
-                    .shadow(color: isSelected ? Color.blue.opacity(0.3) : Color.clear, radius: 4)
+                    .shadow(color: isSelected ? Color.blue.opacity(0.3) : (isVisible ? Color.green.opacity(0.2) : Color.clear), radius: 4)
                     .overlay(
                         isActivelyDrawing ? 
                             RoundedRectangle(cornerRadius: 8)
@@ -272,6 +308,25 @@ struct PageDropDelegate: DropDelegate {
     @Binding var draggedItem: Page?
     
     func performDrop(info: DropInfo) -> Bool {
+        guard let draggedItem = draggedItem else { return false }
+        
+        // Get the final indices after all drag operations are complete
+        let finalFromIndex = items.firstIndex(where: { $0.id == draggedItem.id })!
+        let finalToIndex = items.firstIndex(where: { $0.id == item.id })!
+        
+        // Post notification about the reordering
+        NotificationCenter.default.post(
+            name: NSNotification.Name.pageReorderingNotification,
+            object: nil,
+            userInfo: [
+                "fromIndex": finalFromIndex,
+                "toIndex": finalToIndex
+            ]
+        )
+        
+        // Reset the dragged item
+        self.draggedItem = nil
+        
         return true
     }
     
@@ -282,10 +337,18 @@ struct PageDropDelegate: DropDelegate {
             let from = items.firstIndex(where: { $0.id == draggedItem.id })!
             let to = items.firstIndex(where: { $0.id == item.id })!
             
+            print("🔄 Moving page from position \(from+1) to \(to+1)")
+            
             if items[to].id != draggedItem.id {
                 withAnimation {
                     items.move(fromOffsets: IndexSet(integer: from),
                             toOffset: to > from ? to + 1 : to)
+                }
+                
+                // Log the new order for debugging
+                print("📄 New page order after move:")
+                for (i, page) in items.enumerated() {
+                    print("   \(i+1): Page ID \(page.id.uuidString.prefix(8))")
                 }
                 
                 // Update page numbers

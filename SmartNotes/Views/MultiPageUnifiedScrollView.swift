@@ -97,6 +97,14 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 name: NSNotification.Name("ScrollToPage"),
                 object: nil
             )
+            
+            // Register for page reordering notifications
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handlePageReordering(_:)),
+                name: NSNotification.Name.pageReorderingNotification,
+                object: nil
+            )
         }
         
         deinit {
@@ -389,14 +397,23 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     newViewsCreated += 1
                 }
                 
-                // Position the canvas vertically
-                let yPos = CGFloat(index) * (parent.pageSize.height + parent.pageSpacing)
+                // Position the canvas vertically using explicit index-based calculation
+                let totalPageHeight = parent.pageSize.height + parent.pageSpacing
+                let yPos = CGFloat(index) * totalPageHeight
+                
+                // Store old position for logging
+                let oldYPos = cv.frame.origin.y
+                
+                // Update frame with new position
                 cv.frame = CGRect(
                     x: 0,
                     y: yPos,
                     width: parent.pageSize.width,
                     height: parent.pageSize.height
                 )
+                
+                // Log the positioning for debugging
+                print("📄 Positioned page \(page.id.uuidString.prefix(8)) at index \(index), yPos=\(Int(yPos)) (moved from \(Int(oldYPos)))")
                 
                 // Enhance shadow for better contrast between pages and background
                 cv.layer.shadowColor = UIColor.black.cgColor
@@ -650,6 +667,36 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             }
         }
         
+        // MARK: - Page Reordering Handler
+        
+        @objc func handlePageReordering(_ notification: Notification) {
+            print("📄 Handling page reordering notification")
+            
+            // Force complete relayout of pages with a small delay to ensure bindings are updated
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Store current visible page ID (not index) before reordering
+                let visiblePageID = self.parent.pages.isEmpty ? nil : self.parent.pages[self.currentlyVisiblePageIndex].id
+                
+                // Force relayout of all canvas views
+                self.isLayoutingPages = false  // Reset flag to allow a new layout
+                self.layoutPages()
+                
+                // Find the new index of the previously visible page
+                if let visiblePageID = visiblePageID,
+                   let newVisibleIndex = self.parent.pages.firstIndex(where: { $0.id == visiblePageID }) {
+                    self.currentlyVisiblePageIndex = newVisibleIndex
+                    
+                    // Scroll to keep the same page visible
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ScrollToPage"),
+                            object: newVisibleIndex
+                        )
+                    }
+                }
+            }
+        }
+        
         // Helper method to show debug markers for visualizing scrolling
         func showDebugMarkers(scrollView: UIScrollView, currentY: CGFloat, targetY: CGFloat) {
             // Debug markers disabled - this method now does nothing
@@ -822,7 +869,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     // End of a page - use red
                     line.backgroundColor = UIColor.red.withAlphaComponent(0.5)
                     line.frame.size.height = 4 // Thicker line
-            } else {
+                } else {
                     // Regular grid line - use blue
                     line.backgroundColor = UIColor.blue.withAlphaComponent(0.3)
                 }

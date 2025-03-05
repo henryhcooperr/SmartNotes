@@ -124,22 +124,37 @@ struct PageThumbnailGenerator {
         UIGraphicsBeginImageContextWithOptions(size, false, 3.0)
         let context = UIGraphicsGetCurrentContext()
         
-        // Fill with light gray background
-        context?.setFillColor(UIColor.systemGray6.cgColor)
+        // Fill with white background to represent a blank paper
+        context?.setFillColor(UIColor.white.cgColor)
         context?.fill(CGRect(origin: .zero, size: size))
         
-        // Draw page number
-        let displayText = "Page \(page.pageNumber)"
-        let font = UIFont.systemFont(ofSize: 16)
+        // Add a subtle page border/shadow to make it look like paper
+        let pageRect = CGRect(origin: .zero, size: size)
+        context?.setShadow(offset: CGSize(width: 0, height: 1), blur: 2, color: UIColor.black.withAlphaComponent(0.1).cgColor)
+        
+        // Add very subtle lines to simulate paper texture
+        context?.setStrokeColor(UIColor.gray.withAlphaComponent(0.05).cgColor)
+        context?.setLineWidth(0.5)
+        
+        // Draw some barely visible horizontal lines for texture
+        for y in stride(from: 10.0, to: size.height, by: 20.0) {
+            context?.move(to: CGPoint(x: 5, y: y))
+            context?.addLine(to: CGPoint(x: size.width - 5, y: y))
+            context?.strokePath()
+        }
+        
+        // Draw page number in the bottom corner, but more subtle
+        let displayText = "\(page.pageNumber)"
+        let font = UIFont.systemFont(ofSize: 10, weight: .light)
         let textAttributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: UIColor.gray
+            .foregroundColor: UIColor.gray.withAlphaComponent(0.4)
         ]
         
         let textSize = displayText.size(withAttributes: textAttributes)
         let textRect = CGRect(
-            x: (size.width - textSize.width) / 2,
-            y: (size.height - textSize.height) / 2,
+            x: size.width - textSize.width - 8,
+            y: size.height - textSize.height - 6,
             width: textSize.width,
             height: textSize.height
         )
