@@ -17,21 +17,25 @@ extension PKCanvasView {
     /// Optimizes the canvas view for high resolution rendering.
     /// Call this on canvas creation to ensure stroke quality at all zoom levels.
     func optimizeForHighResolution() {
+        // Get the coordinate manager and resolution scale factor
+        let coordManager = CoordinateSpaceManager.shared
+        let scaleFactor = coordManager.resolutionScaleFactor
+        
         // Apply the global resolution scale factor to content scale
-        self.contentScaleFactor = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        self.contentScaleFactor = UIScreen.main.scale * scaleFactor
         
         // Apply to layer as well for consistent scaling
-        self.layer.contentsScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        self.layer.contentsScale = UIScreen.main.scale * scaleFactor
         
         // Force high-resolution rendering with our scale factor
-        self.layer.rasterizationScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        self.layer.rasterizationScale = UIScreen.main.scale * scaleFactor
         
         // Disable rasterization since we want vector quality
         self.layer.shouldRasterize = false
         
         // Make sure the canvas view uses the display's native scale
         if let window = self.window {
-            self.layer.contentsScale = window.screen.scale * GlobalSettings.resolutionScaleFactor
+            self.layer.contentsScale = window.screen.scale * scaleFactor
         }
         
         // For iOS 14+ we can use higher quality rendering policy
@@ -55,8 +59,11 @@ extension PKCanvasView {
     
     /// Recursively sets the contentsScale on a layer and its sublayers.
     private func optimizeLayerHierarchy(_ layer: CALayer) {
+        // Get the resolution scale factor from coordinate manager
+        let scaleFactor = CoordinateSpaceManager.shared.resolutionScaleFactor
+        
         // Set high resolution scale on this layer
-        layer.contentsScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        layer.contentsScale = UIScreen.main.scale * scaleFactor
         
         // Apply to all sublayers recursively
         if let sublayers = layer.sublayers {
@@ -69,8 +76,14 @@ extension PKCanvasView {
     /// Adjusts the canvas rendering quality based on the current zoom level.
     /// Call this from scrollViewDidZoom to optimize rendering at different zoom levels.
     func adjustQualityForZoom(_ zoomScale: CGFloat) {
+        // Get the coordinate manager
+        let coordManager = CoordinateSpaceManager.shared
+        
+        // Update the zoom scale in the manager
+        coordManager.updateZoomScale(zoomScale)
+        
         // Calculate the effective zoom considering our resolution scale factor
-        let effectiveZoom = zoomScale * GlobalSettings.resolutionScaleFactor
+        let effectiveZoom = zoomScale * coordManager.resolutionScaleFactor
         
         // For very high zoom levels, ensure maximum quality
         if effectiveZoom > 2.0 {
@@ -91,9 +104,12 @@ extension PKCanvasView {
     /// Temporarily reduces rendering quality during active interactions
     /// Call this when beginning pan/zoom gestures and restore afterward
     func setTemporaryLowResolutionMode(_ enabled: Bool) {
+        // Get the coordinate manager
+        let coordManager = CoordinateSpaceManager.shared
+        
         if enabled {
             // Store the current scale factor for restoration later
-            let temporaryFactor = min(2.0, GlobalSettings.resolutionScaleFactor)
+            let temporaryFactor = min(2.0, coordManager.resolutionScaleFactor)
             self.layer.contentsScale = UIScreen.main.scale * temporaryFactor
             
             // Lower rendering quality during interaction for better performance
@@ -102,7 +118,7 @@ extension PKCanvasView {
             }
         } else {
             // Restore full resolution after interaction ends
-            self.layer.contentsScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+            self.layer.contentsScale = UIScreen.main.scale * coordManager.resolutionScaleFactor
             
             // Restore quality based on current zoom
             if let scrollView = self.superview as? UIScrollView {
@@ -122,9 +138,12 @@ extension PKCanvasView {
     /// Creates a higher resolution snapshot of the current visible area
     /// This can be used to create a higher quality view when needed
     func highResolutionSnapshot() -> UIImage? {
+        // Get the coordinate manager
+        let coordManager = CoordinateSpaceManager.shared
+        
         // Create a renderer at our scaled resolution
         let format = UIGraphicsImageRendererFormat()
-        format.scale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        format.scale = UIScreen.main.scale * coordManager.resolutionScaleFactor
         
         let renderer = UIGraphicsImageRenderer(bounds: self.bounds, format: format)
         

@@ -35,6 +35,26 @@ class TemplateRenderer {
         return "\(template.type.rawValue)_\(template.spacing)_\(template.lineWidth)_\(template.colorHex)_\(width)x\(height)_\(numberOfPages)"
     }
     
+    /// Calculate safe drawing size
+    private static func calculateSafeDrawingSize(
+        canvasView: PKCanvasView,
+        pageSize: CGSize,
+        numberOfPages: Int,
+        pageSpacing: CGFloat
+    ) -> CGSize {
+        // Get the coordinate manager for resolution scaling
+        let coordManager = CoordinateSpaceManager.shared
+        
+        // Apply safe limits to prevent memory issues on large drawings
+        let safeWidth = min(canvasView.frame.width, 2000 * coordManager.resolutionScaleFactor)
+        
+        let totalHeight = (CGFloat(numberOfPages) * pageSize.height)
+                        + (CGFloat(numberOfPages - 1) * pageSpacing)
+        let safeHeight = min(totalHeight, 10_000 * coordManager.resolutionScaleFactor)
+        
+        return CGSize(width: safeWidth, height: safeHeight)
+    }
+    
     /// A revised template rendering approach that uses CALayer for better integration
     static func applyTemplateToCanvas(
         _ canvasView: PKCanvasView,
@@ -82,11 +102,16 @@ class TemplateRenderer {
             return
         }
         
-        // Calculate safe drawing size
-        let safeWidth = min(canvasView.frame.width, 2000 * GlobalSettings.resolutionScaleFactor)
-        let totalHeight = (CGFloat(numberOfPages) * pageSize.height)
-                        + (CGFloat(numberOfPages - 1) * pageSpacing)
-        let safeHeight = min(totalHeight, 10_000 * GlobalSettings.resolutionScaleFactor)
+        // Get the coordinate manager for resolution scaling
+        let coordManager = CoordinateSpaceManager.shared
+        
+        // Calculate safe drawing size using the new helper method
+        let safeSize = calculateSafeDrawingSize(
+            canvasView: canvasView,
+            pageSize: pageSize,
+            numberOfPages: numberOfPages,
+            pageSpacing: pageSpacing
+        )
         
         // Get template caching setting
         let useCache = UserDefaults.standard.bool(forKey: "useTemplateCaching")
@@ -97,8 +122,8 @@ class TemplateRenderer {
         // Generate the cache key
         let cacheKey = cacheKeyFor(
             template: template,
-            width: safeWidth,
-            height: safeHeight,
+            width: safeSize.width,
+            height: safeSize.height,
             numberOfPages: numberOfPages
         )
         
@@ -115,8 +140,8 @@ class TemplateRenderer {
             
             guard let newImage = createTemplateImage(
                 template: template,
-                width: safeWidth,
-                height: safeHeight,
+                width: safeSize.width,
+                height: safeSize.height,
                 pageSize: pageSize,
                 numberOfPages: numberOfPages,
                 pageSpacing: pageSpacing
@@ -141,8 +166,8 @@ class TemplateRenderer {
         applyComplexTemplate(
             to: canvasView,
             image: templateImage,
-            width: safeWidth,
-            height: safeHeight
+            width: safeSize.width,
+            height: safeSize.height
         )
         
         // After applying, debug the state
@@ -197,6 +222,9 @@ class TemplateRenderer {
     ) {
         print("🖌️ Applying complex template with image size: \(image.size)")
         
+        // Get the coordinate manager for resolution scaling
+        let coordManager = CoordinateSpaceManager.shared
+        
         // ENSURE PREVIOUS TEMPLATES ARE COMPLETELY REMOVED
         removeExistingTemplate(from: canvasView)
         
@@ -205,8 +233,9 @@ class TemplateRenderer {
         templateLayer.name = "TemplateLayer"
         templateLayer.contents = image.cgImage
         templateLayer.frame = CGRect(x: 0, y: 0, width: width, height: height)
-        // Use high-resolution content scale
-        templateLayer.contentsScale = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        
+        // Use high-resolution content scale from coordinate manager
+        templateLayer.contentsScale = UIScreen.main.scale * coordManager.resolutionScaleFactor
         
         // CRITICAL FIX: Use a very low z-position to ensure it's behind everything
         templateLayer.zPosition = -1000
@@ -220,8 +249,10 @@ class TemplateRenderer {
         backgroundView.tag = 888
         backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         backgroundView.contentMode = .topLeft
-        // Set high resolution content scale
-        backgroundView.contentScaleFactor = UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+        
+        // Set high resolution content scale from coordinate manager
+        backgroundView.contentScaleFactor = UIScreen.main.scale * coordManager.resolutionScaleFactor
+        
         canvasView.insertSubview(backgroundView, at: 0)
         print("🖌️ Added template UIImageView at subview index 0")
         

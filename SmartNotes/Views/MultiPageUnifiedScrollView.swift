@@ -140,19 +140,27 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         func centerContainer(scrollView: UIScrollView) {
             guard let container = containerView else { return }
             
-            // Calculate the offsets to center the content in the scroll view
-            let offsetX = max((scrollView.bounds.width - container.frame.width * scrollView.zoomScale) * 0.5, 0)
-            let offsetY = max((scrollView.bounds.height - container.frame.height * scrollView.zoomScale) * 0.5, 0)
+            // Use the CoordinateSpaceManager to calculate centering insets
+            let coordManager = CoordinateSpaceManager.shared
+            
+            // Update zoom scale in the manager
+            coordManager.updateZoomScale(scrollView.zoomScale)
+            
+            // Calculate the insets needed to center the container
+            let insets = coordManager.calculateCenteringInsets(
+                scrollView: scrollView,
+                container: container
+            )
             
             // Store previous position for logging
             let previousInset = scrollView.contentInset
             let previousFrame = container.frame
             
             // Apply the content insets to center the content
-            scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: offsetY, right: offsetX)
+            scrollView.contentInset = insets
             
             // Log the centering changes
-            print("📐 Container position: before=(\(Int(previousFrame.origin.x)), \(Int(previousFrame.origin.y))), inset before=(\(Int(previousInset.left)), \(Int(previousInset.top))), inset after=(\(Int(offsetX)), \(Int(offsetY))), zoom=\(scrollView.zoomScale)")
+            print("📐 Container position: before=(\(Int(previousFrame.origin.x)), \(Int(previousFrame.origin.y))), inset before=(\(Int(previousInset.left)), \(Int(previousInset.top))), inset after=(\(Int(insets.left)), \(Int(insets.top))), zoom=\(scrollView.zoomScale)")
         }
         
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -601,53 +609,36 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Debug output of current state
             print("🔍 Debug - Current visible page: \(currentlyVisiblePageIndex+1), Target: \(pageIndex+1), Zoom: \(scrollView.zoomScale)")
             
-            // Create a grid view with container bounds - this is similar to how we visualize the coordinates
-            let gridView = UIView(frame: container.bounds)
-            container.addSubview(gridView)
+            // Use the CoordinateSpaceManager to calculate the scroll offset
+            let coordManager = CoordinateSpaceManager.shared
             
-            // Calculate the Y position for the target page, explicitly using page height and spacing
-            let pageHeight = parent.pageSize.height
-            let pageSpacing = parent.pageSpacing
-            let totalPageHeight = pageHeight + pageSpacing
+            // Update the zoom scale in the manager
+            coordManager.updateZoomScale(scrollView.zoomScale)
             
-            // Calculate target position using the total height of each page including spacing
-            let targetY = CGFloat(pageIndex) * totalPageHeight
+            // Calculate the offset needed to center the target page
+            let newOffset = coordManager.scrollOffsetToCenter(
+                pageIndex: pageIndex,
+                scrollView: scrollView,
+                container: container
+            )
             
-            // Position a reference point at the target page's position
-            // We're targeting the center of the page for better centering in the view
-            let referencePoint = CGPoint(x: container.bounds.width / 2, y: targetY + (pageHeight / 2))
-            
-            // Get the target point in scroll view coordinates
-            let targetPointInScroll = container.convert(referencePoint, to: scrollView)
-            
-            // Get current scroll position
-            let currentOffset = scrollView.contentOffset
-            
-            // Calculate new offset, centering the page in the scroll view if possible
-            let scrollViewHeight = scrollView.bounds.height
-            let pageHeightWithZoom = pageHeight * scrollView.zoomScale
-            
-            // Center the page in the visible area
-            let proposedOffsetY = targetPointInScroll.y - (scrollViewHeight / 2)
-            
-            // Ensure we don't scroll beyond content bounds
-            let maxPossibleOffsetY = max(0, scrollView.contentSize.height - scrollViewHeight)
-            let newOffsetY = min(max(0, proposedOffsetY), maxPossibleOffsetY)
-            
-            print("📏 Coordinate details: Page \(pageIndex+1)")
-            print("📏 Page height = \(pageHeight), spacing = \(pageSpacing), total = \(totalPageHeight)")
-            print("📏 Target Y in container = \(targetY), converted to scrollView = \(targetPointInScroll.y)")
-            print("📏 Scrolling from Y=\(currentOffset.y) to Y=\(newOffsetY) (proposed: \(proposedOffsetY), max: \(maxPossibleOffsetY))")
-            
-            // Remove the grid view after we've calculated the position
-            gridView.removeFromSuperview()
+            // Log coordinate details for debugging
+            if GlobalSettings.debugModeEnabled {
+                let pageY = coordManager.pageYPositionInContainer(pageIndex: pageIndex)
+                let pageCenterY = coordManager.pageCenterYInContainer(pageIndex: pageIndex)
+                
+                print("📏 Coordinate details: Page \(pageIndex+1)")
+                print("📏 Page Y position in container: \(pageY)")
+                print("📏 Page center Y in container: \(pageCenterY)")
+                print("📏 Scrolling from Y=\(scrollView.contentOffset.y) to Y=\(newOffset.y)")
+            }
             
             // Animate the scroll to the selected page
             UIView.animate(withDuration: 0.75, 
                           delay: 0,
                           options: [.curveEaseInOut],
                           animations: {
-                scrollView.setContentOffset(CGPoint(x: currentOffset.x, y: newOffsetY), animated: false)
+                scrollView.setContentOffset(newOffset, animated: false)
             }) { completed in
                 // After scrolling completes, update the current visible page and deselect
                 if completed {
@@ -705,48 +696,42 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Add a method to determine which page is currently visible
         func determineVisiblePage() {
-            // Add safety check to prevent crash on empty pages
             guard let scrollView = scrollView, 
-                  parent.pages.count > 0, 
-                  !isInitialLoad, 
-                  !isLayoutingPages else { return }
-            
-            // Get the scroll view's current vertical position
-            let offsetY = scrollView.contentOffset.y
-            
-            // Account for zoom scale when calculating page position
-            let effectiveOffsetY = offsetY / scrollView.zoomScale
-            
-            let pageHeight = parent.pageSize.height + parent.pageSpacing
-            
-            // Calculate the visible page index based on the scroll position, adjusted for zoom
-            let visiblePageIndex = min(
-                max(Int(round(effectiveOffsetY / pageHeight)), 0),
-                parent.pages.count - 1
-            )
-            
-            // Add safety check before accessing arrays
-            guard visiblePageIndex >= 0 && visiblePageIndex < parent.pages.count else {
-                print("⚠️ Warning: Calculated visible page index \(visiblePageIndex) is out of range (pages count: \(parent.pages.count))")
+                  let container = containerView,
+                  !parent.pages.isEmpty else {
                 return
             }
             
-            // Only notify if the visible page has changed
+            // Use the CoordinateSpaceManager to determine the visible page
+            let coordManager = CoordinateSpaceManager.shared
+            
+            // Update zoom scale in the manager
+            coordManager.updateZoomScale(scrollView.zoomScale)
+            
+            // Get the visible page index
+            let visiblePageIndex = coordManager.determineVisiblePageIndex(
+                scrollView: scrollView,
+                container: container,
+                totalPages: parent.pages.count
+            )
+            
+            // Only update if the visible page has changed
             if visiblePageIndex != currentlyVisiblePageIndex {
+                // Save the new visible page index
                 currentlyVisiblePageIndex = visiblePageIndex
                 
-                // Print the current visible page
-                print("📄 Visible page changed to: \(visiblePageIndex + 1) of \(parent.pages.count)")
+                // Log the change
+                print("📄 Visible page changed to: \(visiblePageIndex + 1)")
                 
-                // Always send a notification about the visible page changing for UI updates
-                // This will highlight the page in the navigator but won't trigger scrolling
+                // Post notification about the visible page change
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("PageSelected"),
+                    name: NSNotification.Name("VisiblePageChanged"),
                     object: visiblePageIndex
                 )
                 
-                // Only auto-scroll to the page if the setting is enabled
-                if GlobalSettings.autoScrollToDetectedPages {
+                // Check if we should auto-scroll to this page
+                if let appSettings = getAppSettings(), 
+                   GlobalSettings.autoScrollToDetectedPages {
                     // Enable auto-scrolling to the detected page
                     isPageNavigationLockedToSelection = true
                     
