@@ -133,12 +133,68 @@ struct SmartNotesApp: App {
 struct MainView: View {
     @EnvironmentObject var dataManager: DataManager
     
+    // Define a navigation state enum
+    enum NavigationState {
+        case subjectsList
+        case noteDetail(noteIndex: Int, subjectID: UUID)
+    }
+    
+    // State to track the current view
+    @State private var navigationState: NavigationState = .subjectsList
+    
     var body: some View {
-        SubjectsSplitView(subjects: $dataManager.subjects) { subject in
-            // This is the onChange handler that will be passed to SubjectsSplitView
-            dataManager.updateSubject(subject)
-            dataManager.saveData()
+        Group {
+            switch navigationState {
+            case .subjectsList:
+                SubjectsSplitView(subjects: $dataManager.subjects) { subject in
+                    // This is the onChange handler that will be passed to SubjectsSplitView
+                    dataManager.updateSubject(subject)
+                    dataManager.saveData()
+                }
+                .environmentObject(NavigationStateManager(navigationState: $navigationState))
+                
+            case .noteDetail(let noteIndex, let subjectID):
+                if let subjectIndex = dataManager.subjects.firstIndex(where: { $0.id == subjectID }),
+                   noteIndex < dataManager.subjects[subjectIndex].notes.count {
+                    // Create a binding to the specific note
+                    let noteBinding = Binding(
+                        get: { dataManager.subjects[subjectIndex].notes[noteIndex] },
+                        set: { newValue in
+                            dataManager.subjects[subjectIndex].notes[noteIndex] = newValue
+                            dataManager.saveData()
+                        }
+                    )
+                    
+                    // Show the note detail view
+                    NoteDetailView(note: noteBinding, subjectID: subjectID)
+                        .environmentObject(NavigationStateManager(navigationState: $navigationState))
+                } else {
+                    // Handle invalid state
+                    Text("Note not found")
+                        .onAppear {
+                            // If the note doesn't exist, go back to subjects list
+                            navigationState = .subjectsList
+                        }
+                }
+            }
         }
+    }
+}
+
+// NavigationStateManager to pass the navigation state through the environment
+class NavigationStateManager: ObservableObject {
+    @Binding var navigationState: MainView.NavigationState
+    
+    init(navigationState: Binding<MainView.NavigationState>) {
+        self._navigationState = navigationState
+    }
+    
+    func navigateToNote(noteIndex: Int, in subjectID: UUID) {
+        navigationState = .noteDetail(noteIndex: noteIndex, subjectID: subjectID)
+    }
+    
+    func navigateToSubjectsList() {
+        navigationState = .subjectsList
     }
 }
 

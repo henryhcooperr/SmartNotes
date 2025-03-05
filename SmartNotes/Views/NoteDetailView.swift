@@ -14,6 +14,7 @@ import PencilKit
 struct NoteDetailView: View {
     @Binding var note: Note
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject private var navigationManager: NavigationStateManager
     let subjectID: UUID
     @State private var showingTemplateSheet = false
     // Local copy of the note title
@@ -39,8 +40,6 @@ struct NoteDetailView: View {
     @State private var selectedPageIndex = 0
     @State private var isPageSelectionActive = false
     
-    @Environment(\.presentationMode) private var presentationMode
-    
     // Add these state variables to NoteDetailView
     @State private var selectedTool: PKInkingTool.InkType = .pen
     @State private var selectedColor: Color = .black
@@ -49,6 +48,9 @@ struct NoteDetailView: View {
     
     // Add a reference to access the coordinator
     @State private var scrollViewCoordinator: MultiPageUnifiedScrollView.Coordinator?
+    
+    // Environment for dismissing the view (keeping for compatibility)
+    @Environment(\.presentationMode) var presentationMode
     
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
@@ -79,21 +81,32 @@ struct NoteDetailView: View {
             
             // Main Content
             VStack(spacing: 0) {
-                // Title area
-                TextField("Note Title", text: $localTitle)
-                    .font(.title)
-                    .padding()
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: localTitle) { oldValue, newValue in
+                // Custom Navigation Bar
+                CustomNavigationBar(
+                    title: $localTitle,
+                    onBack: {
+                        // Use the NavigationStateManager to navigate back to subjects list
+                        navigationManager.navigateToSubjectsList()
+                    },
+                    onToggleSidebar: {
+                        withAnimation {
+                            isPageNavigatorVisible.toggle()
+                        }
+                    },
+                    onShowTemplateSettings: {
+                        showingTemplateSettings = true
+                    },
+                    onShowExport: {
+                        showExportOptions = true
+                    },
+                    onTitleChanged: { newTitle in
                         // Only update the note model after initial load
                         if !isInitialLoad {
-                            note.title = newValue
+                            note.title = newTitle
                             saveChanges()
                         }
                     }
-                    .padding(.horizontal)
-                
-                Divider().padding(.horizontal)
+                )
                 
                 // Unified multi-page scroll
                 ZStack {
@@ -103,14 +116,6 @@ struct NoteDetailView: View {
                         }
                         .onAppear {
                             print("📝 NoteDetailView appeared for note ID: \(note.id)")
-                            
-                            // Always close sidebar when opening a note to ensure proper canvas positioning
-                            DispatchQueue.main.async {
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("CloseSidebar"),
-                                    object: nil
-                                )
-                            }
                             
                             // Migrate older single-drawing data to pages if needed
                             migrateIfNeeded()
@@ -189,17 +194,6 @@ struct NoteDetailView: View {
                                     self.isPageNavigatorVisible.toggle()
                                 }
                             }
-                            
-                            // Listen for close sidebar notifications
-                            NotificationCenter.default.addObserver(
-                                forName: NSNotification.Name("CloseSidebar"),
-                                object: nil,
-                                queue: .main
-                            ) { notification in
-                                withAnimation {
-                                    self.isPageNavigatorVisible = false
-                                }
-                            }
                         }
                         .onChange(of: note.pages) { _ in
                             // Save if pages change
@@ -233,47 +227,6 @@ struct NoteDetailView: View {
                                         name: NSNotification.Name("ForceTemplateRefresh"),
                                         object: nil
                                     )
-                                }
-                            }
-                        }
-                    // Navigation
-                        .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            // Toggle page navigator button
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button(action: {
-                                    withAnimation {
-                                        isPageNavigatorVisible.toggle()
-                                    }
-                                }) {
-                                    Image(systemName: isPageNavigatorVisible ? "sidebar.left" : "sidebar.leading")
-                                }
-                            }
-                            
-                            // Done button
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Done") {
-                                    saveChanges()
-                                    presentationMode.wrappedValue.dismiss()
-                                }
-                            }
-                            
-                            // Template settings button
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    showingTemplateSettings = true
-                                }) {
-                                    Image(systemName: "ellipsis")
-                                }
-                            }
-                            
-                            // Export button
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    showExportOptions = true
-                                }) {
-                                    Image(systemName: "square.and.arrow.up")
                                 }
                             }
                         }
@@ -324,6 +277,7 @@ struct NoteDetailView: View {
                 }
             }
         }
+        .navigationBarHidden(true)
     }
     
     // MARK: - Drawing Notifications

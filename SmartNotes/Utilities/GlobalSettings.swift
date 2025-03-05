@@ -195,7 +195,7 @@ class GlobalSettings {
     
     /// The maximum zoom scale for scroll views, adjusted for resolution factor
     static var maximumZoomScale: CGFloat {
-        return 5.0 / resolutionScaleFactor
+        return 3.75 / resolutionScaleFactor
     }
     
     /// The default initial zoom scale, adjusted to maintain the same view size
