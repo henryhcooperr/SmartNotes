@@ -8,11 +8,26 @@
 import SwiftUI
 
 struct CustomNavigationBar: View {
-    let title: String
+    @Binding var title: String
     let onBack: () -> Void
     let onToggleSidebar: () -> Void
     let onShowTemplateSettings: () -> Void
     let onShowExport: () -> Void
+    let onTitleChanged: ((String) -> Void)?
+    
+    init(title: Binding<String>, 
+         onBack: @escaping () -> Void,
+         onToggleSidebar: @escaping () -> Void,
+         onShowTemplateSettings: @escaping () -> Void,
+         onShowExport: @escaping () -> Void,
+         onTitleChanged: ((String) -> Void)? = nil) {
+        self._title = title
+        self.onBack = onBack
+        self.onToggleSidebar = onToggleSidebar
+        self.onShowTemplateSettings = onShowTemplateSettings
+        self.onShowExport = onShowExport
+        self.onTitleChanged = onTitleChanged
+    }
     
     var body: some View {
         HStack {
@@ -35,11 +50,13 @@ struct CustomNavigationBar: View {
             
             Spacer()
             
-            // Center
-            Text(title)
+            // Center - Editable title
+            TextField("Note Title", text: $title)
                 .font(.headline)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                .multilineTextAlignment(.center)
+                .onChange(of: title) { _, newValue in
+                    onTitleChanged?(newValue)
+                }
             
             Spacer()
             
@@ -72,7 +89,7 @@ struct CustomNavigationBar_Previews: PreviewProvider {
     static var previews: some View {
         VStack {
             CustomNavigationBar(
-                title: "Note Title",
+                title: .constant("Note Title"),
                 onBack: { },
                 onToggleSidebar: { },
                 onShowTemplateSettings: { },

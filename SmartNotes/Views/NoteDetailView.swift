@@ -83,7 +83,7 @@ struct NoteDetailView: View {
             VStack(spacing: 0) {
                 // Custom Navigation Bar
                 CustomNavigationBar(
-                    title: localTitle.isEmpty ? "New Note" : localTitle,
+                    title: $localTitle,
                     onBack: {
                         // Use the NavigationStateManager to navigate back to subjects list
                         navigationManager.navigateToSubjectsList()
@@ -98,24 +98,15 @@ struct NoteDetailView: View {
                     },
                     onShowExport: {
                         showExportOptions = true
-                    }
-                )
-                
-                // Title area
-                TextField("Note Title", text: $localTitle)
-                    .font(.title)
-                    .padding()
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: localTitle) { oldValue, newValue in
+                    },
+                    onTitleChanged: { newTitle in
                         // Only update the note model after initial load
                         if !isInitialLoad {
-                            note.title = newValue
+                            note.title = newTitle
                             saveChanges()
                         }
                     }
-                    .padding(.horizontal)
-                
-                Divider().padding(.horizontal)
+                )
                 
                 // Unified multi-page scroll
                 ZStack {

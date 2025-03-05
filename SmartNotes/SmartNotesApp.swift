@@ -166,23 +166,8 @@ struct MainView: View {
                     )
                     
                     // Show the note detail view
-                    NavigationStack {
-                        NoteDetailView(note: noteBinding, subjectID: subjectID)
-                            .environmentObject(NavigationStateManager(navigationState: $navigationState))
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarLeading) {
-                                    Button(action: {
-                                        // Navigate back to the subjects list
-                                        navigationState = .subjectsList
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "chevron.left")
-                                            Text("Back")
-                                        }
-                                    }
-                                }
-                            }
-                    }
+                    NoteDetailView(note: noteBinding, subjectID: subjectID)
+                        .environmentObject(NavigationStateManager(navigationState: $navigationState))
                 } else {
                     // Handle invalid state
                     Text("Note not found")
