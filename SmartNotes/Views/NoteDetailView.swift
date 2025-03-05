@@ -14,6 +14,7 @@ import PencilKit
 struct NoteDetailView: View {
     @Binding var note: Note
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject private var navigationManager: NavigationStateManager
     let subjectID: UUID
     @State private var showingTemplateSheet = false
     // Local copy of the note title
@@ -48,6 +49,9 @@ struct NoteDetailView: View {
     // Add a reference to access the coordinator
     @State private var scrollViewCoordinator: MultiPageUnifiedScrollView.Coordinator?
     
+    // Environment for dismissing the view (keeping for compatibility)
+    @Environment(\.presentationMode) var presentationMode
+    
     init(note: Binding<Note>, subjectID: UUID) {
         self._note = note
         self.subjectID = subjectID
@@ -77,6 +81,26 @@ struct NoteDetailView: View {
             
             // Main Content
             VStack(spacing: 0) {
+                // Custom Navigation Bar
+                CustomNavigationBar(
+                    title: localTitle.isEmpty ? "New Note" : localTitle,
+                    onBack: {
+                        // Use the NavigationStateManager to navigate back to subjects list
+                        navigationManager.navigateToSubjectsList()
+                    },
+                    onToggleSidebar: {
+                        withAnimation {
+                            isPageNavigatorVisible.toggle()
+                        }
+                    },
+                    onShowTemplateSettings: {
+                        showingTemplateSettings = true
+                    },
+                    onShowExport: {
+                        showExportOptions = true
+                    }
+                )
+                
                 // Title area
                 TextField("Note Title", text: $localTitle)
                     .font(.title)
@@ -215,39 +239,6 @@ struct NoteDetailView: View {
                                 }
                             }
                         }
-                    // Navigation
-                        .navigationTitle(localTitle.isEmpty ? "Untitled" : localTitle)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            // Toggle page navigator button
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button(action: {
-                                    withAnimation {
-                                        isPageNavigatorVisible.toggle()
-                                    }
-                                }) {
-                                    Image(systemName: isPageNavigatorVisible ? "sidebar.left" : "sidebar.leading")
-                                }
-                            }
-                            
-                            // Template settings button
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    showingTemplateSettings = true
-                                }) {
-                                    Image(systemName: "ellipsis")
-                                }
-                            }
-                            
-                            // Export button
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    showExportOptions = true
-                                }) {
-                                    Image(systemName: "square.and.arrow.up")
-                                }
-                            }
-                        }
                         .actionSheet(isPresented: $showExportOptions) {
                             ActionSheet(
                                 title: Text("Export Note"),
@@ -295,6 +286,7 @@ struct NoteDetailView: View {
                 }
             }
         }
+        .navigationBarHidden(true)
     }
     
     // MARK: - Drawing Notifications

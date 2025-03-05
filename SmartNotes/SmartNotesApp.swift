@@ -168,6 +168,7 @@ struct MainView: View {
                     // Show the note detail view
                     NavigationStack {
                         NoteDetailView(note: noteBinding, subjectID: subjectID)
+                            .environmentObject(NavigationStateManager(navigationState: $navigationState))
                             .toolbar {
                                 ToolbarItem(placement: .navigationBarLeading) {
                                     Button(action: {
@@ -205,6 +206,10 @@ class NavigationStateManager: ObservableObject {
     
     func navigateToNote(noteIndex: Int, in subjectID: UUID) {
         navigationState = .noteDetail(noteIndex: noteIndex, subjectID: subjectID)
+    }
+    
+    func navigateToSubjectsList() {
+        navigationState = .subjectsList
     }
 }
 
