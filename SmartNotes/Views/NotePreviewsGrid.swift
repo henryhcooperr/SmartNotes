@@ -2,8 +2,9 @@ import SwiftUI
 import PencilKit
 
 struct NotePreviewsGrid: View {
-    @Binding var subject: Subject
-    @EnvironmentObject private var navigationManager: NavigationStateManager
+    // Use the EventStore instead of a direct binding
+    @EnvironmentObject var eventStore: EventStore
+    let subjectID: UUID
     
     @State private var viewMode: ViewMode = .bigGrid
     @Namespace private var animationNamespace
@@ -27,21 +28,26 @@ struct NotePreviewsGrid: View {
         }
     }
     
-    init(subject: Binding<Subject>) {
-        self._subject = subject
+    // Computed properties to access state
+    private var subject: Subject? {
+        eventStore.state.contentState.subjects.first { $0.id == subjectID }
+    }
+    
+    private var notes: [Note] {
+        subject?.notes ?? []
     }
     
     var body: some View {
         ZStack {
-            if subject.notes.isEmpty {
+            if notes.isEmpty {
                 emptyStateView
             } else {
                 layoutContent
             }
         }
-        .navigationTitle(subject.name)
+        .navigationTitle(subject?.name ?? "Subject")
         .toolbar {
-            if !subject.notes.isEmpty {
+            if !notes.isEmpty {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if isSelecting {
                         Button("Done") {
@@ -74,7 +80,7 @@ struct NotePreviewsGrid: View {
             }
         }
         // Animate changes to notes, selection, or layout
-        .animation(.default, value: subject.notes)
+        .animation(.default, value: notes)
         .animation(.default, value: isSelecting)
         .animation(.default, value: selectedNoteIDs)
         .animation(.default, value: viewMode)
@@ -100,16 +106,17 @@ struct NotePreviewsGrid: View {
         ]
         return ScrollView {
             LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(subject.notes.indices, id: \.self) { i in
-                    let note = subject.notes[i]
-                    
+                ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
                     // Use Button instead of NavigationLink
                     Button {
-                        navigationManager.navigateToNote(noteIndex: i, in: subject.id)
+                        eventStore.dispatch(NavigationAction.navigateToNote(
+                            noteIndex: index,
+                            subjectID: subjectID
+                        ))
                     } label: {
                         NoteCardView(
                             note: note,
-                            subject: subject,
+                            subject: subject ?? Subject(name: "", notes: [], colorName: "gray"),
                             layout: .bigGrid,
                             namespace: animationNamespace,
                             isSelecting: isSelecting,
@@ -128,14 +135,16 @@ struct NotePreviewsGrid: View {
     // MARK: - List
     private var listView: some View {
         List {
-            ForEach(subject.notes.indices, id: \.self) { i in
-                let note = subject.notes[i]
+            ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
                 Button {
-                    navigationManager.navigateToNote(noteIndex: i, in: subject.id)
+                    eventStore.dispatch(NavigationAction.navigateToNote(
+                        noteIndex: index,
+                        subjectID: subjectID
+                    ))
                 } label: {
                     NoteCardView(
                         note: note,
-                        subject: subject,
+                        subject: subject ?? Subject(name: "", notes: [], colorName: "gray"),
                         layout: .list,
                         namespace: animationNamespace,
                         isSelecting: isSelecting,
@@ -153,14 +162,16 @@ struct NotePreviewsGrid: View {
     private var compactView: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
-                ForEach(subject.notes.indices, id: \.self) { i in
-                    let note = subject.notes[i]
+                ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
                     Button {
-                        navigationManager.navigateToNote(noteIndex: i, in: subject.id)
+                        eventStore.dispatch(NavigationAction.navigateToNote(
+                            noteIndex: index,
+                            subjectID: subjectID
+                        ))
                     } label: {
                         NoteCardView(
                             note: note,
-                            subject: subject,
+                            subject: subject ?? Subject(name: "", notes: [], colorName: "gray"),
                             layout: .compact,
                             namespace: animationNamespace,
                             isSelecting: isSelecting,
@@ -197,10 +208,17 @@ struct NotePreviewsGrid: View {
     
     // MARK: - Actions
     private func createNewNote() {
-        subject.notes.append(
-            Note(title: "New Note",
-                 drawingData: PKDrawing().dataRepresentation())
-        )
+        if let subject = subject {
+            // Create a new note using the EventStore
+            let newNote = Note(
+                title: "New Note",
+                drawingData: PKDrawing().dataRepresentation()
+            )
+            eventStore.dispatch(NoteAction.addNote(
+                newNote,
+                subjectID: subject.id
+            ))
+        }
     }
     
     private func toggleSelection(note: Note) {
@@ -217,7 +235,13 @@ struct NotePreviewsGrid: View {
     }
     
     private func deleteSelectedNotes() {
-        subject.notes.removeAll { selectedNoteIDs.contains($0.id) }
+        // Delete each selected note through the EventStore
+        for noteID in selectedNoteIDs {
+            eventStore.dispatch(NoteAction.deleteNote(
+                noteID: noteID,
+                subjectID: subjectID
+            ))
+        }
         exitSelectionMode()
     }
     

@@ -12,13 +12,11 @@
 import SwiftUI
 
 struct SubjectsSplitView: View {
-    @Binding var subjects: [Subject]
-    var onSubjectChange: (Subject) -> Void
+    // Use the EventStore instead of direct state binding
+    @EnvironmentObject var eventStore: EventStore
     
-    @State private var selectedSubject: Subject?
-    @State private var searchText: String = ""
-    
-    // Add state for sidebar visibility
+    // State for UI interaction that doesn't need to be in global state
+    @State private var selectedSubjectID: UUID?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
     
     // States for adding a new subject
@@ -37,9 +35,19 @@ struct SubjectsSplitView: View {
         "music.note.list", "bag", "doc.text.magnifyingglass", "envelope", "guitar"
     ]
     
-    init(subjects: Binding<[Subject]>, onSubjectChange: @escaping (Subject) -> Void) {
-        self._subjects = subjects
-        self.onSubjectChange = onSubjectChange
+    // Computed properties for accessing state
+    private var subjects: [Subject] {
+        eventStore.state.contentState.subjects
+    }
+    
+    private var searchText: String {
+        eventStore.state.uiState.searchText
+    }
+    
+    // Selected subject from the ID
+    private var selectedSubject: Subject? {
+        guard let id = selectedSubjectID else { return nil }
+        return subjects.first { $0.id == id }
     }
     
     var body: some View {
@@ -53,8 +61,8 @@ struct SubjectsSplitView: View {
         }
         .onAppear {
             // Automatically select the first subject on first appearance, if available
-            if isInitialSelection, !subjects.isEmpty, selectedSubject == nil {
-                selectedSubject = subjects[0]
+            if isInitialSelection, !subjects.isEmpty, selectedSubjectID == nil {
+                selectedSubjectID = subjects[0].id
                 isInitialSelection = false
             }
             
@@ -92,9 +100,14 @@ struct SubjectsSplitView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
                 
-                TextField("Search subjects...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.subheadline)
+                TextField("Search subjects...", text: Binding(
+                    get: { self.searchText },
+                    set: { newValue in
+                        eventStore.dispatch(SettingsAction.updateSearchText(text: newValue))
+                    }
+                ))
+                .textFieldStyle(.plain)
+                .font(.subheadline)
             }
             .padding(10)
             .background(
@@ -143,19 +156,19 @@ struct SubjectsSplitView: View {
     
     // MARK: - Subject List
     private var subjectList: some View {
-        List(selection: $selectedSubject) {
+        List {
             ForEach(filteredSubjects) { subject in
                 SubjectRowView(subject: subject)
-                    .tag(subject)
                     .listRowBackground(
-                        subject == selectedSubject
+                        subject.id == selectedSubjectID
                         ? Color.blue.opacity(0.1)
                         : Color(.systemBackground).opacity(0.8)
                     )
                     .contentShape(Rectangle()) // Ensure the entire row is tappable
                     .onTapGesture {
-                        // Explicitly set selected subject on tap
-                        selectedSubject = subject
+                        // Set selected subject on tap
+                        selectedSubjectID = subject.id
+                        eventStore.dispatch(SubjectAction.selectSubject(subject.id))
                     }
                     .contextMenu {
                         Button("Rename") {
@@ -178,16 +191,8 @@ struct SubjectsSplitView: View {
     private var detailView: some View {
         Group {
             if let subject = selectedSubject {
-                if let index = subjects.firstIndex(where: { $0.id == subject.id }) {
-                    let subjectBinding = $subjects[index]
-                    
-                    NavigationStack {
-                        NotePreviewsGrid(subject: subjectBinding)
-                    }
-                } else {
-                    Text("Subject not found")
-                        .font(.title)
-                        .foregroundColor(.red)
+                NavigationStack {
+                    NotePreviewsGrid(subjectID: subject.id)
                 }
             } else {
                 Text("Select a subject")
@@ -265,19 +270,30 @@ struct SubjectsSplitView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Add") {
+                        // Dispatch action to create new subject
                         let newSubject = Subject(
                             name: newSubjectName,
                             notes: [],
                             colorName: newSubjectColor,
                             iconName: newSubjectIcon
                         )
-                        subjects.append(newSubject)
+                        eventStore.dispatch(
+                            SubjectAction.addSubject(newSubject)
+                        )
+                        
+                        // Reset UI state
                         isAddingNewSubject = false
                         newSubjectName = ""
                         newSubjectIcon = "book.closed"
                         newSubjectColor = "blue"
-                        selectedSubject = newSubject
-                        onSubjectChange(newSubject)
+                        
+                        // Select the newly created subject on the next UI update
+                        DispatchQueue.main.async {
+                            if let newSubject = subjects.last {
+                                selectedSubjectID = newSubject.id
+                                eventStore.dispatch(SubjectAction.selectSubject(newSubject.id))
+                            }
+                        }
                     }
                     .disabled(newSubjectName.isEmpty)
                 }
@@ -296,18 +312,23 @@ struct SubjectsSplitView: View {
     }
     
     private func deleteSubjects(at offsets: IndexSet) {
-        subjects.remove(atOffsets: offsets)
+        for index in offsets {
+            deleteSubject(subjects[index])
+        }
     }
     
     private func deleteSubject(_ subject: Subject) {
-        if let idx = subjects.firstIndex(where: { $0.id == subject.id }) {
-            subjects.remove(at: idx)
+        eventStore.dispatch(SubjectAction.deleteSubject(subject.id))
+        
+        // If the deleted subject was selected, clear the selection
+        if selectedSubjectID == subject.id {
+            selectedSubjectID = nil
         }
     }
     
     private func renameSubject(_ subject: Subject) {
         print("Renaming subject: \(subject.name)")
-        // Insert rename logic or an alert with a text field if desired
+        // TODO: Implement rename functionality with EventStore
     }
 }
 

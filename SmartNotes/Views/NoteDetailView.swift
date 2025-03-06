@@ -6,63 +6,67 @@
 //  Updated on 3/6/25 to support a single, note-wide template and unified multi-page
 //  Updated on 2/27/25 to fix template persistence issues
 //  Updated on 4/1/25 to add PageNavigatorView sidebar
+//  Updated to use EventStore for state management
 //
 
 import SwiftUI
 import PencilKit
 
 struct NoteDetailView: View {
-    @Binding var note: Note
-    @EnvironmentObject var dataManager: DataManager
-    @EnvironmentObject private var navigationManager: NavigationStateManager
+    // Replace direct note binding with EventStore state management
+    @EnvironmentObject var eventStore: EventStore
+    @EnvironmentObject var dataManager: DataManager // Keep for backward compatibility during transition
+    
+    // Note identification
+    let noteIndex: Int
     let subjectID: UUID
+    
+    // Local UI state
     @State private var showingTemplateSheet = false
-    // Local copy of the note title
-    @State private var localTitle: String
-    
-    // Track whether we've just loaded the note
+    @State private var localTitle: String = ""
     @State private var isInitialLoad = true
-    
-    // Whether to show the export ActionSheet
     @State private var showExportOptions = false
-    
-    // Keep a single note-level template
-    @State private var noteTemplate: CanvasTemplate
-    
-    // Control sheet presentation for TemplateSettingsView
+    @State private var noteTemplate: CanvasTemplate = .none
     @State private var showingTemplateSettings = false
-    
-    // Flag to track active drawing operations
     @State private var isDrawingActive = false
-    
-    // Add state for page navigator
     @State private var isPageNavigatorVisible = false
     @State private var selectedPageIndex = 0
     @State private var isPageSelectionActive = false
-    
-    // Add these state variables to NoteDetailView
     @State private var selectedTool: PKInkingTool.InkType = .pen
     @State private var selectedColor: Color = .black
     @State private var lineWidth: CGFloat = 2.0
     @State private var showCustomToolbar = true
-    
-    // Add a reference to access the coordinator
     @State private var scrollViewCoordinator: MultiPageUnifiedScrollView.Coordinator?
     
     // Environment for dismissing the view (keeping for compatibility)
     @Environment(\.presentationMode) var presentationMode
     
-    init(note: Binding<Note>, subjectID: UUID) {
-        self._note = note
-        self.subjectID = subjectID
-        // Start localTitle with whatever is in the note
-        self._localTitle = State(initialValue: note.wrappedValue.title)
-        
-        if let template = note.wrappedValue.noteTemplate {
-            self._noteTemplate = State(initialValue: template)
-        } else {
-            self._noteTemplate = State(initialValue: .none)
-        }
+    // Computed properties to access the current note from state
+    private var subject: Subject? {
+        eventStore.state.contentState.subjects.first(where: { $0.id == subjectID })
+    }
+    
+    private var note: Note? {
+        guard let subject = subject, noteIndex < subject.notes.count else { return nil }
+        return subject.notes[noteIndex]
+    }
+    
+    // Binding for the current note's pages
+    private var notePagesBinding: Binding<[Page]> {
+        Binding<[Page]>(
+            get: {
+                self.note?.pages ?? []
+            },
+            set: { newPages in
+                if let note = self.note {
+                    let updatedNote = note.copyWith(pages: newPages)
+                    self.eventStore.dispatch(NoteAction.updateNote(
+                        updatedNote,
+                        subjectID: self.subjectID
+                    ))
+                }
+            }
+        )
     }
     
     var body: some View {
@@ -70,7 +74,7 @@ struct NoteDetailView: View {
             // Page Navigator Sidebar
             if isPageNavigatorVisible {
                 PageNavigatorView(
-                    pages: $note.pages,
+                    pages: notePagesBinding,
                     selectedPageIndex: $selectedPageIndex,
                     isSelectionActive: $isPageSelectionActive
                 )
@@ -85,8 +89,8 @@ struct NoteDetailView: View {
                 CustomNavigationBar(
                     title: $localTitle,
                     onBack: {
-                        // Use the NavigationStateManager to navigate back to subjects list
-                        navigationManager.navigateToSubjectsList()
+                        // Navigate back using EventStore action
+                        eventStore.dispatch(NavigationAction.navigateToSubjectsList)
                     },
                     onToggleSidebar: {
                         withAnimation {
@@ -101,43 +105,51 @@ struct NoteDetailView: View {
                     },
                     onTitleChanged: { newTitle in
                         // Only update the note model after initial load
-                        if !isInitialLoad {
-                            note.title = newTitle
-                            saveChanges()
+                        if !isInitialLoad, let currentNote = note {
+                            let updatedNote = currentNote.copyWith(title: newTitle)
+                            eventStore.dispatch(NoteAction.updateNote(
+                                updatedNote,
+                                subjectID: subjectID
+                            ))
                         }
                     }
                 )
                 
                 // Unified multi-page scroll
                 ZStack {
-                    MultiPageUnifiedScrollView(pages: $note.pages, template: $noteTemplate)
+                    MultiPageUnifiedScrollView(pages: notePagesBinding, template: $noteTemplate)
                         .sheet(isPresented: $showingTemplateSheet) {
                             TemplateSettingsView(template: $noteTemplate)
                         }
                         .onAppear {
-                            print("📝 NoteDetailView appeared for note ID: \(note.id)")
+                            guard let currentNote = note else {
+                                print("⚠️ NoteDetailView appeared but note is nil")
+                                return
+                            }
                             
-                            // Migrate older single-drawing data to pages if needed
-                            migrateIfNeeded()
+                            print("📝 NoteDetailView appeared for note ID: \(currentNote.id)")
+                            
+                            // Initialize local title from the note
+                            localTitle = currentNote.title
                             
                             // CRITICAL FIX: Ensure there's at least one page for new notes
-                            if note.pages.isEmpty {
+                            if currentNote.pages.isEmpty {
                                 print("📝 Creating initial empty page for new note")
                                 let newPage = Page(
                                     drawingData: Data(),
                                     template: nil,
                                     pageNumber: 1
                                 )
-                                note.pages = [newPage]
                                 
-                                // Save changes immediately to prevent issues if user closes note too quickly
-                                DispatchQueue.main.async {
-                                    saveChanges()
-                                }
+                                let updatedNote = currentNote.copyWith(pages: [newPage])
+                                eventStore.dispatch(NoteAction.updateNote(
+                                    updatedNote,
+                                    subjectID: subjectID
+                                ))
                             }
                             
                             // Get template from note
-                            if let savedTemplate = note.noteTemplate {
+                            if let savedTemplate = currentNote.noteTemplate {
                                 noteTemplate = savedTemplate
                                 print("📝 Loaded template from note: \(savedTemplate.type.rawValue)")
                             } else {
@@ -195,16 +207,10 @@ struct NoteDetailView: View {
                                 }
                             }
                         }
-                        .onChange(of: note.pages) { _ in
-                            // Save if pages change
-                            if !isInitialLoad {
-                                saveChanges()
-                            }
-                        }
                         .onChange(of: selectedPageIndex) { _, newIndex in
                             // Notify MultiPageUnifiedScrollView to scroll to the selected page
                             // Only trigger scrolling if the selection was made by clicking a thumbnail
-                            if !isInitialLoad && newIndex < note.pages.count && isPageSelectionActive {
+                            if !isInitialLoad && isPageSelectionActive {
                                 NotificationCenter.default.post(
                                     name: NSNotification.Name("ScrollToPage"),
                                     object: newIndex
@@ -215,16 +221,15 @@ struct NoteDetailView: View {
                             print("🔍 NoteDetailView - Template changed from \(oldValue.type.rawValue) to \(newValue.type.rawValue)")
                             print("🔍 Source: Internal state change")
                             
-                            // Reapply template changes
-                            if !isInitialLoad {
-                                // Update the note model immediately
-                                note.noteTemplate = newValue
-                                print("🔍 Updated note.noteTemplate to \(newValue.type.rawValue)")
+                            // Update the note template in the store
+                            if !isInitialLoad, let currentNote = note {
+                                let updatedNote = currentNote.copyWith(noteTemplate: newValue)
+                                eventStore.dispatch(NoteAction.updateNote(
+                                    updatedNote,
+                                    subjectID: subjectID
+                                ))
                                 
-                                // Save changes to persist the update
-                                saveChanges()
-                                
-                                // Force a refresh of the template - use ForceTemplateRefresh for more thorough refresh
+                                // Force a refresh of the template
                                 DispatchQueue.main.async {
                                     print("🔍 Posting ForceTemplateRefresh notification after template change")
                                     NotificationCenter.default.post(
@@ -252,17 +257,22 @@ struct NoteDetailView: View {
                                 noteTemplate = event.template
                                 print("🔄 Set local noteTemplate to \(event.template.type.rawValue)")
                                 
-                                // Update the note model and persist it immediately using the new method
-                                note.noteTemplate = event.template
-                                print("🔄 Set note.noteTemplate to \(event.template.type.rawValue)")
-                                
-                                // Since subjectID is non-optional, we can just use it directly
-                                dataManager.updateNoteTemplateAndSaveImmediately(
-                                    in: subjectID,
-                                    noteID: note.id,
-                                    template: event.template
-                                )
-                                print("🔄 Called updateNoteTemplateAndSaveImmediately with template \(event.template.type.rawValue)")
+                                // Update the note model via EventStore
+                                if let currentNote = note {
+                                    let updatedNote = currentNote.copyWith(noteTemplate: event.template)
+                                    eventStore.dispatch(NoteAction.updateNote(
+                                        updatedNote,
+                                        subjectID: subjectID
+                                    ))
+                                    print("🔄 Dispatched NoteAction.updateNote with template \(event.template.type.rawValue)")
+                                    
+                                    // Also update the DataManager for compatibility during transition
+                                    dataManager.updateNoteTemplateAndSaveImmediately(
+                                        in: subjectID,
+                                        noteID: currentNote.id,
+                                        template: event.template
+                                    )
+                                }
                             } else {
                                 print("🔄 No template properties changed, skipping update")
                             }
@@ -288,14 +298,25 @@ struct NoteDetailView: View {
                         }
                         .onDisappear {
                             // Invalidate the thumbnail when leaving the note editor
-                            // This ensures a fresh thumbnail will be generated when returning to the grid
-                            ThumbnailGenerator.invalidateThumbnail(for: note.id)
+                            if let currentNote = note {
+                                ThumbnailGenerator.invalidateThumbnail(for: currentNote.id)
+                            }
                             
                             // Clean up drawing notifications
                             NotificationCenter.default.removeObserver(self)
                             
-                            // Always save when view disappears
-                            saveChanges()
+                            // Always save when view disappears by updating lastModified
+                            if let currentNote = note {
+                                let updatedNote = currentNote.copyWith(
+                                    title: localTitle,
+                                    lastModified: Date(),
+                                    noteTemplate: noteTemplate
+                                )
+                                eventStore.dispatch(NoteAction.updateNote(
+                                    updatedNote,
+                                    subjectID: subjectID
+                                ))
+                            }
                         }
                         .overlay(
                             ZStack {
@@ -345,64 +366,87 @@ struct NoteDetailView: View {
     
     // MARK: - Migration
     private func migrateIfNeeded() {
+        guard let currentNote = note else { return }
+        
         // If this note has no pages but DOES have old single-drawing data,
         // convert it into a single Page. Then clear drawingData.
-        if note.pages.isEmpty && !note.drawingData.isEmpty {
+        if currentNote.pages.isEmpty && !currentNote.drawingData.isEmpty {
             print("📝 Migrating old single-drawing note -> multi-page note")
             let newPage = Page(
-                drawingData: note.drawingData,
+                drawingData: currentNote.drawingData,
                 template: nil,
                 pageNumber: 1
             )
-            note.pages = [newPage]
-            note.drawingData = Data()
+            
+            let updatedNote = currentNote.copyWith(
+                drawingData: Data(), pages: [newPage]
+            )
+            
+            eventStore.dispatch(NoteAction.updateNote(
+                updatedNote,
+                subjectID: subjectID
+            ))
         }
     }
     
-    // (Optional) If you want to load a saved note-level template from the note model or from UserDefaults,
-    // implement something like loadNoteTemplateIfWanted(). Otherwise you can skip it.
+    // MARK: - Template Loading
     private func loadNoteTemplateIfWanted() {
+        guard let currentNote = note else { return }
+        
         // First check if the note has a saved template
-        if let savedTemplate = note.noteTemplate {
+        if let savedTemplate = currentNote.noteTemplate {
             noteTemplate = savedTemplate
             return
         }
         
         // Then check UserDefaults as a fallback
-        if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(note.id.uuidString)") {
-             if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
-                 noteTemplate = loadedTemplate
-             }
-         }
+        if let data = UserDefaults.standard.data(forKey: "noteTemplate.\(currentNote.id.uuidString)") {
+            if let loadedTemplate = try? JSONDecoder().decode(CanvasTemplate.self, from: data) {
+                noteTemplate = loadedTemplate
+            }
+        }
     }
     
     // MARK: - Save
     private func saveChanges() {
-        note.title = localTitle
-        note.lastModified = Date()
+        guard let currentNote = note else { return }
         
-        // Save the current template state to the note model
-        note.noteTemplate = noteTemplate
+        let updatedNote = currentNote.copyWith(
+            title: localTitle,
+            lastModified: Date(),
+            noteTemplate: noteTemplate
+        )
+        
+        // Dispatch the update through EventStore
+        eventStore.dispatch(NoteAction.updateNote(
+            updatedNote,
+            subjectID: subjectID
+        ))
         
         // Also store in UserDefaults as a backup
         let data = try? JSONEncoder().encode(noteTemplate)
-        UserDefaults.standard.set(data, forKey: "noteTemplate.\(note.id.uuidString)")
+        UserDefaults.standard.set(data, forKey: "noteTemplate.\(currentNote.id.uuidString)")
         
-        // Persist changes through data manager
-        dataManager.updateNote(in: subjectID, note: note)
         print("📝 Note changes saved (multi-page with template).")
     }
     
     // MARK: - PDF Export
     private func exportToPDF() {
+        guard let currentNote = note else {
+            print("⚠️ Cannot export PDF: No valid note")
+            return
+        }
+        
         print("📝 PDF Export requested for multi-page note with template (placeholder).")
-        // You can combineAllPagesIntoOneDrawing() or handle multi-page PDF.
+        // You can use combineAllPagesIntoOneDrawing() or handle multi-page PDF.
     }
     
     private func combineAllPagesIntoOneDrawing() -> PKDrawing {
+        guard let currentNote = note else { return PKDrawing() }
+        
         var combined = PKDrawing()
         
-        for (index, page) in note.pages.enumerated() {
+        for (index, page) in currentNote.pages.enumerated() {
             let offsetY = CGFloat(index) * 792 // standard letter
             let pageDrawing = PKDrawing.fromData(page.drawingData)
             

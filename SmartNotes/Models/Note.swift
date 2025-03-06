@@ -38,6 +38,33 @@ struct Note: Identifiable, Codable, Hashable {
         return lhs.id == rhs.id
     }
     
+    /// Creates a copy of this note with specified properties changed while preserving others
+    /// This is important for immutable state updates in the EventStore
+    func copyWith(
+        title: String? = nil,
+        drawingData: Data? = nil,
+        dateCreated: Date? = nil,
+        lastModified: Date? = nil,
+        pages: [Page]? = nil,
+        noteTemplate: CanvasTemplate? = nil
+    ) -> Note {
+        var copy = Note(
+            title: title ?? self.title,
+            drawingData: drawingData ?? self.drawingData
+        )
+        
+        // Preserve the original ID
+        copy.id = self.id
+        
+        // Copy over other properties
+        copy.dateCreated = dateCreated ?? self.dateCreated
+        copy.lastModified = lastModified ?? self.lastModified  
+        copy.pages = pages ?? self.pages
+        copy.noteTemplate = noteTemplate ?? self.noteTemplate
+        
+        return copy
+    }
+    
     func hasDrawingContent() -> Bool {
         // Check legacy drawing data
         if !drawingData.isEmpty {

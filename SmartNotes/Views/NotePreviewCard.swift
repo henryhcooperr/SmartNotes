@@ -13,10 +13,14 @@ struct NotePreviewCard: View {
     @Binding var note: Note
     @Binding var subject: Subject
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject var eventStore: EventStore
     
     var body: some View {
-        NavigationLink {
-            NoteDetailView(note: $note, subjectID: subject.id)
+        // Find the note index in the subject's notes array
+        let noteIndex = subject.notes.firstIndex(where: { $0.id == note.id }) ?? 0
+        
+        return NavigationLink {
+            NoteDetailView(noteIndex: noteIndex, subjectID: subject.id)
         } label: {
             cardContents
         }

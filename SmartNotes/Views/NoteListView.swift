@@ -32,7 +32,7 @@ struct NotesListView: View {
             // List all notes inside this subject
             ForEach($subject.notes.indices, id: \.self) { index in
                 let noteBinding = $subject.notes[index]
-                NavigationLink(destination: NoteDetailView(note: noteBinding, subjectID: subject.id)) {
+                NavigationLink(destination: NoteDetailView(noteIndex: index, subjectID: subject.id)) {
                     Text(subject.notes[index].title.isEmpty ? "Untitled Note" : subject.notes[index].title)
                 }
             }

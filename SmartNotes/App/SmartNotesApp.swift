@@ -25,6 +25,9 @@ struct SmartNotesApp: App {
     // Create a shared instance of DataManager that will be used throughout the app
     @StateObject private var dataManager = DataManager()
     
+    // Create the EventStore as the central state manager
+    @StateObject private var eventStore = EventStore()
+    
     // Initialize AppSettings for app-wide access to performance settings
     @StateObject private var appSettings = AppSettingsModel()
     
@@ -34,6 +37,8 @@ struct SmartNotesApp: App {
     
     // Use an initialization function to setup the app
     init() {
+        print("📱 SmartNotesApp initializing")
+        
         // Initialize the notification bridge for backward compatibility
         _ = NotificationBridge.shared
         
@@ -61,8 +66,16 @@ struct SmartNotesApp: App {
                 // Main app content
                 MainView()
                     .environmentObject(dataManager)
+                    .environmentObject(eventStore)
                     .environmentObject(appSettings)
                     .onAppear {
+                        // Load data from DataManager into EventStore
+                        eventStore.loadFromDataManager(dataManager)
+                        
+                        // Register save middleware
+                        let saveMiddleware = SaveMiddleware(dataManager: dataManager)
+                        eventStore.register(middleware: saveMiddleware.middleware())
+                        
                         // Force clear the thumbnail cache on app launch
                         ThumbnailGenerator.clearCache()
                         // Mark the end of app launch
@@ -186,51 +199,39 @@ struct SmartNotesApp: App {
     }
 }
 
-// Main view that uses the DataManager
+/// Main view of the application
 struct MainView: View {
+    // Access the EventStore for state management
+    @EnvironmentObject var eventStore: EventStore
+    
+    // Legacy DataManager for backward compatibility
     @EnvironmentObject var dataManager: DataManager
-    
-    // Define a navigation state enum
-    enum NavigationState {
-        case subjectsList
-        case noteDetail(noteIndex: Int, subjectID: UUID)
-    }
-    
-    // State to track the current view
-    @State private var navigationState: NavigationState = .subjectsList
     
     var body: some View {
         Group {
-            switch navigationState {
+            // Switch based on the navigation state from the EventStore
+            switch eventStore.state.uiState.navigationState {
             case .subjectsList:
-                SubjectsSplitView(subjects: $dataManager.subjects) { subject in
-                    // This is the onChange handler that will be passed to SubjectsSplitView
-                    dataManager.updateSubject(subject)
-                    dataManager.saveData()
-                }
-                .environmentObject(NavigationStateManager(navigationState: $navigationState))
+                SubjectsSplitView() // We'll update this to use EventStore
+                    .environmentObject(eventStore)
                 
             case .noteDetail(let noteIndex, let subjectID):
-                if let subjectIndex = dataManager.subjects.firstIndex(where: { $0.id == subjectID }),
-                   noteIndex < dataManager.subjects[subjectIndex].notes.count {
-                    // Create a binding to the specific note
-                    let noteBinding = Binding(
-                        get: { dataManager.subjects[subjectIndex].notes[noteIndex] },
-                        set: { newValue in
-                            dataManager.subjects[subjectIndex].notes[noteIndex] = newValue
-                            dataManager.saveData()
-                        }
-                    )
+                if let subjectIndex = eventStore.state.contentState.subjects.firstIndex(where: { $0.id == subjectID }),
+                   noteIndex < eventStore.state.contentState.subjects[subjectIndex].notes.count {
                     
                     // Show the note detail view
-                    NoteDetailView(note: noteBinding, subjectID: subjectID)
-                        .environmentObject(NavigationStateManager(navigationState: $navigationState))
+                    NoteDetailView(
+                        noteIndex: noteIndex,
+                        subjectID: subjectID
+                    )
+                    .environmentObject(eventStore)
+                    
                 } else {
                     // Handle invalid state
                     Text("Note not found")
                         .onAppear {
                             // If the note doesn't exist, go back to subjects list
-                            navigationState = .subjectsList
+                            eventStore.dispatch(NavigationAction.navigateToSubjectsList)
                         }
                 }
             }
@@ -240,9 +241,9 @@ struct MainView: View {
 
 // NavigationStateManager to pass the navigation state through the environment
 class NavigationStateManager: ObservableObject {
-    @Binding var navigationState: MainView.NavigationState
+    @Binding var navigationState: NavigationState
     
-    init(navigationState: Binding<MainView.NavigationState>) {
+    init(navigationState: Binding<NavigationState>) {
         self._navigationState = navigationState
     }
     
