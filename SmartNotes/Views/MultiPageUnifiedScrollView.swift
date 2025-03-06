@@ -93,22 +93,24 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             self.parent = parent
             super.init()
             
-            // Set up subscription manager for event handling
-            let subscriptionManager = self.subscriptionManager
-            
             // Register for page navigation notifications
-            subscriptionManager.subscribe(PageEvents.ScrollToPage.self) { [weak self] event in
+            subscriptionManager.subscribe(PageEvents.ScrollToPage.self) { [weak self] (event: PageEvents.ScrollToPage) in
                 self?.scrollToSelectedPage(event.pageIndex)
             }
             
             // Register for page selection by user
-            subscriptionManager.subscribe(PageEvents.PageSelectedByUser.self) { [weak self] event in
+            subscriptionManager.subscribe(PageEvents.PageSelectedByUser.self) { [weak self] (event: PageEvents.PageSelectedByUser) in
                 self?.scrollToSelectedPage(event.pageIndex)
             }
             
             // Register for page reordering notifications
-            subscriptionManager.subscribe(PageEvents.PageReordering.self) { [weak self] event in
+            subscriptionManager.subscribe(PageEvents.PageReordering.self) { [weak self] (event: PageEvents.PageReordering) in
                 self?.handlePageReordering(event)
+            }
+            
+            // Register for tool change events from EventBus
+            subscriptionManager.subscribe(ToolEvents.ToolChanged.self) { [weak self] (event: ToolEvents.ToolChanged) in
+                self?.handleToolChangeEvent(event)
             }
             
             // Notify that the coordinator is ready
@@ -118,6 +120,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         deinit {
             // Clean up subscriptions
             subscriptionManager.clearAll()
+            
+            // Unregister all canvases from CanvasManager
+            for pageID in canvasViews.keys {
+                CanvasManager.shared.unregisterCanvas(withID: pageID)
+            }
         }
         
         // MARK: - Scroll to Selected Page
@@ -275,14 +282,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
-            // Simple flag for reducing quality during scrolling
-            for (_, canvasView) in canvasViews {
-                // Lower quality during scrolling
-                if #available(iOS 16.0, *) {
-                    canvasView.drawingPolicy = .pencilOnly
-                } else {
-                    canvasView.allowsFingerDrawing = false
-                }
+            // Use CanvasManager to set temporary low resolution mode during scrolling
+            for (id, canvasView) in canvasViews {
+                CanvasManager.shared.setTemporaryLowResolutionMode(canvasView, enabled: true)
             }
         }
         
@@ -290,41 +292,42 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             if !decelerate {
                 // If we're not going to decelerate, update the visible page now
                 updateVisiblePageIndex()
+                
+                // Restore canvas quality
+                guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
+                for (id, canvasView) in canvasViews {
+                    CanvasManager.shared.setTemporaryLowResolutionMode(canvasView, enabled: false)
+                }
             }
         }
         
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
             // Update the visible page after scrolling stops
             updateVisiblePageIndex()
+            
+            // Restore canvas quality
+            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
+            for (id, canvasView) in canvasViews {
+                CanvasManager.shared.setTemporaryLowResolutionMode(canvasView, enabled: false)
+            }
         }
         
         func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
-            // Lower quality during zooming
-            for (_, canvasView) in canvasViews {
-                // Lower quality during zooming
-                if #available(iOS 16.0, *) {
-                    canvasView.drawingPolicy = .pencilOnly
-                } else {
-                    canvasView.allowsFingerDrawing = false
-                }
+            // Use CanvasManager to set temporary low resolution mode during zooming
+            for (id, canvasView) in canvasViews {
+                CanvasManager.shared.setTemporaryLowResolutionMode(canvasView, enabled: true)
             }
         }
         
         func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
             guard let appSettings = getAppSettings() else { return }
             
-            // Restore quality after zooming stops
+            // Restore canvas quality after zooming
             if appSettings.optimizeDuringInteraction {
-                for (_, canvasView) in canvasViews {
-                    // Restore normal quality
-                    let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
-                    if #available(iOS 16.0, *) {
-                        canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
-                    } else {
-                        canvasView.allowsFingerDrawing = !disableFingerDrawing
-                    }
+                for (id, canvasView) in canvasViews {
+                    CanvasManager.shared.setTemporaryLowResolutionMode(canvasView, enabled: false)
                 }
             }
             
@@ -445,6 +448,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     if let tagID = cv.tagID, !parent.pages.contains(where: { $0.id == tagID }) {
                         cv.removeFromSuperview()
                         canvasViews.removeValue(forKey: tagID)
+                        CanvasManager.shared.unregisterCanvas(withID: tagID)
                     }
                 }
             }
@@ -466,15 +470,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     cv = existing
                     existingViewsUpdated += 1
                 } else {
-                    cv = PKCanvasView()
-                    cv.tagID = page.id
+                    // Use CanvasManager to create a new canvas
+                    cv = CanvasManager.shared.createCanvas(withID: page.id, initialDrawing: page.drawingData)
                     cv.delegate = self
                     
-                    // Load existing drawing
-                    cv.drawing = PKDrawing.fromData(page.drawingData)
-                    
-                    // Configure high resolution canvas
-                    configureCanvas(cv)
+                    // Set the tag ID for tracking
+                    cv.tagID = page.id
                     
                     // Save reference
                     canvasViews[page.id] = cv
@@ -585,66 +586,62 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         /// Configure a canvas for optimal display
         func configureCanvas(_ canvasView: PKCanvasView) {
-            // Apply finger drawing policy based on settings
-            let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
-            if #available(iOS 16.0, *) {
-                canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
-            } else {
-                canvasView.allowsFingerDrawing = !disableFingerDrawing
-            }
+            // Use CanvasManager to configure the canvas
+            CanvasManager.shared.configureCanvas(canvasView)
             
-            // Ensure no content insets on the canvas itself
-            canvasView.contentInset = .zero
-            
-            // Ensure we're set as the delegate to get tool notifications
+            // Set delegate to self to continue receiving drawing events
             canvasView.delegate = self
-            
-            // Optimize for high resolution drawing
-            canvasView.optimizeForHighResolution()
-            
-            // Register for resolution changes
-            canvasView.registerForResolutionChanges()
-            
-            // We don't need to add an observer - we'll rely on delegate methods instead
         }
         
         /// Apply the template to the canvas
         func applyTemplate(to canvasView: PKCanvasView, template: CanvasTemplate? = nil) {
-            // First remove any existing template
-            if let sublayers = canvasView.layer.sublayers {
-                for layer in sublayers where layer.name == "TemplateLayer" {
-                    layer.removeFromSuperlayer()
-                }
-            }
-            
-            for subview in canvasView.subviews where subview.tag == 888 {
-                subview.removeFromSuperview()
-            }
-            
             // Use the provided template if available, otherwise fall back to parent.template
             let templateToApply = template ?? parent.template
             
             // Debug output to track template application
             print("🖌️ Applying template: \(templateToApply.type.rawValue) to canvas view \(String(describing: canvasView.tagID?.uuidString.prefix(8) ?? "unknown"))")
             
-            // Apply the template
-            TemplateRenderer.applyTemplateToCanvas(
-                canvasView,
-                template: templateToApply,
-                pageSize: parent.pageSize,
-                numberOfPages: 1,
-                pageSpacing: 0
-            )
+            // Use CanvasManager to apply the template
+            CanvasManager.shared.applyTemplate(to: canvasView, template: templateToApply, pageSize: parent.pageSize)
         }
         
         // MARK: - Tool Management
         
+        /// Apply the current tool to a specific canvas
+        func applyCurrentTool(to canvas: PKCanvasView) {
+            // Handle eraser separately since it's not part of PKInkingTool.InkType
+            if selectedTool == .pen && selectedColor.isEqual(UIColor.clear) {
+                // Use PencilKit's eraser when tool is pen but color is clear
+                canvas.tool = PKEraserTool(.bitmap)
+            } else {
+                // Use inking tool with current properties
+                let inkingTool = PKInkingTool(selectedTool, color: selectedColor, width: lineWidth)
+                canvas.tool = inkingTool
+            }
+        }
+        
         /// Set a custom tool on all canvases
         func setCustomTool(type: PKInkingTool.InkType, color: UIColor, width: CGFloat) {
-            let inkingTool = PKInkingTool(type, color: color, width: width)
+            // Use CanvasManager to set tool on all canvases
+            CanvasManager.shared.setTool(type, color: color, width: width)
+        }
+        
+        /// Clear tool selection on all canvases
+        func clearToolSelection() {
+            // Use CanvasManager to clear tool selection (will disable interactions)
+            CanvasManager.shared.clearToolSelection()
+        }
+        
+        /// Handle tool change events from EventBus
+        func handleToolChangeEvent(_ event: ToolEvents.ToolChanged) {
+            // Update local tool properties
+            self.selectedTool = event.tool
+            self.selectedColor = event.color
+            self.lineWidth = event.width
             
-            for (_, canvasView) in canvasViews {
-                canvasView.tool = inkingTool
+            // Update all active canvases with the new tool
+            for canvasView in canvasViews.values {
+                applyCurrentTool(to: canvasView)
             }
         }
         
@@ -661,11 +658,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // MARK: - Rendering Quality
         
         /// Update canvas rendering quality based on zoom scale - simpler version
-        func updateCanvasRenderingForZoomScale(_ scale: CGFloat) {
-            // We can adjust quality based on zoom if needed in the future
-            // In this simpler implementation, we don't need complex adjustments
-            if GlobalSettings.debugModeEnabled {
-                print("📏 Zoom scale: \(scale)")
+        func updateCanvasRenderingForZoomScale(_ zoomScale: CGFloat) {
+            // Update the zoom scale in the coordinate manager
+            CoordinateSpaceManager.shared.updateZoomScale(zoomScale)
+            
+            // Use CanvasManager to adjust quality for all canvases
+            for (_, canvasView) in canvasViews {
+                CanvasManager.shared.adjustQualityForZoom(canvasView, zoomScale: zoomScale)
             }
         }
         

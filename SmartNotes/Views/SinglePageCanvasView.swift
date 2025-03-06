@@ -68,10 +68,9 @@ struct SinglePageCanvasView: UIViewRepresentable {
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
             centerCanvas(scrollView: scrollView)
             
-            // Update quality based on zoom level
+            // Update quality based on zoom level using CanvasManager
             if let canvasView = canvasView {
-                // Use our extension method to adjust quality based on zoom
-                canvasView.adjustQualityForZoom(scrollView.zoomScale)
+                CanvasManager.shared.adjustQualityForZoom(canvasView, zoomScale: scrollView.zoomScale)
             }
         }
         
@@ -101,17 +100,9 @@ struct SinglePageCanvasView: UIViewRepresentable {
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.bouncesZoom = true
         
-        // 2) Create the PKCanvasView
-        let canvasView = PKCanvasView()
-        canvasView.drawing = PKDrawing.fromData(page.drawingData)
+        // 2) Create the PKCanvasView using CanvasManager
+        let canvasView = CanvasManager.shared.createCanvas(withID: page.id, initialDrawing: page.drawingData)
         canvasView.delegate = context.coordinator
-        canvasView.alwaysBounceVertical = false
-        
-        // Start with white background - template will be applied later
-        canvasView.backgroundColor = .white
-        
-        // Configure for high-resolution rendering using our extension
-        canvasView.optimizeForHighResolution()
         
         // 3) Set a fixed frame for the canvas matching "a single page"
         // Use the scaled page size from GlobalSettings
@@ -136,14 +127,12 @@ struct SinglePageCanvasView: UIViewRepresentable {
         context.coordinator.scrollView = scrollView
         context.coordinator.canvasView = canvasView
         
-        // Apply the template immediately to ensure it's visible from the start
+        // Apply the template immediately using CanvasManager
         print("🖋️ Initial template application of type: \(noteTemplate.type.rawValue)")
-        TemplateRenderer.applyTemplateToCanvas(
-            canvasView,
+        CanvasManager.shared.applyTemplate(
+            to: canvasView,
             template: noteTemplate,
-            pageSize: GlobalSettings.scaledPageSize,
-            numberOfPages: 1,
-            pageSpacing: 0
+            pageSize: GlobalSettings.scaledPageSize
         )
         
         // Store the initial template type
@@ -169,13 +158,11 @@ struct SinglePageCanvasView: UIViewRepresentable {
             if context.coordinator.lastTemplateType != noteTemplate.type {
                 print("🖋️ Template changed from \(context.coordinator.lastTemplateType?.rawValue ?? "nil") to \(noteTemplate.type.rawValue), reapplying")
                 
-                // Clear any existing template and apply the new one
-                TemplateRenderer.applyTemplateToCanvas(
-                    canvasView,
+                // Apply the new template using CanvasManager
+                CanvasManager.shared.applyTemplate(
+                    to: canvasView,
                     template: noteTemplate,
-                    pageSize: GlobalSettings.scaledPageSize,
-                    numberOfPages: 1,
-                    pageSpacing: 0
+                    pageSize: GlobalSettings.scaledPageSize
                 )
                 
                 // Update the stored template type
@@ -183,12 +170,10 @@ struct SinglePageCanvasView: UIViewRepresentable {
             } else if GlobalSettings.debugModeEnabled {
                 // In debug mode, refresh template on every update to ensure it's visible
                 print("🐞 Debug mode: Refreshing template on update")
-                TemplateRenderer.applyTemplateToCanvas(
-                    canvasView,
+                CanvasManager.shared.applyTemplate(
+                    to: canvasView,
                     template: noteTemplate,
-                    pageSize: GlobalSettings.scaledPageSize,
-                    numberOfPages: 1,
-                    pageSpacing: 0
+                    pageSize: GlobalSettings.scaledPageSize
                 )
             }
         }

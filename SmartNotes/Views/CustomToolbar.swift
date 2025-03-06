@@ -88,6 +88,9 @@ struct CustomToolbar: View {
     // New state for color picker index
     @State private var showColorPickerForIndex: Int? = nil
     
+    // Add a state variable to track if we're in the "no tool selected" state
+    @State private var noToolSelected = true
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .center) {
@@ -137,19 +140,21 @@ struct CustomToolbar: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: toolbarPosition.alignment)
         }
         .onAppear {
-            // Reset toolbar preferences (remove this after testing)
-            UserDefaults.standard.removeObject(forKey: "toolbarTools")
+            print("🖋️ CustomToolbar: onAppear called")
             
-            // Ensure default color is set to black
-            if selectedColor == .white {
-                selectedColor = .black
-            }
-            
+            // Load saved preferences but don't apply any tool
             loadSavedPreferences()
-            // Initial setup of tools
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                applyToolToAllCanvases()
-            }
+            loadCustomSettings()
+            
+            // Clear tool selection - set to neutral state
+            selectedTool = .pen  // Default type, but we won't apply it
+            isEraserSelected = false
+            noToolSelected = true
+            
+            // Use CanvasManager to clear any tool selection
+            CanvasManager.shared.clearToolSelection()
+            
+            print("🖋️ CustomToolbar: Initialized with no active tool")
         }
         .onDisappear {
             cancelLongPressTimer()
@@ -423,6 +428,11 @@ struct CustomToolbar: View {
     }
     
     private func getColorForTool(_ tool: DrawingTool) -> Color {
+        // If no tool is selected, everything should be gray
+        if noToolSelected {
+            return .gray
+        }
+        
         switch tool.type {
         case .pen where selectedTool == .pen && !isEraserSelected:
             return selectedColor
@@ -442,6 +452,11 @@ struct CustomToolbar: View {
     }
     
     private func getBackgroundForTool(_ tool: DrawingTool) -> Color {
+        // If no tool is selected, no background highlighting
+        if noToolSelected {
+            return Color.clear
+        }
+        
         if tool.type.requiresWidth && toolShowingWidthOptions == tool.type {
             // Highlight tools that have their width options showing
             return Color.blue.opacity(0.3)
@@ -478,7 +493,8 @@ struct CustomToolbar: View {
                 Button {
                     selectedColor = color
                     if !isEraserSelected {
-                        applyToolToAllCanvases()
+                        applyToolWithCanvasManager()
+                        // Tool settings are saved in applyToolWithCanvasManager
                     }
                 } label: {
                     Circle()
@@ -540,7 +556,7 @@ struct CustomToolbar: View {
                 ForEach(lineWidths, id: \.self) { width in
                     Button {
                         self.lineWidth = width
-                        applyToolToAllCanvases()
+                        applyToolWithCanvasManager()
                     } label: {
                         Circle()
                             .fill(width == lineWidth ? Color.white : Color.gray)
@@ -568,24 +584,26 @@ struct CustomToolbar: View {
     // MARK: - Tool Actions
     
     private func handleToolTap(_ tool: DrawingTool) {
+        // When any tool is tapped, we're no longer in the "no tool selected" state
+        noToolSelected = false
+        
+        // Enable canvas interactions for all canvases 
+        CanvasManager.shared.enableCanvasInteractions()
+        
         switch tool.type {
         case .pen:
             selectedTool = .pen
-            isEraserSelected = false
-            applyToolToAllCanvases()
+            applyToolWithCanvasManager()
             toggleWidthOptions(for: tool.type)
-            // Hide color picker when showing width/color options
             showColorPicker = false
         case .pencil:
             selectedTool = .pencil
-            isEraserSelected = false
-            applyToolToAllCanvases()
+            applyToolWithCanvasManager()
             toggleWidthOptions(for: tool.type)
             showColorPicker = false
         case .marker:
             selectedTool = .marker
-            isEraserSelected = false
-            applyToolToAllCanvases()
+            applyToolWithCanvasManager()
             toggleWidthOptions(for: tool.type)
             showColorPicker = false
         case .eraser:
@@ -602,7 +620,6 @@ struct CustomToolbar: View {
             applySelectionToolToAllCanvases()
             toolShowingWidthOptions = nil
         case .aiTool:
-            isEraserSelected = false
             showAIActionSheet()
             toolShowingWidthOptions = nil
         case .undo:
@@ -617,9 +634,8 @@ struct CustomToolbar: View {
         }
     }
     
-    // MARK: - Canvas Operations
-    
-    private func applyToolToAllCanvases() {
+    /// Apply the current tool using CanvasManager
+    private func applyToolWithCanvasManager() {
         guard let coordinator = coordinator else { return }
         
         // Convert the SwiftUI Color to UIColor
@@ -651,7 +667,25 @@ struct CustomToolbar: View {
             width: lineWidth
         )
         
+        // Save current tool settings for next session
+        saveLastUsedToolSettings()
+        
         print("📌 Applied \(selectedTool) tool with color \(correctColor.description) and width \(lineWidth)")
+    }
+    
+    // Save the last used tool settings for next session
+    private func saveLastUsedToolSettings() {
+        // Save tool type
+        UserDefaults.standard.set(selectedTool.rawValue, forKey: "lastToolType")
+        
+        // Save color (using our robust RGBA storage)
+        let colorData = RGBAColor(from: selectedColor)
+        if let encoded = try? JSONEncoder().encode(colorData) {
+            UserDefaults.standard.set(encoded, forKey: "lastSelectedColor")
+        }
+        
+        // Save line width
+        UserDefaults.standard.set(lineWidth, forKey: "lastLineWidth")
     }
     
     private func applyEraserToAllCanvases() {
@@ -863,7 +897,7 @@ struct CustomToolbar: View {
                 ForEach(lineWidths, id: \.self) { width in
                     Button {
                         self.lineWidth = width
-                        applyToolToAllCanvases()
+                        applyToolWithCanvasManager()
                     } label: {
                         ZStack {
                             Circle()
@@ -915,7 +949,7 @@ struct CustomToolbar: View {
                                 // Add the custom width to the array
                                 lineWidths.append(tempCustomWidth)
                                 lineWidth = tempCustomWidth
-                                applyToolToAllCanvases()
+                                applyToolWithCanvasManager()
                                 
                                 // Save to UserDefaults
                                 saveCustomSettings()
@@ -949,7 +983,7 @@ struct CustomToolbar: View {
                         // First click selects the color
                         if selectedColor != colors[index] {
                             self.selectedColor = colors[index]
-                            applyToolToAllCanvases()
+                            applyToolWithCanvasManager()
                         } else {
                             // Second click on already selected color opens picker to change it
                             showColorPickerForIndex = index
@@ -986,7 +1020,7 @@ struct CustomToolbar: View {
                             // Replace color at this index
                             colors[editingIndex] = tempCustomColor
                             selectedColor = tempCustomColor
-                            applyToolToAllCanvases()
+                            applyToolWithCanvasManager()
                             
                             // Save to UserDefaults
                             saveCustomSettings()
@@ -1044,7 +1078,7 @@ struct CustomToolbar: View {
                     ForEach(lineWidths, id: \.self) { width in
                         Button {
                             self.lineWidth = width
-                            applyToolToAllCanvases()
+                            applyToolWithCanvasManager()
                         } label: {
                             ZStack {
                                 Circle()
@@ -1094,7 +1128,7 @@ struct CustomToolbar: View {
                             if !lineWidths.contains(tempCustomWidth) {
                                 lineWidths.append(tempCustomWidth)
                                 lineWidth = tempCustomWidth
-                                applyToolToAllCanvases()
+                                applyToolWithCanvasManager()
                                 saveCustomSettings()
                             }
                             showCustomWidthInput = false
@@ -1128,7 +1162,7 @@ struct CustomToolbar: View {
                                         // First click selects the color
                                         if selectedColor != colors[index] {
                                             self.selectedColor = colors[index]
-                                            applyToolToAllCanvases()
+                                            applyToolWithCanvasManager()
                                         } else {
                                             // Second click on already selected color opens picker to change it
                                             showColorPickerForIndex = index
@@ -1160,10 +1194,12 @@ struct CustomToolbar: View {
                             
                             HStack {
                                 Button {
-                                    // Replace color
+                                    // Replace color at this index
                                     colors[editingIndex] = tempCustomColor
                                     selectedColor = tempCustomColor
-                                    applyToolToAllCanvases()
+                                    applyToolWithCanvasManager()
+                                    
+                                    // Save to UserDefaults
                                     saveCustomSettings()
                                     showColorPickerForIndex = nil
                                 } label: {
@@ -1192,6 +1228,31 @@ struct CustomToolbar: View {
         .animation(.spring(), value: showCustomWidthInput)
         .animation(.spring(), value: showCustomColorPicker)
     }
+    
+    // MARK: - Tool Management with CanvasManager
+    
+    /// Sync local tool state with CanvasManager
+    private func syncWithCanvasManager() {
+        // Get current tool from CanvasManager
+        let canvasManager = CanvasManager.shared
+        
+        // Update bindings to match CanvasManager state
+        self.selectedTool = canvasManager.currentTool
+        self.selectedColor = Color(canvasManager.currentColor)
+        self.lineWidth = canvasManager.currentLineWidth
+    }
+    
+    /// Handle tool change events from EventBus
+    private func handleToolChangeEvent(_ event: ToolEvents.ToolChanged) {
+        // Update bindings to match notification values
+        DispatchQueue.main.async {
+            self.selectedTool = event.tool
+            self.selectedColor = Color(event.color)
+            self.lineWidth = event.width
+        }
+    }
+    
+    // MARK: - Helper Functions
     
     // 6. Add this preference key to track view positions
     struct ViewPositionKey: PreferenceKey {
@@ -1234,14 +1295,34 @@ struct CustomToolbar: View {
     
     // Load custom settings from UserDefaults
     private func loadCustomSettings() {
+        // Load last used tool type
+        if let toolRawValue = UserDefaults.standard.string(forKey: "lastToolType"),
+           let toolType = PKInkingTool.InkType(rawValue: toolRawValue) {
+            selectedTool = toolType
+        } else {
+            // Default to pen if no saved tool
+            selectedTool = .pen
+        }
+        
+        // Load last used color
+        if let colorData = UserDefaults.standard.data(forKey: "lastSelectedColor"),
+           let decoded = try? JSONDecoder().decode(RGBAColor.self, from: colorData) {
+            selectedColor = decoded.swiftUIColor
+        }
+        
+        // Load last used line width
+        if let width = UserDefaults.standard.object(forKey: "lastLineWidth") as? CGFloat {
+            lineWidth = width
+        }
+        
         // Load line widths
-        if let savedWidths = UserDefaults.standard.array(forKey: "customLineWidths") as? [CGFloat] {
+        if let savedWidths = UserDefaults.standard.array(forKey: "customLineWidths") as? [CGFloat], !savedWidths.isEmpty {
             lineWidths = savedWidths
         }
         
         // Load colors from RGBA encoding
         if let data = UserDefaults.standard.data(forKey: "customColors"),
-           let decoded = try? JSONDecoder().decode([RGBAColor].self, from: data) {
+           let decoded = try? JSONDecoder().decode([RGBAColor].self, from: data), !decoded.isEmpty {
             colors = decoded.map { $0.swiftUIColor }
         }
     }
@@ -1287,6 +1368,18 @@ struct CustomToolbar: View {
         default:
             return baseColor
         }
+    }
+    
+    // Replace the previous clearToolSelection method with this one
+    private func clearToolSelection() {
+        // Clear visual selection state
+        noToolSelected = true
+        isEraserSelected = false
+        
+        // Use the CanvasManager to clear tools from all canvases
+        CanvasManager.shared.clearToolSelection()
+        
+        print("🖋️ CustomToolbar: Cleared tool selection")
     }
 }
 

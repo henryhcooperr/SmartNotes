@@ -232,6 +232,31 @@ public enum GridEvents {
     }
 }
 
+// MARK: - Tool Events
+
+/// Events related to drawing tools
+public enum ToolEvents {
+    /// Event fired when a tool changes
+    public struct ToolChanged: Event {
+        public static let description = "Fired when a drawing tool is changed"
+        
+        /// The tool type
+        public let tool: PKInkingTool.InkType
+        
+        /// The tool color
+        public let color: UIColor
+        
+        /// The tool width
+        public let width: CGFloat
+        
+        public init(tool: PKInkingTool.InkType, color: UIColor, width: CGFloat) {
+            self.tool = tool
+            self.color = color
+            self.width = width
+        }
+    }
+}
+
 // MARK: - System Events
 
 /// Events related to system-wide state changes
