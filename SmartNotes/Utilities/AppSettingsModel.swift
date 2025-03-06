@@ -54,6 +54,22 @@ class AppSettingsModel: ObservableObject {
         }
     }
     
+    /// Whether to enable centralized resource management
+    @Published var useCentralizedResourceManagement: Bool = true {
+        didSet {
+            saveSettings()
+            UserDefaults.standard.set(useCentralizedResourceManagement, forKey: useCentralizedResourceManagementKey)
+            
+            // Clear all caches if turning this off to ensure clean state
+            if !useCentralizedResourceManagement {
+                ResourceManager.shared.removeAllResources(ofType: .noteThumbnail)
+                ResourceManager.shared.removeAllResources(ofType: .pageThumbnail)
+                ResourceManager.shared.removeAllResources(ofType: .template)
+                ResourceManager.shared.removeAllResources(ofType: .custom)
+            }
+        }
+    }
+    
     // MARK: - Keys for UserDefaults
     
     private let showPerformanceStatsKey = "showPerformanceStats"
@@ -61,23 +77,46 @@ class AppSettingsModel: ObservableObject {
     private let userResolutionFactorKey = "userResolutionFactor"
     private let useTemplateCachingKey = "useTemplateCaching"
     private let optimizeDuringInteractionKey = "optimizeDuringInteraction"
+    private let useCentralizedResourceManagementKey = "useCentralizedResourceManagement"
     
     // MARK: - Initialization
     
     init() {
-        // Force reset performance stats to false first
-        showPerformanceStats = false
+        // Load settings from UserDefaults
+        let defaults = UserDefaults.standard
         
-        // Then load other settings
-        loadSettings()
+        showPerformanceStats = defaults.bool(forKey: showPerformanceStatsKey)
+        useAdaptiveResolution = defaults.bool(forKey: useAdaptiveResolutionKey)
+        optimizeDuringInteraction = defaults.bool(forKey: optimizeDuringInteractionKey)
+        useTemplateCaching = defaults.bool(forKey: useTemplateCachingKey)
         
-        // Always disable monitoring on init to be safe
-        PerformanceMonitor.shared.setMonitoringEnabled(false)
+        // Default to true for centralized resource management if not set
+        useCentralizedResourceManagement = defaults.object(forKey: useCentralizedResourceManagementKey) != nil ? 
+            defaults.bool(forKey: useCentralizedResourceManagementKey) : true
         
-        // Only enable monitoring if explicitly requested AND debug mode is on
-        if GlobalSettings.debugModeEnabled && GlobalSettings.performanceModeEnabled && showPerformanceStats {
-            PerformanceMonitor.shared.setMonitoringEnabled(true)
+        // Load user resolution if available
+        if let storedResolution = defaults.object(forKey: userResolutionFactorKey) as? CGFloat {
+            userResolutionFactor = storedResolution
         }
+        
+        // Store default values if not already stored
+        if defaults.object(forKey: useAdaptiveResolutionKey) == nil {
+            defaults.set(true, forKey: useAdaptiveResolutionKey)
+        }
+        
+        if defaults.object(forKey: useTemplateCachingKey) == nil {
+            defaults.set(true, forKey: useTemplateCachingKey)
+        }
+        
+        if defaults.object(forKey: optimizeDuringInteractionKey) == nil {
+            defaults.set(true, forKey: optimizeDuringInteractionKey)
+        }
+        
+        // Set template caching flag
+        defaults.set(useTemplateCaching, forKey: "useTemplateCaching")
+        
+        // Update resolution strategy based on settings
+        updateAdaptiveResolution()
     }
     
     // MARK: - Settings Persistence
@@ -120,6 +159,7 @@ class AppSettingsModel: ObservableObject {
         defaults.set(Double(userResolutionFactor), forKey: userResolutionFactorKey)
         defaults.set(useTemplateCaching, forKey: useTemplateCachingKey)
         defaults.set(optimizeDuringInteraction, forKey: optimizeDuringInteractionKey)
+        defaults.set(useCentralizedResourceManagement, forKey: useCentralizedResourceManagementKey)
     }
     
     // MARK: - Resolution Management

@@ -10,8 +10,8 @@ import SwiftUI
 import PencilKit
 
 struct PageThumbnailGenerator {
-    // Cache for generated thumbnails
-    private static var thumbnailCache: [UUID: UIImage] = [:]
+    // Legacy cache - to be phased out in favor of ResourceManager
+    private static var legacyThumbnailCache: [UUID: UIImage] = [:]
     
     // Default thumbnail size for the page navigator
     static let defaultSize = CGSize(width: 120, height: 160)
@@ -29,14 +29,24 @@ struct PageThumbnailGenerator {
     ) -> UIImage {
         
         // 1. Check if we have a cached thumbnail and aren't forcing regeneration
-        if !force, let cachedImage = thumbnailCache[page.id] {
-            return cachedImage
+        if !force {
+            // First try ResourceManager
+            if let cachedImage = ResourceManager.shared.retrievePageThumbnail(forPage: page.id) {
+                return cachedImage
+            }
+            
+            // Fall back to legacy cache
+            if let cachedImage = legacyThumbnailCache[page.id] {
+                // Migrate to ResourceManager on access
+                ResourceManager.shared.storePageThumbnail(cachedImage, forPage: page.id)
+                return cachedImage
+            }
         }
         
         // 2. Check if there's any drawing data in the page
         if page.drawingData.isEmpty {
             let placeholder = createPlaceholderImage(for: page, size: size)
-            thumbnailCache[page.id] = placeholder
+            saveThumbnailToCache(placeholder, for: page.id)
             return placeholder
         }
         
@@ -47,7 +57,7 @@ struct PageThumbnailGenerator {
             // 4. If no strokes, return a placeholder
             if drawing.strokes.isEmpty {
                 let placeholder = createPlaceholderImage(for: page, size: size)
-                thumbnailCache[page.id] = placeholder
+                saveThumbnailToCache(placeholder, for: page.id)
                 return placeholder
             }
             
@@ -103,16 +113,25 @@ struct PageThumbnailGenerator {
                 createPlaceholderImage(for: page, size: size)
             UIGraphicsEndImageContext()
             
-            // Cache the image
-            thumbnailCache[page.id] = result
+            // Cache the image using ResourceManager
+            saveThumbnailToCache(result, for: page.id)
             return result
             
         } catch {
             print("Error converting drawing data: \(error)")
             let placeholder = createPlaceholderImage(for: page, size: size)
-            thumbnailCache[page.id] = placeholder
+            saveThumbnailToCache(placeholder, for: page.id)
             return placeholder
         }
+    }
+    
+    /// Helper method to save thumbnails to both caches
+    private static func saveThumbnailToCache(_ image: UIImage, for pageID: UUID) {
+        // Save to ResourceManager
+        ResourceManager.shared.storePageThumbnail(image, forPage: pageID)
+        
+        // Also save to legacy cache for backward compatibility
+        legacyThumbnailCache[pageID] = image
     }
     
     /// Creates a placeholder image for a page
@@ -185,9 +204,11 @@ struct PageThumbnailGenerator {
     /// Clear the cache for a specific page or all pages
     static func clearCache(for pageID: UUID? = nil) {
         if let pageID = pageID {
-            thumbnailCache.removeValue(forKey: pageID)
+            legacyThumbnailCache.removeValue(forKey: pageID)
+            ResourceManager.shared.removeResource(forKey: pageID.uuidString, type: .pageThumbnail)
         } else {
-            thumbnailCache.removeAll()
+            legacyThumbnailCache.removeAll()
+            ResourceManager.shared.removeAllResources(ofType: .pageThumbnail)
         }
     }
 } 

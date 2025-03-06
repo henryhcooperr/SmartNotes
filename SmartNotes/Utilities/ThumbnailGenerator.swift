@@ -25,46 +25,64 @@ struct CacheEntry {
 }
 
 struct ThumbnailGenerator { 
-    // Use a struct for type safety instead of raw dictionaries
-    private static var cache: [String: CacheEntry] = [:]
+    // Legacy cache - to be phased out in favor of ResourceManager
+    private static var legacyCache: [String: CacheEntry] = [:]
     private static let minimumGenerationInterval: TimeInterval = 1.0 // 1 second between generations
     
     // Cache management methods
     private static func getCachedThumbnail(for noteID: UUID) -> UIImage? {
+        // First try to get from the ResourceManager
+        if let cachedImage = ResourceManager.shared.retrieveNoteThumbnail(forNote: noteID) {
+            return cachedImage
+        }
+        
+        // Fall back to legacy cache if not found in ResourceManager
         let key = noteID.uuidString
-        guard let entry = cache[key] else { return nil }
+        guard let entry = legacyCache[key] else { return nil }
+        
+        // Migrate to ResourceManager on access
+        ResourceManager.shared.storeNoteThumbnail(entry.image, forNote: noteID)
+        
         return entry.image
     }
     
     private static func saveThumbnailToCache(noteID: UUID, image: UIImage) {
+        // Save to ResourceManager
+        ResourceManager.shared.storeNoteThumbnail(image, forNote: noteID)
+        
+        // Also save to legacy cache for backwards compatibility
         let key = noteID.uuidString
         let entry = CacheEntry(image: image, timestamp: Date())
-        cache[key] = entry
+        legacyCache[key] = entry
     }
     
     private static func wasRecentlyGenerated(for noteID: UUID) -> Bool {
         let key = noteID.uuidString
-        guard let entry = cache[key] else { return false }
+        guard let entry = legacyCache[key] else { return false }
         return Date().timeIntervalSince(entry.timestamp) < minimumGenerationInterval
     }
     
     static func clearCache(for noteID: UUID? = nil) {
         if let noteID = noteID {
-            cache.removeValue(forKey: noteID.uuidString)
+            legacyCache.removeValue(forKey: noteID.uuidString)
+            ResourceManager.shared.removeResource(forKey: noteID.uuidString, type: .noteThumbnail)
         } else {
-            cache.removeAll()
+            legacyCache.removeAll()
+            ResourceManager.shared.removeAllResources(ofType: .noteThumbnail)
         }
     }
     
     // Invalidate the thumbnail for a specific note
     static func invalidateThumbnail(for noteID: UUID) {
-        cache.removeValue(forKey: noteID.uuidString)
+        legacyCache.removeValue(forKey: noteID.uuidString)
+        ResourceManager.shared.removeResource(forKey: noteID.uuidString, type: .noteThumbnail)
         print("🖼️ Thumbnail cache invalidated for note: \(noteID)")
     }
     
     // Clears all cached thumbnails - use sparingly
     static func clearAllCaches() {
-        cache.removeAll()
+        legacyCache.removeAll()
+        ResourceManager.shared.removeAllResources(ofType: .noteThumbnail)
         print("🧹 All thumbnail caches cleared")
     }
     

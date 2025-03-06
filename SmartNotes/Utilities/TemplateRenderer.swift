@@ -22,8 +22,8 @@ import PencilKit
 
 class TemplateRenderer {
     
-    // Cache for template images to avoid redrawing
-    private static var templateImageCache: [String: UIImage] = [:]
+    // Legacy cache for template images to avoid redrawing - to be phased out
+    private static var legacyTemplateImageCache: [String: UIImage] = [:]
     
     // Generate a cache key based on template properties
     private static func cacheKeyFor(
@@ -33,6 +33,13 @@ class TemplateRenderer {
         numberOfPages: Int
     ) -> String {
         return "\(template.type.rawValue)_\(template.spacing)_\(template.lineWidth)_\(template.colorHex)_\(width)x\(height)_\(numberOfPages)"
+    }
+    
+    /// Clear the template cache (both legacy and ResourceManager)
+    static func clearTemplateCache() {
+        legacyTemplateImageCache.removeAll()
+        ResourceManager.shared.removeAllResources(ofType: .template)
+        print("🖌️ Template cache cleared")
     }
     
     /// Calculate safe drawing size
@@ -130,12 +137,51 @@ class TemplateRenderer {
         let templateImage: UIImage
         
         // Use cached image if available and caching is enabled
-        if useCache, let cachedImage = templateImageCache[cacheKey] {
-            templateImage = cachedImage
-            print("🖌️ Using cached template image for key: \(cacheKey)")
+        if useCache {
+            // First try to get from ResourceManager
+            if let cachedImage = ResourceManager.shared.retrieveTemplate(forKey: cacheKey) {
+                templateImage = cachedImage
+                print("🖌️ Using cached template image from ResourceManager for key: \(cacheKey)")
+            }
+            // Then try legacy cache
+            else if let cachedImage = legacyTemplateImageCache[cacheKey] {
+                templateImage = cachedImage
+                print("🖌️ Using cached template image from legacy cache for key: \(cacheKey)")
+                
+                // Migrate to ResourceManager
+                ResourceManager.shared.storeTemplate(cachedImage, forKey: cacheKey, priority: .normal)
+            }
+            else {
+                // Generate the image (either because caching is disabled or no cached image exists)
+                print("🖌️ Generating new template image...")
+                PerformanceMonitor.shared.startOperation("Template generation")
+                
+                guard let newImage = createTemplateImage(
+                    template: template,
+                    width: safeSize.width,
+                    height: safeSize.height,
+                    pageSize: pageSize,
+                    numberOfPages: numberOfPages,
+                    pageSpacing: pageSpacing
+                ) else {
+                    print("🖌️ Failed to create template image")
+                    PerformanceMonitor.shared.endOperation("Template generation")
+                    return
+                }
+                
+                templateImage = newImage
+                PerformanceMonitor.shared.endOperation("Template generation")
+                
+                // Cache the template image using ResourceManager
+                ResourceManager.shared.storeTemplate(templateImage, forKey: cacheKey, priority: .normal)
+                
+                // Also cache in legacy cache for backward compatibility
+                legacyTemplateImageCache[cacheKey] = templateImage
+                print("🖌️ Cached new template image with key: \(cacheKey)")
+            }
         } else {
-            // Generate the image (either because caching is disabled or no cached image exists)
-            print("🖌️ Generating new template image...")
+            // Generate without caching if caching is disabled
+            print("🖌️ Generating new template image (caching disabled)...")
             PerformanceMonitor.shared.startOperation("Template generation")
             
             guard let newImage = createTemplateImage(
@@ -153,12 +199,6 @@ class TemplateRenderer {
             
             templateImage = newImage
             PerformanceMonitor.shared.endOperation("Template generation")
-            
-            // Cache the template image for reuse if caching is enabled
-            if useCache {
-                templateImageCache[cacheKey] = templateImage
-                print("🖌️ Cached new template image with key: \(cacheKey)")
-            }
         }
         
         // Always use the complex approach for now to ensure templates are visible
@@ -262,20 +302,6 @@ class TemplateRenderer {
         // Force layout update
         canvasView.setNeedsLayout()
         canvasView.layoutIfNeeded()
-    }
-    
-    /// Clears template cache to free memory
-    static func clearTemplateCache() {
-        print("🧹 Template image cache cleared")
-        templateImageCache.removeAll()
-        
-        // Force garbage collection to free up memory
-        #if DEBUG
-        print("🧹 Forcing memory cleanup")
-        autoreleasepool {
-            // Empty autorelease pool to help free memory
-        }
-        #endif
     }
     
     /// Utility to extract just the filename from a file path

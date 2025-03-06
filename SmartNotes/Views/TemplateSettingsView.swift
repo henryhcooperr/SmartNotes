@@ -30,8 +30,9 @@ struct TemplateSettingsView: View {
     init(template: Binding<CanvasTemplate>) {
         self._template = template
         self._selectedType = State(initialValue: template.wrappedValue.type)
-        self._spacing = State(initialValue: Double(template.wrappedValue.spacing))
-        self._lineWidth = State(initialValue: Double(template.wrappedValue.lineWidth))
+        // Use baseSpacing and baseLineWidth directly to avoid resolution factor multiplication
+        self._spacing = State(initialValue: Double(template.wrappedValue.baseSpacing))
+        self._lineWidth = State(initialValue: Double(template.wrappedValue.baseLineWidth))
         self._colorHex = State(initialValue: template.wrappedValue.colorHex)
     }
     
@@ -56,16 +57,16 @@ struct TemplateSettingsView: View {
                         HStack {
                             Text("Spacing: \(Int(spacing)) pts")
                             Spacer()
-                            Slider(value: $spacing, in: 10...50, step: 2)
+                            Slider(value: $spacing, in: 4...25, step: 1)
                                 .frame(width: 180)
                         }
                     }
                     
                     Section(header: Text("Line Style")) {
                         HStack {
-                            Text("Thickness: \(lineWidth, specifier: "%.1f") pt")
+                            Text("Thickness: \(lineWidth, specifier: "%.2f") pt")
                             Spacer()
-                            Slider(value: $lineWidth, in: 0.25...2.0, step: 0.25)
+                            Slider(value: $lineWidth, in: 0.1...2.0, step: 0.05)
                                 .frame(width: 180)
                         }
                         
@@ -111,6 +112,26 @@ struct TemplateSettingsView: View {
                                 selectedType = .graph
                                 spacing = 20
                                 lineWidth = 0.5
+                                colorHex = "#CCCCCC"
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        
+                        HStack {
+                            Button("Fine Grid") {
+                                selectedType = .graph
+                                spacing = 8
+                                lineWidth = 0.2
+                                colorHex = "#CCCCCC"
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            Spacer()
+                            
+                            Button("Fine Dots") {
+                                selectedType = .dotted
+                                spacing = 10
+                                lineWidth = 0.2
                                 colorHex = "#CCCCCC"
                             }
                             .buttonStyle(.bordered)
@@ -218,46 +239,104 @@ struct TemplateSettingsView: View {
             let lineSize = CGFloat(lineWidth)
             let gap = CGFloat(spacing)
             
-            context.stroke(
-                Path { path in
-                    switch selectedType {
-                    case .lined:
-                        // Draw horizontal lines
-                        for y in stride(from: gap, to: size.height, by: gap) {
-                            path.move(to: CGPoint(x: 0, y: y))
-                            path.addLine(to: CGPoint(x: size.width, y: y))
-                        }
-                    case .graph:
-                        // Horizontal
-                        for y in stride(from: gap, to: size.height, by: gap) {
-                            path.move(to: CGPoint(x: 0, y: y))
-                            path.addLine(to: CGPoint(x: size.width, y: y))
-                        }
-                        // Vertical
-                        for x in stride(from: gap, to: size.width, by: gap) {
-                            path.move(to: CGPoint(x: x, y: 0))
-                            path.addLine(to: CGPoint(x: x, y: size.height))
-                        }
-                    case .dotted:
-                        // Dot grid
-                        for y in stride(from: gap, to: size.height, by: gap) {
-                            for x in stride(from: gap, to: size.width, by: gap) {
-                                let rect = CGRect(
-                                    x: x - lineSize,
-                                    y: y - lineSize,
-                                    width: lineSize * 2,
-                                    height: lineSize * 2
+            switch selectedType {
+            case .lined:
+                // Calculate how many lines we can fit and center them
+                let totalLines = Int(size.height / gap)
+                let remainingSpace = size.height - (CGFloat(totalLines) * gap)
+                let offsetY = remainingSpace / 2
+                
+                for i in 0...totalLines {
+                    let y = offsetY + (CGFloat(i) * gap)
+                    if y >= 0 && y <= size.height {
+                        context.stroke(
+                            Path { path in
+                                path.move(to: CGPoint(x: 0, y: y))
+                                path.addLine(to: CGPoint(x: size.width, y: y))
+                            },
+                            with: .color(Color(color)),
+                            lineWidth: lineSize
+                        )
+                    }
+                }
+                
+            case .graph:
+                // Calculate offsets for horizontal and vertical lines
+                let totalHLines = Int(size.height / gap)
+                let remainingHSpace = size.height - (CGFloat(totalHLines) * gap)
+                let offsetY = remainingHSpace / 2
+                
+                let totalVLines = Int(size.width / gap)
+                let remainingVSpace = size.width - (CGFloat(totalVLines) * gap)
+                let offsetX = remainingVSpace / 2
+                
+                // Draw horizontal lines (centered)
+                for i in 0...totalHLines {
+                    let y = offsetY + (CGFloat(i) * gap)
+                    if y >= 0 && y <= size.height {
+                        context.stroke(
+                            Path { path in
+                                path.move(to: CGPoint(x: 0, y: y))
+                                path.addLine(to: CGPoint(x: size.width, y: y))
+                            },
+                            with: .color(Color(color)),
+                            lineWidth: lineSize
+                        )
+                    }
+                }
+                
+                // Draw vertical lines (centered)
+                for i in 0...totalVLines {
+                    let x = offsetX + (CGFloat(i) * gap)
+                    if x >= 0 && x <= size.width {
+                        context.stroke(
+                            Path { path in
+                                path.move(to: CGPoint(x: x, y: 0))
+                                path.addLine(to: CGPoint(x: x, y: size.height))
+                            },
+                            with: .color(Color(color)),
+                            lineWidth: lineSize
+                        )
+                    }
+                }
+                
+            case .dotted:
+                // Calculate offsets for rows and columns of dots
+                let totalRows = Int(size.height / gap)
+                let remainingVSpace = size.height - (CGFloat(totalRows) * gap)
+                let offsetY = remainingVSpace / 2
+                
+                let totalCols = Int(size.width / gap)
+                let remainingHSpace = size.width - (CGFloat(totalCols) * gap)
+                let offsetX = remainingHSpace / 2
+                
+                // Draw dots at intersections (centered grid)
+                for row in 0...totalRows {
+                    let y = offsetY + (CGFloat(row) * gap)
+                    if y >= 0 && y <= size.height {
+                        for col in 0...totalCols {
+                            let x = offsetX + (CGFloat(col) * gap)
+                            if x >= 0 && x <= size.width {
+                                context.fill(
+                                    Path { path in
+                                        let rect = CGRect(
+                                            x: x - lineSize,
+                                            y: y - lineSize,
+                                            width: lineSize * 2,
+                                            height: lineSize * 2
+                                        )
+                                        path.addEllipse(in: rect)
+                                    },
+                                    with: .color(Color(color))
                                 )
-                                path.addEllipse(in: rect)
                             }
                         }
-                    case .none:
-                        break
                     }
-                },
-                with: .color(Color(color)),
-                lineWidth: lineSize
-            )
+                }
+                
+            case .none:
+                break
+            }
         }
     }
 }

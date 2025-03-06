@@ -14,6 +14,8 @@
 //  SubjectsSplitView with the app's data layer.
 //
 import SwiftUI
+import Combine
+import UIKit
 
 // Make sure we import our utilities
 import PencilKit
@@ -28,6 +30,7 @@ struct SmartNotesApp: App {
     
     // Track whether the performance settings are visible
     @State private var showPerformanceSettings = false
+    @State private var showResourceMonitor = false
     
     // Use an initialization function to setup the app
     init() {
@@ -105,6 +108,18 @@ struct SmartNotesApp: App {
                         .zIndex(99)
                     }
                     
+                    // Resource monitor overlay
+                    if showResourceMonitor {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                ResourceMonitorView()
+                            }
+                        }
+                        .zIndex(99)
+                    }
+                    
                     // Performance settings sheet overlay
                     if showPerformanceSettings {
                         PerformanceSettingsView(isVisible: $showPerformanceSettings)
@@ -127,6 +142,21 @@ struct SmartNotesApp: App {
                                     .font(.caption)
                                     .padding(8)
                                     .background(Color.gray)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                            }
+                            .padding()
+                            
+                            // Add a button to toggle resource monitor
+                            Button {
+                                withAnimation {
+                                    showResourceMonitor.toggle()
+                                }
+                            } label: {
+                                Image(systemName: showResourceMonitor ? "memorychip.fill" : "memorychip")
+                                    .font(.caption)
+                                    .padding(8)
+                                    .background(Color.orange)
                                     .foregroundColor(.white)
                                     .cornerRadius(8)
                             }
@@ -248,69 +278,138 @@ struct PerformanceSettingsView: View {
             }
             .padding(.bottom)
             
-            // Resolution settings
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Resolution").font(.subheadline).bold()
-                
-                Toggle("Adaptive Resolution", isOn: $appSettings.useAdaptiveResolution)
-                
-                if !appSettings.useAdaptiveResolution {
-                    VStack(alignment: .leading) {
-                        Text("Resolution Scale: \(String(format: "%.1f", appSettings.userResolutionFactor))x")
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Resolution settings
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Resolution").font(.subheadline).bold()
                         
-                        Slider(value: $appSettings.userResolutionFactor, in: 1.0...3.0, step: 0.5)
+                        Toggle("Adaptive Resolution", isOn: $appSettings.useAdaptiveResolution)
+                        
+                        if !appSettings.useAdaptiveResolution {
+                            VStack(alignment: .leading) {
+                                Text("Resolution Scale: \(String(format: "%.1f", appSettings.userResolutionFactor))x")
+                                
+                                Slider(value: $appSettings.userResolutionFactor, in: 1.0...3.0, step: 0.5)
+                            }
+                        }
+                        
+                        Text("Current active resolution: \(String(format: "%.1f", ResolutionManager.shared.resolutionScaleFactor))x")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-                }
-                
-                Text("Current active resolution: \(String(format: "%.1f", ResolutionManager.shared.resolutionScaleFactor))x")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.vertical)
-            
-            // Performance optimization settings
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Optimizations").font(.subheadline).bold()
-                
-                // Add a toggle for the global performance mode
-                Toggle("Enable Performance Mode", isOn: Binding(
-                    get: { GlobalSettings.performanceModeEnabled },
-                    set: { newValue in 
-                        GlobalSettings.performanceModeEnabled = newValue
-                        // Sync with performance stats if needed
-                        if newValue && !appSettings.showPerformanceStats {
-                            appSettings.showPerformanceStats = true
+                    .padding(.vertical)
+                    
+                    // Performance optimization settings
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Optimizations").font(.subheadline).bold()
+                        
+                        // Add a toggle for the global performance mode
+                        Toggle("Enable Performance Mode", isOn: Binding(
+                            get: { GlobalSettings.performanceModeEnabled },
+                            set: { newValue in 
+                                GlobalSettings.performanceModeEnabled = newValue
+                                // Sync with performance stats if needed
+                                if newValue && !appSettings.showPerformanceStats {
+                                    appSettings.showPerformanceStats = true
+                                }
+                            }
+                        ))
+                        .padding(.bottom, 5)
+                        
+                        Toggle("Show Performance Stats", isOn: $appSettings.showPerformanceStats)
+                        
+                        Toggle("Use Template Caching", isOn: $appSettings.useTemplateCaching)
+                        
+                        Toggle("Optimize During Interaction", isOn: $appSettings.optimizeDuringInteraction)
+                    }
+                    .padding(.vertical)
+                    
+                    // Memory Management Settings
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Memory Management").font(.subheadline).bold()
+                        
+                        Toggle("Use Centralized Resource Management", isOn: $appSettings.useCentralizedResourceManagement)
+                            .padding(.bottom, 5)
+                        
+                        if appSettings.useCentralizedResourceManagement {
+                            // Stats about current memory usage
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Current cache sizes:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                let stats = ResourceManager.shared.getDetailedMemoryStats()
+                                ForEach(ResourceType.allCases, id: \.self) { type in
+                                    Text("\(type.displayName): \(ResourceManager.shared.formatSize(stats[type] ?? 0))")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                HStack {
+                                    Button("Clear All Caches") {
+                                        clearAllCaches()
+                                    }
+                                    .font(.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.red.opacity(0.8))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(5)
+                                    
+                                    Button("Simulate Memory Warning") {
+                                        simulateMemoryWarning()
+                                    }
+                                    .font(.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.orange.opacity(0.8))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(5)
+                                }
+                                .padding(.top, 5)
+                            }
                         }
                     }
-                ))
-                .padding(.bottom, 5)
-                
-                Toggle("Template Caching", isOn: $appSettings.useTemplateCaching)
-                Toggle("Optimize During Scrolling", isOn: $appSettings.optimizeDuringInteraction)
-                Toggle("Show Performance Stats", isOn: $appSettings.showPerformanceStats)
-            }
-            .padding(.vertical)
-            
-            // Actions
-            VStack {
-                Button(action: { appSettings.clearAllCaches() }) {
-                    Text("Clear All Caches")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                    .padding(.vertical)
                 }
             }
             
-            Spacer()
+            // Button to close the sheet
+            Button(action: {
+                withAnimation {
+                    isVisible = false
+                }
+            }) {
+                Text("Close")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
+            }
         }
         .padding()
-        .frame(height: 450)
+        .frame(maxWidth: 500)
         .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(radius: 10)
+        .cornerRadius(15)
         .padding()
+    }
+    
+    // Clear all resource caches
+    private func clearAllCaches() {
+        for type in ResourceType.allCases {
+            ResourceManager.shared.removeAllResources(ofType: type)
+        }
+        ThumbnailGenerator.clearAllCaches()
+        PageThumbnailGenerator.clearCache()
+        TemplateRenderer.clearTemplateCache()
+    }
+    
+    // Simulate a memory warning
+    private func simulateMemoryWarning() {
+        NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
 }
 

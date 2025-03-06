@@ -329,6 +329,28 @@ class ResolutionManager {
     
     /// Handle memory pressure for testing with a specified level
     @objc func handleMemoryPressure(level: Int) {
+        // Convert the integer to a MemoryPressureLevel enum
+        let pressureLevel: MemoryPressureLevel
+        switch level {
+        case 0:
+            pressureLevel = .none
+        case 1:
+            pressureLevel = .mild
+        case 2:
+            pressureLevel = .moderate
+        case 3:
+            pressureLevel = .severe
+        default:
+            // Treat any unknown level as moderate by default
+            pressureLevel = .moderate
+        }
+        
+        print("⚠️ Memory warning received (level: \(pressureLevel)) - reducing resolution temporarily")
+        handleMemoryPressureInternal()
+    }
+    
+    /// Version that accepts the enum directly (not @objc compatible)
+    func handleMemoryPressure(level: MemoryPressureLevel) {
         print("⚠️ Memory warning received (level: \(level)) - reducing resolution temporarily")
         handleMemoryPressureInternal()
     }

@@ -47,12 +47,12 @@ public struct CanvasTemplate: Codable, Equatable {
     public var type: TemplateType = .none
     
     // Base spacing value before scaling
-    private var baseSpacing: CGFloat = 24 // Default spacing in points
+    public private(set) var baseSpacing: CGFloat = 24 // Default spacing in points
     
     public var colorHex: String = "#CCCCCC" // Light gray in hex
     
     // Base line width value before scaling
-    private var baseLineWidth: CGFloat = 0.5
+    public private(set) var baseLineWidth: CGFloat = 0.5
     
     // Computed property for spacing that accounts for the resolution scale factor
     public var spacing: CGFloat {
