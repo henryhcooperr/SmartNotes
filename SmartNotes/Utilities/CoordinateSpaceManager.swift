@@ -57,12 +57,12 @@ class CoordinateSpaceManager {
     
     /// Page size after applying resolution scaling
     var scaledPageSize: CGSize {
-        return GlobalSettings.scaledPageSize
+        return ResolutionManager.shared.scaledPageSize
     }
     
     /// Spacing between pages
     var pageSpacing: CGFloat {
-        return 12 * GlobalSettings.resolutionScaleFactor
+        return 12 * ResolutionManager.shared.resolutionScaleFactor
     }
     
     /// Total height of a page including spacing
@@ -72,7 +72,7 @@ class CoordinateSpaceManager {
     
     /// The resolution scale factor from global settings
     var resolutionScaleFactor: CGFloat {
-        return GlobalSettings.resolutionScaleFactor
+        return ResolutionManager.shared.resolutionScaleFactor
     }
     
     // MARK: - Zoom Management
@@ -325,78 +325,56 @@ class CoordinateSpaceManager {
     /// - Parameter value: Value to scale
     /// - Returns: Scaled value
     func applyResolutionScaling(to value: CGFloat) -> CGFloat {
-        return value * resolutionScaleFactor
+        return ResolutionManager.shared.applyResolutionScaling(to: value)
     }
     
     /// Remove resolution scaling from a value
     /// - Parameter value: Value to unscale
     /// - Returns: Unscaled value
     func removeResolutionScaling(from value: CGFloat) -> CGFloat {
-        return value / resolutionScaleFactor
+        return ResolutionManager.shared.removeResolutionScaling(from: value)
     }
     
     /// Apply resolution scaling to a point
     /// - Parameter point: Point to scale
     /// - Returns: Scaled point
     func applyResolutionScaling(to point: CGPoint) -> CGPoint {
-        return CGPoint(
-            x: point.x * resolutionScaleFactor,
-            y: point.y * resolutionScaleFactor
-        )
+        return ResolutionManager.shared.applyResolutionScaling(to: point)
     }
     
     /// Remove resolution scaling from a point
     /// - Parameter point: Point to unscale
     /// - Returns: Unscaled point
     func removeResolutionScaling(from point: CGPoint) -> CGPoint {
-        return CGPoint(
-            x: point.x / resolutionScaleFactor,
-            y: point.y / resolutionScaleFactor
-        )
+        return ResolutionManager.shared.removeResolutionScaling(from: point)
     }
     
     /// Apply resolution scaling to a size
     /// - Parameter size: Size to scale
     /// - Returns: Scaled size
     func applyResolutionScaling(to size: CGSize) -> CGSize {
-        return CGSize(
-            width: size.width * resolutionScaleFactor,
-            height: size.height * resolutionScaleFactor
-        )
+        return ResolutionManager.shared.applyResolutionScaling(to: size)
     }
     
     /// Remove resolution scaling from a size
     /// - Parameter size: Size to unscale
     /// - Returns: Unscaled size
     func removeResolutionScaling(from size: CGSize) -> CGSize {
-        return CGSize(
-            width: size.width / resolutionScaleFactor,
-            height: size.height / resolutionScaleFactor
-        )
+        return ResolutionManager.shared.removeResolutionScaling(from: size)
     }
     
     /// Apply resolution scaling to a rect
     /// - Parameter rect: Rect to scale
     /// - Returns: Scaled rect
     func applyResolutionScaling(to rect: CGRect) -> CGRect {
-        return CGRect(
-            x: rect.origin.x * resolutionScaleFactor,
-            y: rect.origin.y * resolutionScaleFactor,
-            width: rect.width * resolutionScaleFactor,
-            height: rect.height * resolutionScaleFactor
-        )
+        return ResolutionManager.shared.applyResolutionScaling(to: rect)
     }
     
     /// Remove resolution scaling from a rect
     /// - Parameter rect: Rect to unscale
     /// - Returns: Unscaled rect
     func removeResolutionScaling(from rect: CGRect) -> CGRect {
-        return CGRect(
-            x: rect.origin.x / resolutionScaleFactor,
-            y: rect.origin.y / resolutionScaleFactor,
-            width: rect.width / resolutionScaleFactor,
-            height: rect.height / resolutionScaleFactor
-        )
+        return ResolutionManager.shared.removeResolutionScaling(from: rect)
     }
     
     // MARK: - Debug Helpers

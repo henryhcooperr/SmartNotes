@@ -42,15 +42,15 @@ class TemplateRenderer {
         numberOfPages: Int,
         pageSpacing: CGFloat
     ) -> CGSize {
-        // Get the coordinate manager for resolution scaling
-        let coordManager = CoordinateSpaceManager.shared
+        // Get the resolution scaling factor directly
+        let resolutionFactor = ResolutionManager.shared.resolutionScaleFactor
         
         // Apply safe limits to prevent memory issues on large drawings
-        let safeWidth = min(canvasView.frame.width, 2000 * coordManager.resolutionScaleFactor)
+        let safeWidth = min(canvasView.frame.width, 2000 * resolutionFactor)
         
         let totalHeight = (CGFloat(numberOfPages) * pageSize.height)
                         + (CGFloat(numberOfPages - 1) * pageSpacing)
-        let safeHeight = min(totalHeight, 10_000 * coordManager.resolutionScaleFactor)
+        let safeHeight = min(totalHeight, 10_000 * resolutionFactor)
         
         return CGSize(width: safeWidth, height: safeHeight)
     }
@@ -102,8 +102,8 @@ class TemplateRenderer {
             return
         }
         
-        // Get the coordinate manager for resolution scaling
-        let coordManager = CoordinateSpaceManager.shared
+        // Get the resolution scaling factor directly
+        let resolutionFactor = ResolutionManager.shared.resolutionScaleFactor
         
         // Calculate safe drawing size using the new helper method
         let safeSize = calculateSafeDrawingSize(
@@ -222,8 +222,8 @@ class TemplateRenderer {
     ) {
         print("🖌️ Applying complex template with image size: \(image.size)")
         
-        // Get the coordinate manager for resolution scaling
-        let coordManager = CoordinateSpaceManager.shared
+        // Get the resolution scaling factor directly
+        let resolutionFactor = ResolutionManager.shared.resolutionScaleFactor
         
         // ENSURE PREVIOUS TEMPLATES ARE COMPLETELY REMOVED
         removeExistingTemplate(from: canvasView)
@@ -234,8 +234,8 @@ class TemplateRenderer {
         templateLayer.contents = image.cgImage
         templateLayer.frame = CGRect(x: 0, y: 0, width: width, height: height)
         
-        // Use high-resolution content scale from coordinate manager
-        templateLayer.contentsScale = UIScreen.main.scale * coordManager.resolutionScaleFactor
+        // Use high-resolution content scale
+        templateLayer.contentsScale = UIScreen.main.scale * resolutionFactor
         
         // CRITICAL FIX: Use a very low z-position to ensure it's behind everything
         templateLayer.zPosition = -1000
@@ -250,8 +250,8 @@ class TemplateRenderer {
         backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: height)
         backgroundView.contentMode = .topLeft
         
-        // Set high resolution content scale from coordinate manager
-        backgroundView.contentScaleFactor = UIScreen.main.scale * coordManager.resolutionScaleFactor
+        // Set high resolution content scale
+        backgroundView.contentScaleFactor = UIScreen.main.scale * resolutionFactor
         
         canvasView.insertSubview(backgroundView, at: 0)
         print("🖌️ Added template UIImageView at subview index 0")
@@ -325,7 +325,7 @@ class TemplateRenderer {
         UIGraphicsBeginImageContextWithOptions(
             CGSize(width: width, height: height),
             true,
-            UIScreen.main.scale * GlobalSettings.resolutionScaleFactor
+            UIScreen.main.scale * ResolutionManager.shared.resolutionScaleFactor
         )
         guard let context = UIGraphicsGetCurrentContext() else {
             return nil
@@ -338,10 +338,10 @@ class TemplateRenderer {
         // Set line color and width, scaled by our resolution factor
         context.setStrokeColor(template.color.cgColor)
         context.setFillColor(template.color.cgColor)
-        context.setLineWidth(template.lineWidth * GlobalSettings.resolutionScaleFactor)
+        context.setLineWidth(template.lineWidth * ResolutionManager.shared.resolutionScaleFactor)
         
         // Make sure spacing is reasonable and scale by our resolution factor
-        let spacing = max(min(template.spacing, 100), 10) * GlobalSettings.resolutionScaleFactor
+        let spacing = max(min(template.spacing, 100), 10) * ResolutionManager.shared.resolutionScaleFactor
         
         // For each page, draw the lines/dots
         for i in 0..<numberOfPages {
@@ -385,7 +385,7 @@ class TemplateRenderer {
                 // Draw dots starting from the page edge
                 for y in stride(from: pageRect.minY, to: pageRect.maxY, by: spacing) {
                     for x in stride(from: pageRect.minX, to: pageRect.maxX, by: spacing) {
-                        let dotSize = max(min(template.lineWidth * 2, 5), 1) * GlobalSettings.resolutionScaleFactor
+                        let dotSize = max(min(template.lineWidth * 2, 5), 1) * ResolutionManager.shared.resolutionScaleFactor
                         let dotRect = CGRect(
                             x: x - dotSize / 2,
                             y: y - dotSize / 2,

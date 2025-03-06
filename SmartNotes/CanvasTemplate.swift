@@ -58,7 +58,7 @@ public struct CanvasTemplate: Codable, Equatable {
     public var spacing: CGFloat {
         get {
             // Cap the resolution factor to prevent issues with extremely high values
-            let safeResolutionFactor = min(GlobalSettings.resolutionScaleFactor, 4.0)
+            let safeResolutionFactor = min(ResolutionManager.shared.resolutionScaleFactor, 4.0)
             let result = baseSpacing * safeResolutionFactor
             
             if GlobalSettings.debugModeEnabled {
@@ -68,8 +68,8 @@ public struct CanvasTemplate: Codable, Equatable {
             return result
         }
         set {
-            if GlobalSettings.resolutionScaleFactor > 0 {
-                baseSpacing = newValue / GlobalSettings.resolutionScaleFactor
+            if ResolutionManager.shared.resolutionScaleFactor > 0 {
+                baseSpacing = newValue / ResolutionManager.shared.resolutionScaleFactor
                 if GlobalSettings.debugModeEnabled {
                     print("🐞 Setting base spacing to \(baseSpacing) from \(newValue)")
                 }
@@ -84,7 +84,7 @@ public struct CanvasTemplate: Codable, Equatable {
     public var lineWidth: CGFloat {
         get {
             // Cap the resolution factor to prevent issues with extremely high values
-            let safeResolutionFactor = min(GlobalSettings.resolutionScaleFactor, 4.0)
+            let safeResolutionFactor = min(ResolutionManager.shared.resolutionScaleFactor, 4.0)
             let result = baseLineWidth * safeResolutionFactor
             
             if GlobalSettings.debugModeEnabled {
@@ -94,8 +94,8 @@ public struct CanvasTemplate: Codable, Equatable {
             return result
         }
         set {
-            if GlobalSettings.resolutionScaleFactor > 0 {
-                baseLineWidth = newValue / GlobalSettings.resolutionScaleFactor
+            if ResolutionManager.shared.resolutionScaleFactor > 0 {
+                baseLineWidth = newValue / ResolutionManager.shared.resolutionScaleFactor
                 if GlobalSettings.debugModeEnabled {
                     print("🐞 Setting base line width to \(baseLineWidth) from \(newValue)")
                 }

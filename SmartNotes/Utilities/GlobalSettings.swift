@@ -106,148 +106,71 @@ class GlobalSettings {
     private static func updatePerformanceSettings() {
         if _performanceModeEnabled {
             // Higher resolution in performance mode
-            if _dynamicResolutionFactor == nil {
-                _dynamicResolutionFactor = baseResolutionScaleFactor
-            }
+            ResolutionManager.shared.resolutionStrategy = .performance
             print("🚀 Performance mode enabled - using higher resolution")
         } else {
-            // Use a more conservative resolution when not in performance mode
-            _dynamicResolutionFactor = 2.0
+            // Use more conservative resolution when not in performance mode
+            ResolutionManager.shared.resolutionStrategy = .adaptive
             print("🚀 Performance mode disabled - using standard resolution")
         }
     }
     
-    // MARK: - Drawing Resolution
+    // MARK: - Drawing Resolution (Legacy)
     
     /// The global resolution scale factor for all canvas-related operations.
-    /// Increasing this value will improve drawing quality at higher zoom levels
-    /// but may impact performance on lower-end devices.
-    ///
-    /// Values:
-    /// - 1.0: Standard resolution (default before enhancement)
-    /// - 2.0: Double resolution (good balance of quality and performance)
-    /// - 3.0: Triple resolution (high quality but may affect performance)
+    /// DEPRECATED: Use ResolutionManager.shared.resolutionScaleFactor instead
+    /// This property is maintained for backward compatibility.
+    @available(*, deprecated, message: "Use ResolutionManager.shared.resolutionScaleFactor instead")
     static let baseResolutionScaleFactor: CGFloat = 2.0
     
-    /// Dynamic resolution factor that adjusts based on device capabilities and memory pressure
-    private static var _dynamicResolutionFactor: CGFloat? = nil
+    /// DEPRECATED: Use ResolutionManager.shared.resolutionScaleFactor instead
+    /// This property is maintained for backward compatibility.
+    @available(*, deprecated, message: "Use ResolutionManager.shared.resolutionScaleFactor instead")
     static var resolutionScaleFactor: CGFloat {
         get {
-            // If we haven't set the dynamic factor yet, initialize it
-            if _dynamicResolutionFactor == nil {
-                _dynamicResolutionFactor = calculateOptimalResolutionFactor()
-                
-                // Start monitoring for memory pressure
-                startMemoryPressureMonitoring()
-            }
-            return _dynamicResolutionFactor ?? baseResolutionScaleFactor
+            return ResolutionManager.shared.resolutionScaleFactor
         }
         set {
-            _dynamicResolutionFactor = newValue
+            // Forward to the resolution manager
+            ResolutionManager.shared.setResolutionScaleFactor(newValue)
         }
     }
     
-    // MARK: - Memory Management
-    
-    /// Tracks if we're under memory pressure
-    private static var isUnderMemoryPressure = false
-    
-    /// Calculate the optimal resolution factor based on device capabilities
-    private static func calculateOptimalResolutionFactor() -> CGFloat {
-        let device = UIDevice.current
-        let processorCount = ProcessInfo.processInfo.processorCount
-        let totalMemory = ProcessInfo.processInfo.physicalMemory
-        
-        // Memory in GB (approximate)
-        let memoryInGB = Double(totalMemory) / 1_000_000_000.0
-        
-        if memoryInGB >= 6.0 && processorCount >= 6 {
-            // High-end devices (iPhone 13 Pro, iPad Pro, etc.)
-            return baseResolutionScaleFactor
-        } else if memoryInGB >= 4.0 && processorCount >= 4 {
-            // Mid-range devices
-            return min(baseResolutionScaleFactor, 2.5)
-        } else {
-            // Lower-end or older devices
-            return min(baseResolutionScaleFactor, 2.0)
-        }
-    }
-    
-    /// Start monitoring for memory pressure notifications
-    private static func startMemoryPressureMonitoring() {
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            handleMemoryPressure()
-        }
-    }
-    
-    /// Handle memory pressure by reducing resolution temporarily
-    private static func handleMemoryPressure() {
-        print("⚠️ Memory warning received - reducing resolution temporarily")
-        
-        // Already under memory pressure
-        if isUnderMemoryPressure {
-            return
-        }
-        
-        // Mark that we're under memory pressure
-        isUnderMemoryPressure = true
-        
-        // Store the original resolution for restoration later
-        let originalResolution = _dynamicResolutionFactor ?? baseResolutionScaleFactor
-        
-        // Reduce resolution temporarily
-        _dynamicResolutionFactor = min(originalResolution, 1.5)
-        
-        // Clear caches
-        TemplateRenderer.clearTemplateCache()
-        ThumbnailGenerator.clearAllCaches()
-        
-        // After a delay, restore the resolution if pressure has eased
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            print("🔄 Attempting to restore resolution after memory pressure")
-            
-            // Restore resolution gradually
-            _dynamicResolutionFactor = min(originalResolution, (_dynamicResolutionFactor ?? 1.0) + 0.5)
-            
-            // Reset flag
-            isUnderMemoryPressure = false
-        }
-    }
-    
-    // MARK: - Canvas Dimensions
+    // MARK: - Canvas Dimensions (Legacy)
     
     /// The standard page size for a single page in points (72 points per inch)
-    /// This is equivalent to US Letter size (8.5" x 11") at 72 DPI
-    /// After scaling, this will be multiplied by the resolutionScaleFactor
+    /// DEPRECATED: Use ResolutionManager.shared.standardPageSize instead
+    @available(*, deprecated, message: "Use ResolutionManager.shared.standardPageSize instead")
     static let standardPageSize = CGSize(width: 612, height: 792)
     
     /// The scaled page size after applying the resolution factor
+    /// DEPRECATED: Use ResolutionManager.shared.scaledPageSize instead
+    @available(*, deprecated, message: "Use ResolutionManager.shared.scaledPageSize instead")
     static var scaledPageSize: CGSize {
-        return CGSize(
-            width: standardPageSize.width * resolutionScaleFactor,
-            height: standardPageSize.height * resolutionScaleFactor
-        )
+        return ResolutionManager.shared.scaledPageSize
     }
     
-    // MARK: - Zoom Settings
+    // MARK: - Zoom Settings (Legacy)
     
     /// The minimum zoom scale for scroll views, adjusted for resolution factor
+    /// DEPRECATED: Use ResolutionManager.shared.minimumZoomScale instead
+    @available(*, deprecated, message: "Use ResolutionManager.shared.minimumZoomScale instead")
     static var minimumZoomScale: CGFloat {
-        return 0.25 / resolutionScaleFactor
+        return ResolutionManager.shared.minimumZoomScale
     }
     
     /// The maximum zoom scale for scroll views, adjusted for resolution factor
+    /// DEPRECATED: Use ResolutionManager.shared.maximumZoomScale instead
+    @available(*, deprecated, message: "Use ResolutionManager.shared.maximumZoomScale instead")
     static var maximumZoomScale: CGFloat {
-        return 3.75 / resolutionScaleFactor
+        return ResolutionManager.shared.maximumZoomScale
     }
     
     /// The default initial zoom scale, adjusted to maintain the same view size
+    /// DEPRECATED: Use ResolutionManager.shared.defaultZoomScale instead
+    @available(*, deprecated, message: "Use ResolutionManager.shared.defaultZoomScale instead")
     static var defaultZoomScale: CGFloat {
-        return 1.0 / resolutionScaleFactor
+        return ResolutionManager.shared.defaultZoomScale
     }
     
     // MARK: - Page Navigation Settings
@@ -297,6 +220,9 @@ class GlobalSettings {
         defaults.set(false, forKey: "debugModeEnabled")
         defaults.set(false, forKey: "performanceModeEnabled")
         defaults.set(false, forKey: "showPerformanceStats")
+        
+        // Reset resolution to default
+        ResolutionManager.shared.resetToDefaultResolution()
         
         // Ensure performance monitoring is disabled
         PerformanceMonitor.shared.setMonitoringEnabled(false)

@@ -38,11 +38,10 @@ struct SmartNotesApp: App {
         GlobalSettings.forceResetAllDebugSettings()
         
         // Print out our resolution settings for debugging
-        print("📏 Resolution scale factor: \(GlobalSettings.resolutionScaleFactor)")
-        print("📏 Standard page size: \(GlobalSettings.standardPageSize)")
-        print("📏 Scaled page size: \(GlobalSettings.scaledPageSize)")
-        print("📏 Minimum zoom scale: \(GlobalSettings.minimumZoomScale)")
-        print("📏 Maximum zoom scale: \(GlobalSettings.maximumZoomScale)")
+        print("📏 Resolution scale factor: \(ResolutionManager.shared.resolutionScaleFactor)")
+        print("📏 Scaled page size: \(ResolutionManager.shared.scaledPageSize)")
+        print("📏 Minimum zoom scale: \(ResolutionManager.shared.minimumZoomScale)")
+        print("📏 Maximum zoom scale: \(ResolutionManager.shared.maximumZoomScale)")
         
         // Ensure performance monitoring is explicitly disabled at startup
         PerformanceMonitor.shared.setMonitoringEnabled(false)
@@ -263,7 +262,7 @@ struct PerformanceSettingsView: View {
                     }
                 }
                 
-                Text("Current active resolution: \(String(format: "%.1f", GlobalSettings.resolutionScaleFactor))x")
+                Text("Current active resolution: \(String(format: "%.1f", ResolutionManager.shared.resolutionScaleFactor))x")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

@@ -76,7 +76,7 @@ struct DebugOverlayView: View {
                                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                         )
                     
-                    Text("Spacing: \(Int(12 * GlobalSettings.resolutionScaleFactor))px")
+                    Text("Spacing: \(Int(12 * ResolutionManager.shared.resolutionScaleFactor))px")
                         .font(.system(size: 10, weight: .regular))
                         .foregroundColor(.black)
                         .padding(8)

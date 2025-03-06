@@ -134,15 +134,15 @@ class AppSettingsModel: ObservableObject {
     
     private func updateAdaptiveResolution() {
         if useAdaptiveResolution {
-            // Reset to allow GlobalSettings to calculate best factor
-            GlobalSettings.resolutionScaleFactor = GlobalSettings.baseResolutionScaleFactor
+            // Use ResolutionManager to use adaptive resolution
+            ResolutionManager.shared.useAdaptiveResolution()
         }
     }
     
     private func updateUserResolution() {
         if !useAdaptiveResolution {
-            // Set to user-specified value
-            GlobalSettings.resolutionScaleFactor = userResolutionFactor
+            // Set to user-specified value using ResolutionManager
+            ResolutionManager.shared.setResolutionFactor(userResolutionFactor)
         }
     }
     

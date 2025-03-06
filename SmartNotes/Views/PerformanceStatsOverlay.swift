@@ -74,7 +74,7 @@ struct PerformanceStatsOverlay: View {
         // These would ideally come from your performance monitor
         fps = getSimulatedFPS()
         memory = getMemoryUsage()
-        resolutionFactor = GlobalSettings.resolutionScaleFactor
+        resolutionFactor = ResolutionManager.shared.resolutionScaleFactor
     }
     
     // Get a simulated FPS value (for demonstration)

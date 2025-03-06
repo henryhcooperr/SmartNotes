@@ -46,11 +46,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     
     // Use the scaled page size from GlobalSettings
     var pageSize: CGSize {
-        return GlobalSettings.scaledPageSize
+        return ResolutionManager.shared.scaledPageSize
     }
     
     // Increased spacing between pages for better visual separation
-    let pageSpacing: CGFloat = 12 * GlobalSettings.resolutionScaleFactor  // Increased from 2 to 12
+    let pageSpacing: CGFloat = 12 * ResolutionManager.shared.resolutionScaleFactor  // Increased from 2 to 12
     
     /// Flag to track if a layout operation is in progress
     @State private var isPerformingLayout = false
@@ -75,7 +75,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // Tool properties
         var selectedTool: PKInkingTool.InkType = .pen
         var selectedColor: UIColor = .black
-        var lineWidth: CGFloat = 2.0 * GlobalSettings.resolutionScaleFactor
+        var lineWidth: CGFloat = 2.0 * ResolutionManager.shared.resolutionScaleFactor
         
         // Store initial size for later comparison
         var previousSize: CGSize?
@@ -598,6 +598,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             
             // Ensure we're set as the delegate to get tool notifications
             canvasView.delegate = self
+            
+            // Optimize for high resolution drawing
+            canvasView.optimizeForHighResolution()
+            
+            // Register for resolution changes
+            canvasView.registerForResolutionChanges()
             
             // We don't need to add an observer - we'll rely on delegate methods instead
         }
