@@ -45,6 +45,9 @@ struct PageNavigatorView: View {
                                 // Always select the page to trigger scrolling
                                 selectedPageIndex = index
                                 isSelectionActive = true
+                                
+                                // Publish event that page was explicitly selected by user
+                                EventBus.shared.publish(PageEvents.PageSelectedByUser(pageIndex: index))
                             },
                             onBookmarkToggle: {
                                 toggleBookmark(for: index)
@@ -86,31 +89,32 @@ struct PageNavigatorView: View {
                     // Update selection if index changed
                     selectedPageIndex = newIndex
                     // This notification will be caught by the coordinator
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("PageSelected"),
-                        object: newIndex
-                    )
+                    EventBus.shared.publish(PageEvents.PageSelected(pageIndex: newIndex))
                 }
             }
         }
         // Listen for page selection notifications from the scroll view
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PageSelected"))) { notification in
-            if let pageIndex = notification.object as? Int {
-                // Update which page is visible
-                visiblePageIndex = pageIndex
-                
-                // Also update selectedPageIndex but don't activate selection
-                // This helps coordinate both states for UI consistency
-                selectedPageIndex = pageIndex
-                
-                // We don't set isSelectionActive here to prevent scroll changes
-                // from triggering navigation logic
-            }
+        .onPageSelected { event in
+            // Update which page is visible
+            visiblePageIndex = event.pageIndex
+            
+            // Also update selectedPageIndex but don't activate selection
+            // This helps coordinate both states for UI consistency
+            selectedPageIndex = event.pageIndex
+            
+            // We don't set isSelectionActive here to prevent scroll changes
+            // from triggering navigation logic
         }
         // Add a separate listener for page selection deactivation
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PageSelectionDeactivated"))) { _ in
+        .onPageSelectionDeactivated {
             // Deactivate selection when requested
             isSelectionActive = false
+        }
+        // Add listener for visible page changes
+        .onVisiblePageChanged { event in 
+            // Update which page is visible in the navigator
+            visiblePageIndex = event.pageIndex
+            print("🔍 PageNavigatorView: Visible page changed to \(event.pageIndex + 1)")
         }
     }
     
@@ -134,17 +138,11 @@ struct PageNavigatorView: View {
         isSelectionActive = true
         
         // Post notification that a new page was added
-        NotificationCenter.default.post(
-            name: NSNotification.Name("PageAdded"),
-            object: newPage.id
-        )
+        EventBus.shared.publish(PageEvents.PageAdded(pageId: newPage.id))
         
         // Also post a notification that this page is now selected
         // This ensures the main content view will show the new page
-        NotificationCenter.default.post(
-            name: NSNotification.Name("PageSelectedByUser"),
-            object: selectedPageIndex
-        )
+        EventBus.shared.publish(PageEvents.PageSelectedByUser(pageIndex: selectedPageIndex))
     }
 }
 
@@ -161,6 +159,7 @@ struct PageThumbnailView: View {
     @State private var thumbnail: UIImage?
     @State private var isActivelyDrawing: Bool = false
     @State private var updateTimer: Timer? = nil
+    @State private var subscriptionManager = SubscriptionManager()
     
     var body: some View {
         VStack(spacing: 4) {
@@ -212,13 +211,8 @@ struct PageThumbnailView: View {
             loadThumbnail()
             
             // Listen for drawing changes
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("PageDrawingChanged"),
-                object: nil,
-                queue: .main
-            ) { notification in
-                // Check if this notification is for our page
-                if let pageID = notification.object as? UUID, pageID == page.id {
+            subscriptionManager.subscribe(DrawingEvents.PageDrawingChanged.self) { event in
+                if event.pageId == page.id {
                     // Reload thumbnail when active drawing occurs
                     loadThumbnail(force: true)
                     isActivelyDrawing = false
@@ -227,34 +221,24 @@ struct PageThumbnailView: View {
             }
             
             // Listen for live drawing updates
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("LiveDrawingUpdate"),
-                object: nil,
-                queue: .main
-            ) { notification in
-                // Check if this notification is for our page
-                if let pageID = notification.object as? UUID, pageID == page.id {
+            subscriptionManager.subscribe(DrawingEvents.LiveDrawingUpdate.self) { event in
+                if event.pageId == page.id {
                     // During active drawing, we'll use a timer instead of immediate updates
                     isActivelyDrawing = true
                 }
             }
             
             // Listen for drawing started notifications
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("DrawingStarted"),
-                object: nil,
-                queue: .main
-            ) { notification in
-                // Check if this notification is for our page
-                if let pageID = notification.object as? UUID, pageID == page.id {
+            subscriptionManager.subscribe(DrawingEvents.DrawingStarted.self) { event in
+                if event.pageId == page.id {
                     isActivelyDrawing = true
                     startUpdateTimer()
                 }
             }
         }
         .onDisappear {
-            // Remove observer when view disappears
-            NotificationCenter.default.removeObserver(self)
+            // Clear subscriptions when view disappears
+            subscriptionManager.clearAll()
             stopUpdateTimer()
         }
         .onChange(of: page.drawingData) { _, _ in
@@ -315,14 +299,7 @@ struct PageDropDelegate: DropDelegate {
         let finalToIndex = items.firstIndex(where: { $0.id == item.id })!
         
         // Post notification about the reordering
-        NotificationCenter.default.post(
-            name: NSNotification.Name.pageReorderingNotification,
-            object: nil,
-            userInfo: [
-                "fromIndex": finalFromIndex,
-                "toIndex": finalToIndex
-            ]
-        )
+        EventBus.shared.publish(PageEvents.PageReordering(fromIndex: finalFromIndex, toIndex: finalToIndex))
         
         // Reset the dragged item
         self.draggedItem = nil

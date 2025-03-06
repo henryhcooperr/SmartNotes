@@ -52,6 +52,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     // Increased spacing between pages for better visual separation
     let pageSpacing: CGFloat = 12 * GlobalSettings.resolutionScaleFactor  // Increased from 2 to 12
     
+    /// Flag to track if a layout operation is in progress
+    @State private var isPerformingLayout = false
+    
     class Coordinator: NSObject, UIScrollViewDelegate, PKCanvasViewDelegate, PKToolPickerObserver {
         var parent: MultiPageUnifiedScrollView
         var scrollView: UIScrollView?
@@ -90,49 +93,109 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             self.parent = parent
             super.init()
             
+            // Set up subscription manager for event handling
+            let subscriptionManager = self.subscriptionManager
+            
             // Register for page navigation notifications
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(scrollToSelectedPage(_:)),
-                name: NSNotification.Name("ScrollToPage"),
-                object: nil
-            )
+            subscriptionManager.subscribe(PageEvents.ScrollToPage.self) { [weak self] event in
+                self?.scrollToSelectedPage(event.pageIndex)
+            }
+            
+            // Register for page selection by user
+            subscriptionManager.subscribe(PageEvents.PageSelectedByUser.self) { [weak self] event in
+                self?.scrollToSelectedPage(event.pageIndex)
+            }
             
             // Register for page reordering notifications
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(handlePageReordering(_:)),
-                name: NSNotification.Name.pageReorderingNotification,
-                object: nil
-            )
+            subscriptionManager.subscribe(PageEvents.PageReordering.self) { [weak self] event in
+                self?.handlePageReordering(event)
+            }
+            
+            // Notify that the coordinator is ready
+            EventBus.shared.publish(SystemEvents.CoordinatorReady(coordinator: self))
         }
         
         deinit {
-            NotificationCenter.default.removeObserver(self)
+            // Clean up subscriptions
+            subscriptionManager.clearAll()
         }
         
-        // MARK: - UIScrollViewDelegate
-        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-            return containerView
+        // MARK: - Scroll to Selected Page
+        @objc func scrollToSelectedPage(_ pageIndex: Int) {
+            scrollToSelectedPage(PageEvents.ScrollToPage(pageIndex: pageIndex))
         }
         
-        func scrollViewDidZoom(_ scrollView: UIScrollView) {
-            // Use the simpler centering approach
-            centerContainer(scrollView: scrollView)
-            
-            // Still update rendering quality for different zoom levels
-            updateCanvasRenderingForZoomScale(scrollView.zoomScale)
-            
-            // Update grid if it exists
-            if let container = containerView, 
-               container.subviews.contains(where: { $0.tag == 7777 }) {
-                // Just refresh the grid with the new bounds
-                addCoordinateGrid()
+        func scrollToSelectedPage(_ event: PageEvents.ScrollToPage) {
+            guard !parent.isPerformingLayout, parent.pages.count > 0 else {
+                print("⚠️ Warning: Ignoring page selection during initial load or layout")
+                return
             }
             
-            // Log container position for debugging
-            if let container = containerView {
-                print("📐 Container after zoom: origin=(\(container.frame.origin.x), \(container.frame.origin.y)), size=(\(container.frame.size.width), \(container.frame.size.height)), zoom=\(scrollView.zoomScale)")
+            let pageIndex = event.pageIndex
+            
+            guard pageIndex >= 0 && pageIndex < parent.pages.count else {
+                print("⚠️ Warning: Invalid state for page scrolling. Pages: \(parent.pages.count), Index: \(pageIndex)")
+                return
+            }
+            
+            // Get the scroll view
+            guard let scrollView = containerView?.superview as? UIScrollView else {
+                print("⚠️ Error: Could not find scroll view")
+                return
+            }
+            
+            // Get the containerView
+            guard let container = containerView else {
+                print("⚠️ Error: Could not find container view")
+                return
+            }
+            
+            print("🔍 Debug - Current visible page: \(currentlyVisiblePageIndex+1), Target: \(pageIndex+1), Zoom: \(scrollView.zoomScale)")
+            
+            // Use the CoordinateSpaceManager to calculate the correct offset for centering the page
+            let coordManager = CoordinateSpaceManager.shared
+            let newOffset = coordManager.scrollOffsetToCenter(pageIndex: pageIndex, scrollView: scrollView, container: container)
+            
+            // For debugging, show all the calculations
+            let targetY = coordManager.pageYPositionInContainer(pageIndex: pageIndex)
+            let pageCenterY = coordManager.pageCenterYInContainer(pageIndex: pageIndex)
+            
+            print("📏 Scroll calculation details:")
+            print("📏 Target page index: \(pageIndex)")
+            print("📏 Target Y position: \(targetY)")
+            print("📏 Page center Y: \(pageCenterY)")
+            print("📏 Current offset: \(scrollView.contentOffset.y)")
+            print("📏 New offset: \(newOffset.y)")
+            print("📏 Content size: \(scrollView.contentSize.height)")
+            print("📏 Scroll view height: \(scrollView.bounds.height)")
+            
+            // Try to find the target view for additional debugging
+            let targetPageView = container.subviews.first { view in
+                return view.tag == pageIndex + 100
+            }
+            
+            if let targetView = targetPageView {
+                print("📏 Found target view: \(targetView) with frame \(targetView.frame)")
+            } else {
+                print("⚠️ Warning: Could not find target page view by tag \(pageIndex + 100)")
+                // List all tags for debugging
+                let tags = container.subviews.map { $0.tag }
+                print("📋 Available tags: \(tags)")
+            }
+            
+            // Use the UIScrollView's native animation instead of UIView animation
+            scrollView.setContentOffset(newOffset, animated: true)
+            
+            // After a short delay to let the animation complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                // After scrolling, deactivate the selection to allow free scrolling
+                self.isPageNavigationLockedToSelection = false
+                EventBus.shared.publish(PageEvents.PageSelectionDeactivated())
+                
+                // Update the current visible page
+                self.updateVisiblePageIndex()
+                
+                print("📜 Scrolled to page \(pageIndex+1) - automatically deselecting")
             }
         }
         
@@ -163,6 +226,52 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             print("📐 Container position: before=(\(Int(previousFrame.origin.x)), \(Int(previousFrame.origin.y))), inset before=(\(Int(previousInset.left)), \(Int(previousInset.top))), inset after=(\(Int(insets.left)), \(Int(insets.top))), zoom=\(scrollView.zoomScale)")
         }
         
+        // MARK: - Handle Page Reordering
+        @objc func handlePageReordering(_ notification: Notification) {
+            if let fromIndex = notification.userInfo?["fromIndex"] as? Int,
+               let toIndex = notification.userInfo?["toIndex"] as? Int {
+                handlePageReordering(PageEvents.PageReordering(fromIndex: fromIndex, toIndex: toIndex))
+            }
+        }
+        
+        func handlePageReordering(_ event: PageEvents.PageReordering) {
+            print("📄 Handling page reordering notification")
+            
+            // Request a layout update to reflect the new page order
+            DispatchQueue.main.async {
+                // After a short delay to allow the page array to update
+                self.parent.requestLayoutUpdate()
+                
+                // Scroll to the moved page
+                EventBus.shared.publish(PageEvents.ScrollToPage(pageIndex: event.toIndex))
+            }
+        }
+        
+        // MARK: - UIScrollViewDelegate
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            return containerView
+        }
+        
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            // Use the simpler centering approach
+            centerContainer(scrollView: scrollView)
+            
+            // Still update rendering quality for different zoom levels
+            updateCanvasRenderingForZoomScale(scrollView.zoomScale)
+            
+            // Update grid if it exists
+            if let container = containerView, 
+               container.subviews.contains(where: { $0.tag == 7777 }) {
+                // Just refresh the grid with the new bounds
+                addCoordinateGrid()
+            }
+            
+            // Log container position for debugging
+            if let container = containerView {
+                print("📐 Container after zoom: origin=(\(container.frame.origin.x), \(container.frame.origin.y)), size=(\(container.frame.size.width), \(container.frame.size.height)), zoom=\(scrollView.zoomScale)")
+            }
+        }
+        
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
             guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
             
@@ -178,41 +287,15 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         }
         
         func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
-            
-            // If not decelerating, restore quality immediately
             if !decelerate {
-                for (_, canvasView) in canvasViews {
-                    // Restore normal quality
-                    let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
-                    if #available(iOS 16.0, *) {
-                        canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
-                    } else {
-                        canvasView.allowsFingerDrawing = !disableFingerDrawing
-                    }
-                }
-                
-                // Re-center content
-                centerContainer(scrollView: scrollView)
+                // If we're not going to decelerate, update the visible page now
+                updateVisiblePageIndex()
             }
         }
         
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-            guard let appSettings = getAppSettings(), appSettings.optimizeDuringInteraction else { return }
-            
-            // Restore quality after scrolling stops
-            for (_, canvasView) in canvasViews {
-                // Restore normal quality
-                let disableFingerDrawing = UserDefaults.standard.bool(forKey: "disableFingerDrawing")
-                if #available(iOS 16.0, *) {
-                    canvasView.drawingPolicy = disableFingerDrawing ? .pencilOnly : .anyInput
-                } else {
-                    canvasView.allowsFingerDrawing = !disableFingerDrawing
-                }
-            }
-            
-            // Re-center when done
-            centerContainer(scrollView: scrollView)
+            // Update the visible page after scrolling stops
+            updateVisiblePageIndex()
         }
         
         func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
@@ -285,17 +368,11 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     checkForNextPageNeeded(pageIndex: pageIndex, canvasView: canvasView)
                     
                     // Post notification that drawing has changed
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("PageDrawingChanged"),
-                        object: pageID
-                    )
+                    EventBus.shared.publish(DrawingEvents.PageDrawingChanged(pageId: pageID, drawingData: drawingData))
                     
                     // Also send a notification that can be used to trigger live updates
                     DispatchQueue.main.async {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("LiveDrawingUpdate"),
-                            object: pageID
-                        )
+                        EventBus.shared.publish(DrawingEvents.LiveDrawingUpdate(pageId: pageID))
                     }
                 }
             }
@@ -339,7 +416,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         // MARK: - Page Layout & Setup
         
         // Simplified layout method with clearer positioning logic
-        func layoutPages() {
+        @objc func layoutPages() {
             // Prevent re-entrancy
             if isLayoutingPages {
                 return
@@ -405,6 +482,9 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                     newViewsCreated += 1
                 }
                 
+                // Set the tag to match what's expected in scrollToSelectedPage
+                cv.tag = index + 100
+
                 // Position the canvas vertically using explicit index-based calculation
                 let totalPageHeight = parent.pageSize.height + parent.pageSpacing
                 let yPos = CGFloat(index) * totalPageHeight
@@ -588,214 +668,95 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             // Previously, this would display coordinate information for debugging purposes
         }
         
-        @objc func scrollToSelectedPage(_ notification: Notification) {
-            // Add early safety check for initial loading state
-            guard !isInitialLoad, !isLayoutingPages else {
-                print("⚠️ Warning: Ignoring page selection during initial load or layout")
-                return
-            }
-        
-            guard let pageIndex = notification.object as? Int,
-                  pageIndex >= 0 && pageIndex < parent.pages.count,  // Add range validation
-                  let scrollView = scrollView,
-                  let container = containerView,
-                  parent.pages.count > 0,  // Ensure we have pages
-                  scrollView.contentSize.height > 0  // Ensure content size is valid
-            else {
-                print("⚠️ Warning: Invalid state for page scrolling. Pages: \(parent.pages.count), Index: \(notification.object as? Int ?? -1)")
-                return
-            }
+        // MARK: - Scrolling Behavior and Page Visibility
+        func updateVisiblePageIndex() {
+            // Get the visible rect in container coordinates
+            guard let scrollView = containerView?.superview as? UIScrollView,
+                  let container = containerView else { return }
             
-            // Debug output of current state
-            print("🔍 Debug - Current visible page: \(currentlyVisiblePageIndex+1), Target: \(pageIndex+1), Zoom: \(scrollView.zoomScale)")
+            let visibleRect = scrollView.convert(scrollView.bounds, to: container)
             
-            // Use the CoordinateSpaceManager to calculate the scroll offset
-            let coordManager = CoordinateSpaceManager.shared
+            // Find the page that has the most overlap with the visible area
+            var maxOverlapArea: CGFloat = 0
+            var visiblePageIndex = currentlyVisiblePageIndex
             
-            // Update the zoom scale in the manager
-            coordManager.updateZoomScale(scrollView.zoomScale)
-            
-            // Calculate the offset needed to center the target page
-            let newOffset = coordManager.scrollOffsetToCenter(
-                pageIndex: pageIndex,
-                scrollView: scrollView,
-                container: container
-            )
-            
-            // Log coordinate details for debugging
-            if GlobalSettings.debugModeEnabled {
-                let pageY = coordManager.pageYPositionInContainer(pageIndex: pageIndex)
-                let pageCenterY = coordManager.pageCenterYInContainer(pageIndex: pageIndex)
+            for (index, _) in parent.pages.enumerated() {
+                // Look for views with tag == index + 100 (matching what we set in layoutPages)
+                let pageView = container.subviews.first { $0.tag == index + 100 }
                 
-                print("📏 Coordinate details: Page \(pageIndex+1)")
-                print("📏 Page Y position in container: \(pageY)")
-                print("📏 Page center Y in container: \(pageCenterY)")
-                print("📏 Scrolling from Y=\(scrollView.contentOffset.y) to Y=\(newOffset.y)")
-            }
-            
-            // Animate the scroll to the selected page
-            UIView.animate(withDuration: 0.75, 
-                          delay: 0,
-                          options: [.curveEaseInOut],
-                          animations: {
-                scrollView.setContentOffset(newOffset, animated: false)
-            }) { completed in
-                // After scrolling completes, update the current visible page and deselect
-                if completed {
-                    self.currentlyVisiblePageIndex = pageIndex
+                if let pageView = pageView {
+                    let pageRect = pageView.frame
+                    let intersection = pageRect.intersection(visibleRect)
                     
-                    // Post notification to deactivate page selection
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("PageSelectionDeactivated"),
-                        object: nil
-                    )
-                    
-                    // Reset the navigation lock
-                    self.isPageNavigationLockedToSelection = false
-                    
-                    print("📜 Scrolled to page \(pageIndex+1) - automatically deselecting")
-                }
-            }
-        }
-        
-        // MARK: - Page Reordering Handler
-        
-        @objc func handlePageReordering(_ notification: Notification) {
-            print("📄 Handling page reordering notification")
-            
-            // Force complete relayout of pages with a small delay to ensure bindings are updated
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // Store current visible page ID (not index) before reordering
-                let visiblePageID = self.parent.pages.isEmpty ? nil : self.parent.pages[self.currentlyVisiblePageIndex].id
-                
-                // Force relayout of all canvas views
-                self.isLayoutingPages = false  // Reset flag to allow a new layout
-                self.layoutPages()
-                
-                // Find the new index of the previously visible page
-                if let visiblePageID = visiblePageID,
-                   let newVisibleIndex = self.parent.pages.firstIndex(where: { $0.id == visiblePageID }) {
-                    self.currentlyVisiblePageIndex = newVisibleIndex
-                    
-                    // Scroll to keep the same page visible
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("ScrollToPage"),
-                            object: newVisibleIndex
-                        )
+                    if !intersection.isNull {
+                        let overlapArea = intersection.width * intersection.height
+                        if overlapArea > maxOverlapArea {
+                            maxOverlapArea = overlapArea
+                            visiblePageIndex = index
+                        }
                     }
                 }
             }
-        }
-        
-        // Helper method to show debug markers for visualizing scrolling
-        func showDebugMarkers(scrollView: UIScrollView, currentY: CGFloat, targetY: CGFloat) {
-            // Debug markers disabled - this method now does nothing
-            // Previously, this would show red and green markers for current and target scroll positions
-        }
-        
-        // Add a method to determine which page is currently visible
-        func determineVisiblePage() {
-            guard let scrollView = scrollView, 
-                  let container = containerView,
-                  !parent.pages.isEmpty else {
-                return
-            }
             
-            // Use the CoordinateSpaceManager to determine the visible page
-            let coordManager = CoordinateSpaceManager.shared
-            
-            // Update zoom scale in the manager
-            coordManager.updateZoomScale(scrollView.zoomScale)
-            
-            // Get the visible page index
-            let visiblePageIndex = coordManager.determineVisiblePageIndex(
-                scrollView: scrollView,
-                container: container,
-                totalPages: parent.pages.count
-            )
-            
-            // Only update if the visible page has changed
+            // Only send notification if the visible page actually changed
             if visiblePageIndex != currentlyVisiblePageIndex {
-                // Save the new visible page index
                 currentlyVisiblePageIndex = visiblePageIndex
-                
-                // Log the change
                 print("📄 Visible page changed to: \(visiblePageIndex + 1)")
+                EventBus.shared.publish(PageEvents.VisiblePageChanged(pageIndex: visiblePageIndex))
+            }
+        }
+        
+        // MARK: - Drawing Management and Tool Support
+        @objc func handleDrawingStarted(_ pageID: UUID) {
+            // Find the page index for this ID
+            if let pageIndex = parent.pages.firstIndex(where: { $0.id == pageID }) {
+                // Send the notification with the page ID
+                EventBus.shared.publish(DrawingEvents.DrawingStarted(pageId: pageID))
+            }
+        }
+        
+        @objc func handleDrawingChanged(_ pageID: UUID) {
+            // Find the canvas view and page for this ID
+            guard let canvasView = canvasViews[pageID],
+                  let pageIndex = parent.pages.firstIndex(where: { $0.id == pageID }) else { return }
+            
+            // Convert drawing to data and update the page
+            let drawing = canvasView.drawing
+            let drawingData = try? drawing.dataRepresentation()
+            
+            // Update the page model
+            if let validDrawingData = drawingData {
+                parent.pages[pageIndex].drawingData = validDrawingData
+            } else {
+                parent.pages[pageIndex].drawingData = Data()
+            }
+            
+            // Notify that the drawing changed
+            EventBus.shared.publish(DrawingEvents.PageDrawingChanged(pageId: pageID, drawingData: drawingData))
+        }
+        
+        // MARK: - Grid and Debug Visualization
+        
+        @objc func toggleCoordinateGrid() {
+            // Find the existing grid view
+            let existingGrid = containerView?.subviews.first { $0.tag == 7777 }
+            
+            if let existingGrid = existingGrid {
+                // Toggle visibility of existing grid
+                existingGrid.isHidden.toggle()
                 
-                // Post notification about the visible page change
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("VisiblePageChanged"),
-                    object: visiblePageIndex
-                )
+                // Notify about the state change
+                EventBus.shared.publish(GridEvents.GridStateChanged(isVisible: !existingGrid.isHidden))
                 
-                // Check if we should auto-scroll to this page
-                if let appSettings = getAppSettings(), 
-                   GlobalSettings.autoScrollToDetectedPages {
-                    // Enable auto-scrolling to the detected page
-                    isPageNavigationLockedToSelection = true
-                    
-                    // Post notification to scroll to this page (with a small delay to avoid interrupting ongoing scrolling)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("ScrollToPage"),
-                            object: visiblePageIndex
-                        )
-                    }
-                }
+                print("📐 Coordinate grid visibility toggled: \(!existingGrid.isHidden)")
+            } else {
+                // Create grid if it doesn't exist
+                print("📐 Creating coordinate grid overlay")
+                addCoordinateGrid()
+                
+                // Notify about the state change
+                EventBus.shared.publish(GridEvents.GridStateChanged(isVisible: true))
             }
-        }
-        
-        // Update scrollViewDidScroll to determine the visible page
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            // Always determine which page is visible
-            determineVisiblePage()
-        }
-        
-        // Add this method to the Coordinator class
-        func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) {
-            // Find which page this canvas belongs to
-            if let pageID = canvasViews.first(where: { $0.value == canvasView })?.key {
-                // Post notification that drawing has started
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("DrawingStarted"),
-                    object: pageID
-                )
-            }
-        }
-        
-        func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
-            // Find which page this canvas belongs to
-            if let pageID = canvasViews.first(where: { $0.value == canvasView })?.key {
-                // Force an immediate thumbnail update when drawing ends
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("PageDrawingChanged"),
-                    object: pageID
-                )
-            }
-        }
-        
-        // MARK: - PKToolPickerObserver
-        func toolPickerSelectedToolDidChange(_ toolPicker: PKToolPicker) {
-            // Implementation required by protocol
-        }
-        
-        func toolPickerIsRulerActiveDidChange(_ toolPicker: PKToolPicker) {
-            // Implementation required by protocol
-        }
-        
-        func toolPickerVisibilityDidChange(_ toolPicker: PKToolPicker) {
-            // Implementation required by protocol
-        }
-        
-        func toolPickerFramesObscuredDidChange(_ toolPicker: PKToolPicker) {
-            // Implementation required by protocol
-        }
-        
-        // Add this method to the Coordinator class
-        func setupPositionIndicators(scrollView: UIScrollView) {
-            // Method intentionally empty - position indicators disabled
-            // The previously displayed indicators with scroll position, zoom level, and container Y are now removed
         }
         
         // Add a coordinate grid to the view
@@ -807,10 +768,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 existingGrid.isHidden.toggle()
                 
                 // Notify about grid state change
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("GridStateChanged"),
-                    object: !existingGrid.isHidden
-                )
+                EventBus.shared.publish(GridEvents.GridStateChanged(isVisible: !existingGrid.isHidden))
                 
                 print("📐 Coordinate grid visibility toggled: \(!existingGrid.isHidden)")
                 return
@@ -928,10 +886,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             addScaleIndicator(to: gridView, in: container)
             
             // Notify about grid state change
-            NotificationCenter.default.post(
-                name: NSNotification.Name("GridStateChanged"),
-                object: true
-            )
+            EventBus.shared.publish(GridEvents.GridStateChanged(isVisible: true))
         }
         
         // Helpers for page boundary detection in grid
@@ -1169,14 +1124,21 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         // Position indicators disabled - removed setupPositionIndicators call
         
-        // In makeUIView, add a notification listener for toggling the grid
+        // Add notification observers
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("ToggleCoordinateGrid"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            context.coordinator.addCoordinateGrid()
-        }
+            context.coordinator,
+            selector: #selector(context.coordinator.addCoordinateGrid),
+            name: NSNotification.Name("ToggleCoordinateGrid"),
+            object: nil
+        )
+        
+        // Add observer for layout update requests
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(context.coordinator.layoutPages),
+            name: NSNotification.Name("RequestLayoutUpdate"),
+            object: nil
+        )
         
         return scrollView
     }
@@ -1240,6 +1202,19 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
            let container = context.coordinator.containerView,
            container.subviews.contains(where: { $0.tag == 7777 }) {
             context.coordinator.addCoordinateGrid()
+        }
+    }
+    
+    /// Request a layout update for all pages
+    func requestLayoutUpdate() {
+        isPerformingLayout = true
+        
+        // Small delay to allow state changes to propagate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isPerformingLayout = false
+            
+            // Post a notification that will be handled by the coordinator
+            NotificationCenter.default.post(name: NSNotification.Name("RequestLayoutUpdate"), object: nil)
         }
     }
 }

@@ -31,6 +31,9 @@ struct SmartNotesApp: App {
     
     // Use an initialization function to setup the app
     init() {
+        // Initialize the notification bridge for backward compatibility
+        _ = NotificationBridge.shared
+        
         // Print out our resolution settings for debugging
         print("📏 Resolution scale factor: \(GlobalSettings.resolutionScaleFactor)")
         print("📏 Standard page size: \(GlobalSettings.standardPageSize)")

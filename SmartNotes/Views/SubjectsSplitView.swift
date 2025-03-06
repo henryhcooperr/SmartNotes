@@ -152,6 +152,11 @@ struct SubjectsSplitView: View {
                         ? Color.blue.opacity(0.1)
                         : Color(.systemBackground).opacity(0.8)
                     )
+                    .contentShape(Rectangle()) // Ensure the entire row is tappable
+                    .onTapGesture {
+                        // Explicitly set selected subject on tap
+                        selectedSubject = subject
+                    }
                     .contextMenu {
                         Button("Rename") {
                             renameSubject(subject)
