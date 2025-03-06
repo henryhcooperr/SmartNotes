@@ -30,6 +30,7 @@ public final class NotificationBridge {
         // Template Events
         String(describing: TemplateEvents.RefreshTemplate.self): NSNotification.Name("RefreshTemplate"),
         String(describing: TemplateEvents.ForceTemplateRefresh.self): NSNotification.Name("ForceTemplateRefresh"),
+        String(describing: TemplateEvents.TemplateChanged.self): NSNotification.Name("TemplateChanged"),
         
         // UI Events
         String(describing: UIEvents.SidebarVisibilityChanged.self): NSNotification.Name("SidebarVisibilityChanged"),
@@ -147,6 +148,20 @@ public final class NotificationBridge {
         case String(describing: TemplateEvents.ForceTemplateRefresh.self):
             EventBus.shared.publish(TemplateEvents.ForceTemplateRefresh())
             
+        case String(describing: TemplateEvents.TemplateChanged.self):
+            if let templateData = notification.userInfo?["template"] as? Data {
+                print("🔄 NotificationBridge: Template data received, size: \(templateData.count) bytes")
+                do {
+                    let template = try JSONDecoder().decode(CanvasTemplate.self, from: templateData)
+                    print("🔄 NotificationBridge: Successfully decoded template type: \(template.type.rawValue)")
+                    EventBus.shared.publish(TemplateEvents.TemplateChanged(template: template))
+                } catch {
+                    print("❌ NotificationBridge: Failed to decode template: \(error)")
+                }
+            } else {
+                print("❌ NotificationBridge: No template data in notification userInfo")
+            }
+            
         case String(describing: UIEvents.SidebarVisibilityChanged.self):
             if let isVisible = notification.object as? Bool {
                 EventBus.shared.publish(UIEvents.SidebarVisibilityChanged(isVisible: isVisible))
@@ -239,6 +254,16 @@ public final class NotificationBridge {
             
         case is TemplateEvents.ForceTemplateRefresh:
             object = nil
+            
+        case let templateChanged as TemplateEvents.TemplateChanged:
+            // Encode the template before sending in the notification
+            do {
+                let data = try JSONEncoder().encode(templateChanged.template)
+                print("🔄 NotificationBridge: Publishing TemplateChanged event with template type: \(templateChanged.template.type.rawValue), data size: \(data.count) bytes")
+                userInfo = ["template": data]
+            } catch {
+                print("❌ NotificationBridge: Failed to encode template: \(error)")
+            }
             
         case let sidebarVisibilityChanged as UIEvents.SidebarVisibilityChanged:
             object = sidebarVisibilityChanged.isVisible

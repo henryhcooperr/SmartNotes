@@ -213,21 +213,58 @@ struct NoteDetailView: View {
                         }
                         .onChange(of: noteTemplate) { oldValue, newValue in
                             print("🔍 NoteDetailView - Template changed from \(oldValue.type.rawValue) to \(newValue.type.rawValue)")
+                            print("🔍 Source: Internal state change")
+                            
                             // Reapply template changes
                             if !isInitialLoad {
                                 // Update the note model immediately
                                 note.noteTemplate = newValue
+                                print("🔍 Updated note.noteTemplate to \(newValue.type.rawValue)")
                                 
                                 // Save changes to persist the update
                                 saveChanges()
                                 
                                 // Force a refresh of the template - use ForceTemplateRefresh for more thorough refresh
                                 DispatchQueue.main.async {
+                                    print("🔍 Posting ForceTemplateRefresh notification after template change")
                                     NotificationCenter.default.post(
                                         name: NSNotification.Name("ForceTemplateRefresh"),
                                         object: nil
                                     )
                                 }
+                            } else {
+                                print("🔍 Skipping template update during initial load")
+                            }
+                        }
+                        .onEvent(TemplateEvents.TemplateChanged.self) { event in
+                            // This ensures template changes are synchronized across the app
+                            print("🔄 NoteDetailView received TemplateChanged event, updating template from \(noteTemplate.type.rawValue) to \(event.template.type.rawValue)")
+                            print("🔄 Source: External event")
+                            
+                            if noteTemplate.type != event.template.type || 
+                               noteTemplate.colorHex != event.template.colorHex ||
+                               noteTemplate.spacing != event.template.spacing ||
+                               noteTemplate.lineWidth != event.template.lineWidth {
+                                
+                                print("🔄 Template properties changed, updating...")
+                                
+                                // Update the local template with the received one
+                                noteTemplate = event.template
+                                print("🔄 Set local noteTemplate to \(event.template.type.rawValue)")
+                                
+                                // Update the note model and persist it immediately using the new method
+                                note.noteTemplate = event.template
+                                print("🔄 Set note.noteTemplate to \(event.template.type.rawValue)")
+                                
+                                // Since subjectID is non-optional, we can just use it directly
+                                dataManager.updateNoteTemplateAndSaveImmediately(
+                                    in: subjectID,
+                                    noteID: note.id,
+                                    template: event.template
+                                )
+                                print("🔄 Called updateNoteTemplateAndSaveImmediately with template \(event.template.type.rawValue)")
+                            } else {
+                                print("🔄 No template properties changed, skipping update")
                             }
                         }
                         .actionSheet(isPresented: $showExportOptions) {

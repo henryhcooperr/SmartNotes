@@ -113,6 +113,11 @@ public extension View {
         }
     }
     
+    /// Subscribe to template changed events
+    func onTemplateChanged(perform action: @escaping (TemplateEvents.TemplateChanged) -> Void) -> some View {
+        onEvent(TemplateEvents.TemplateChanged.self, perform: action)
+    }
+    
     /// Subscribe to sidebar visibility change events
     func onSidebarVisibilityChanged(perform action: @escaping (UIEvents.SidebarVisibilityChanged) -> Void) -> some View {
         onEvent(UIEvents.SidebarVisibilityChanged.self, perform: action)

@@ -201,6 +201,40 @@ class DataManager: ObservableObject {
         }
     }
     
+    // New method for immediate template updates
+    func updateNoteTemplateAndSaveImmediately(in subjectID: UUID, noteID: UUID, template: CanvasTemplate) {
+        print("📊 Immediately updating template for note: \(noteID) in subject: \(subjectID)")
+        print("📊 New template type: \(template.type.rawValue), spacing: \(template.spacing), color: \(template.colorHex)")
+        if let subjectIndex = subjects.firstIndex(where: { $0.id == subjectID }),
+           let noteIndex = subjects[subjectIndex].notes.firstIndex(where: { $0.id == noteID }) {
+            print("📊 Found subject at index \(subjectIndex), note at index \(noteIndex)")
+            
+            // Log the current template before changing
+            if let currentTemplate = subjects[subjectIndex].notes[noteIndex].noteTemplate {
+                print("📊 Changing template from \(currentTemplate.type.rawValue) to \(template.type.rawValue)")
+            } else {
+                print("📊 Setting initial template to \(template.type.rawValue)")
+            }
+            
+            // Update the template
+            subjects[subjectIndex].notes[noteIndex].noteTemplate = template
+            subjects[subjectIndex].touch()
+            
+            print("📊 Forcing immediate save...")
+            saveDataImmediately() // Force immediate save
+            print("📊 Save completed")
+            
+            // Verify the template was updated correctly
+            if let savedTemplate = subjects[subjectIndex].notes[noteIndex].noteTemplate {
+                print("📊 Verified template is now: \(savedTemplate.type.rawValue)")
+            } else {
+                print("📊 ERROR: Template is nil after save!")
+            }
+        } else {
+            print("📊 Error: Subject or Note not found for template update")
+        }
+    }
+    
     func deleteNote(from subjectID: UUID, at noteIndex: Int) {
         print("📊 Deleting note at index \(noteIndex) from subject ID: \(subjectID)")
         if let subjectIndex = subjects.firstIndex(where: { $0.id == subjectID }) {

@@ -21,7 +21,7 @@ class GlobalSettings {
     
     /// Global debug mode setting that controls visibility of debugging tools
     /// and level of console output throughout the app
-    private static var _debugModeEnabled: Bool = true
+    private static var _debugModeEnabled: Bool = false
     static var debugModeEnabled: Bool {
         get {
             // Load from UserDefaults if needed
@@ -48,6 +48,38 @@ class GlobalSettings {
         }
     }
     
+    /// Controls whether performance mode is enabled
+    /// This is separate from debug mode and only affects performance optimizations
+    private static var _performanceModeEnabled: Bool = false
+    static var performanceModeEnabled: Bool {
+        get {
+            // Load from UserDefaults if not initialized
+            if !_hasLoadedPerformanceModeSetting {
+                _performanceModeEnabled = UserDefaults.standard.bool(forKey: "performanceModeEnabled")
+                _hasLoadedPerformanceModeSetting = true
+            }
+            return _performanceModeEnabled
+        }
+        set {
+            if _performanceModeEnabled != newValue {
+                _performanceModeEnabled = newValue
+                UserDefaults.standard.set(newValue, forKey: "performanceModeEnabled")
+                
+                // Notify observers about the change
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("PerformanceModeChanged"),
+                    object: newValue
+                )
+                
+                // Apply performance mode changes
+                updatePerformanceSettings()
+            }
+        }
+    }
+    
+    /// Tracks if we've loaded performance mode setting from storage
+    private static var _hasLoadedPerformanceModeSetting: Bool = false
+    
     /// Tracks if we've loaded debug setting from storage
     private static var _hasLoadedDebugSetting: Bool = false
     
@@ -70,6 +102,21 @@ class GlobalSettings {
         }
     }
     
+    /// Updates performance-related settings when performance mode changes
+    private static func updatePerformanceSettings() {
+        if _performanceModeEnabled {
+            // Higher resolution in performance mode
+            if _dynamicResolutionFactor == nil {
+                _dynamicResolutionFactor = baseResolutionScaleFactor
+            }
+            print("🚀 Performance mode enabled - using higher resolution")
+        } else {
+            // Use a more conservative resolution when not in performance mode
+            _dynamicResolutionFactor = 2.0
+            print("🚀 Performance mode disabled - using standard resolution")
+        }
+    }
+    
     // MARK: - Drawing Resolution
     
     /// The global resolution scale factor for all canvas-related operations.
@@ -80,7 +127,7 @@ class GlobalSettings {
     /// - 1.0: Standard resolution (default before enhancement)
     /// - 2.0: Double resolution (good balance of quality and performance)
     /// - 3.0: Triple resolution (high quality but may affect performance)
-    static let baseResolutionScaleFactor: CGFloat = 3.0
+    static let baseResolutionScaleFactor: CGFloat = 2.0
     
     /// Dynamic resolution factor that adjusts based on device capabilities and memory pressure
     private static var _dynamicResolutionFactor: CGFloat? = nil
@@ -232,4 +279,28 @@ class GlobalSettings {
     
     /// Tracks if we've loaded auto-scroll setting from storage
     private static var _hasLoadedAutoScrollSetting: Bool = false
+    
+    /// Force reset all debug and performance related settings
+    /// Call this at app startup to ensure a clean state
+    static func forceResetAllDebugSettings() {
+        // Reset internal state
+        _debugModeEnabled = false
+        _performanceModeEnabled = false
+        _hasLoadedDebugSetting = true
+        _hasLoadedPerformanceModeSetting = true
+        
+        // Reset UserDefaults
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "debugModeEnabled")
+        defaults.removeObject(forKey: "performanceModeEnabled")
+        defaults.removeObject(forKey: "showPerformanceStats")
+        defaults.set(false, forKey: "debugModeEnabled")
+        defaults.set(false, forKey: "performanceModeEnabled")
+        defaults.set(false, forKey: "showPerformanceStats")
+        
+        // Ensure performance monitoring is disabled
+        PerformanceMonitor.shared.setMonitoringEnabled(false)
+        
+        print("🧹 All debug settings have been reset")
+    }
 } 

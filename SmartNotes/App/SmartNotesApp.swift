@@ -34,6 +34,9 @@ struct SmartNotesApp: App {
         // Initialize the notification bridge for backward compatibility
         _ = NotificationBridge.shared
         
+        // Force reset all debug-related settings
+        GlobalSettings.forceResetAllDebugSettings()
+        
         // Print out our resolution settings for debugging
         print("📏 Resolution scale factor: \(GlobalSettings.resolutionScaleFactor)")
         print("📏 Standard page size: \(GlobalSettings.standardPageSize)")
@@ -41,11 +44,13 @@ struct SmartNotesApp: App {
         print("📏 Minimum zoom scale: \(GlobalSettings.minimumZoomScale)")
         print("📏 Maximum zoom scale: \(GlobalSettings.maximumZoomScale)")
         
-        // Enable performance monitoring based on debug mode
-        PerformanceMonitor.shared.setMonitoringEnabled(GlobalSettings.debugModeEnabled)
+        // Ensure performance monitoring is explicitly disabled at startup
+        PerformanceMonitor.shared.setMonitoringEnabled(false)
         
-        // Use performance monitor to measure app launch time
-        PerformanceMonitor.shared.startOperation("App launch")
+        // Only measure app launch if explicitly requested
+        if GlobalSettings.debugModeEnabled && GlobalSettings.performanceModeEnabled {
+            PerformanceMonitor.shared.startOperation("App launch")
+        }
     }
     
     var body: some Scene {
@@ -59,16 +64,35 @@ struct SmartNotesApp: App {
                         // Force clear the thumbnail cache on app launch
                         ThumbnailGenerator.clearCache()
                         // Mark the end of app launch
-                        PerformanceMonitor.shared.endOperation("App launch")
+                        if GlobalSettings.debugModeEnabled {
+                            PerformanceMonitor.shared.endOperation("App launch")
+                        }
                     }
-                    // Add a hidden gesture to toggle debug mode (long press with two fingers)
-                    .onLongPressGesture(minimumDuration: 2, maximumDistance: 50, pressing: nil) {
-                        // Toggle debug mode
-                        GlobalSettings.debugModeEnabled.toggle()
-                        
-                        // Update app settings if debug mode changed
-                        appSettings.showPerformanceStats = GlobalSettings.debugModeEnabled
+                
+                // Hidden debug mode toggle in bottom right corner
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        // Small transparent button to toggle debug mode
+                        Button(action: {
+                            GlobalSettings.debugModeEnabled.toggle()
+                            if !GlobalSettings.debugModeEnabled {
+                                // Force disable performance mode when debug mode is off
+                                GlobalSettings.performanceModeEnabled = false
+                                appSettings.showPerformanceStats = false
+                                // Explicitly disable monitoring
+                                PerformanceMonitor.shared.setMonitoringEnabled(false)
+                            }
+                        }) {
+                            Circle()
+                                .fill(Color.clear)
+                                .frame(width: 44, height: 44)
+                        }
+                        .padding(.bottom, 8)
+                        .padding(.trailing, 8)
                     }
+                }
                 
                 // Only show debug UI elements if debug mode is enabled
                 if GlobalSettings.debugModeEnabled {
@@ -94,12 +118,13 @@ struct SmartNotesApp: App {
                     VStack {
                         Spacer()
                         HStack {
-                            // Quick toggle for performance monitoring
+                            // Toggle for performance mode instead of monitoring
                             Button {
-                                appSettings.showPerformanceStats.toggle()
+                                GlobalSettings.performanceModeEnabled.toggle()
+                                appSettings.showPerformanceStats = GlobalSettings.performanceModeEnabled
                                 PerformanceMonitor.shared.setMonitoringEnabled(appSettings.showPerformanceStats)
                             } label: {
-                                Image(systemName: appSettings.showPerformanceStats ? "gauge.badge.minus" : "gauge.badge.plus")
+                                Image(systemName: GlobalSettings.performanceModeEnabled ? "gauge.badge.minus" : "gauge.badge.plus")
                                     .font(.caption)
                                     .padding(8)
                                     .background(Color.gray)
@@ -247,6 +272,19 @@ struct PerformanceSettingsView: View {
             // Performance optimization settings
             VStack(alignment: .leading, spacing: 10) {
                 Text("Optimizations").font(.subheadline).bold()
+                
+                // Add a toggle for the global performance mode
+                Toggle("Enable Performance Mode", isOn: Binding(
+                    get: { GlobalSettings.performanceModeEnabled },
+                    set: { newValue in 
+                        GlobalSettings.performanceModeEnabled = newValue
+                        // Sync with performance stats if needed
+                        if newValue && !appSettings.showPerformanceStats {
+                            appSettings.showPerformanceStats = true
+                        }
+                    }
+                ))
+                .padding(.bottom, 5)
                 
                 Toggle("Template Caching", isOn: $appSettings.useTemplateCaching)
                 Toggle("Optimize During Scrolling", isOn: $appSettings.optimizeDuringInteraction)

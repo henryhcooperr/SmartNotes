@@ -163,6 +163,18 @@ public enum TemplateEvents {
         
         public init() {}
     }
+    
+    /// Event fired when a template has been changed
+    public struct TemplateChanged: Event {
+        public static let description = "Fired when a template has been changed"
+        
+        /// The updated template
+        public let template: CanvasTemplate
+        
+        public init(template: CanvasTemplate) {
+            self.template = template
+        }
+    }
 }
 
 // MARK: - UI Events

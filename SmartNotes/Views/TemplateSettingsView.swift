@@ -129,27 +129,40 @@ struct TemplateSettingsView: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Apply") {
+                    // Log current vs new template values before applying
+                    print("🖌️ Before apply - Current template: \(template.type.rawValue), New selection: \(selectedType.rawValue)")
+                    
                     // Apply changes to the template binding
                     applyChanges()
+                    print("🖌️ After applyChanges() - Template is now: \(template.type.rawValue)")
                     
-                    // Force immediate template refresh with three-step approach
+                    // Force immediate template refresh with improved three-step approach and more delay between steps
                     DispatchQueue.main.async {
-                        // 1. Post notification to trigger layoutPages()
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("RefreshTemplate"),
-                            object: nil
-                        )
+                        print("🖌️ Step 1: Publishing TemplateChanged event with template type: \(template.type.rawValue)")
+                        // 1. Publish template changed event with the new template
+                        EventBus.shared.publish(TemplateEvents.TemplateChanged(template: template))
                         
-                        // 2. Post a second notification after a short delay to ensure refresh
+                        // 2. Post notification to trigger layoutPages() - longer delay to ensure event is processed first
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            print("🖌️ Step 2: Posting RefreshTemplate notification")
                             NotificationCenter.default.post(
-                                name: NSNotification.Name("ForceTemplateRefresh"),
+                                name: NSNotification.Name("RefreshTemplate"),
                                 object: nil
                             )
                             
-                            // 3. Finally dismiss the sheet
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                presentationMode.wrappedValue.dismiss()
+                            // 3. Post a second notification after a longer delay to ensure refresh
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                print("🖌️ Step 3: Posting ForceTemplateRefresh notification")
+                                NotificationCenter.default.post(
+                                    name: NSNotification.Name("ForceTemplateRefresh"),
+                                    object: nil
+                                )
+                                
+                                // 4. Finally dismiss the sheet after a significant delay to ensure changes are applied
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    print("🖌️ Step 4: Dismissing TemplateSettingsView")
+                                    presentationMode.wrappedValue.dismiss()
+                                }
                             }
                         }
                     }
@@ -160,11 +173,30 @@ struct TemplateSettingsView: View {
     
     private func applyChanges() {
         print("📝 Applying template changes: type=\(selectedType.rawValue), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
+        print("📝 BEFORE: Current template type=\(template.type.rawValue), spacing=\(template.spacing), lineWidth=\(template.lineWidth)")
         
-        template.type = selectedType
-        template.spacing = CGFloat(spacing)
-        template.lineWidth = CGFloat(lineWidth)
-        template.colorHex = colorHex
+        // Create a fresh template rather than modifying the existing one
+        let newTemplate = CanvasTemplate(
+            type: selectedType,
+            baseSpacing: CGFloat(spacing),
+            colorHex: colorHex,
+            baseLineWidth: CGFloat(lineWidth)
+        )
+        
+        // Now copy the values to our binding
+        template = newTemplate
+        
+        print("📝 AFTER: Updated template type=\(template.type.rawValue), spacing=\(template.spacing), lineWidth=\(template.lineWidth)")
+        
+        // Also publish a debug notification with the raw template data so we can inspect it
+        if GlobalSettings.debugModeEnabled {
+            if let data = try? JSONEncoder().encode(template) {
+                print("📝 Template encoded to \(data.count) bytes")
+                if let json = String(data: data, encoding: .utf8) {
+                    print("📝 Template JSON: \(json)")
+                }
+            }
+        }
     }
     
     // Convert hex to a color name

@@ -21,15 +21,24 @@ class PerformanceMonitor {
     private var frameTimes: [CFTimeInterval] = []
     private let maxFrameCount = 60
     
+    // Display link for frame monitoring
+    private var displayLink: CADisplayLink?
+    
     // Memory tracking
     private var memoryUsage: [Double] = []
     private let maxMemorySamples = 30
+    private var memoryCheckTimer: Timer?
     
     // Operation timing
     private var operations: [String: CFTimeInterval] = [:]
     
     // Enable or disable monitoring
     func setMonitoringEnabled(_ enabled: Bool) {
+        // If the state hasn't changed, don't do anything
+        if isMonitoringEnabled == enabled {
+            return
+        }
+        
         isMonitoringEnabled = enabled
         
         if enabled {
@@ -49,16 +58,20 @@ class PerformanceMonitor {
     // MARK: - Frame Monitoring
     
     private func startFrameMonitoring() {
+        stopFrameMonitoring() // Ensure any existing monitoring is stopped
+        
         frameTimes.removeAll()
+        frameStartTime = 0
         
         // Use CADisplayLink to track frame rates
-        let displayLink = CADisplayLink(target: self, selector: #selector(frameCallback))
-        displayLink.add(to: .main, forMode: .common)
+        displayLink = CADisplayLink(target: self, selector: #selector(frameCallback))
+        displayLink?.add(to: .main, forMode: .common)
     }
     
     private func stopFrameMonitoring() {
-        // Stop tracking frames
-        // (Note: This is simplified - you'd need to keep a reference to the displayLink)
+        // Stop tracking frames by invalidating the display link
+        displayLink?.invalidate()
+        displayLink = nil
     }
     
     @objc private func frameCallback(displayLink: CADisplayLink) {
@@ -100,6 +113,8 @@ class PerformanceMonitor {
     // MARK: - Memory Monitoring
     
     private func startMemoryMonitoring() {
+        stopMemoryMonitoring() // Ensure any existing monitoring is stopped
+        
         memoryUsage.removeAll()
         
         // Schedule periodic memory checks
@@ -108,6 +123,8 @@ class PerformanceMonitor {
     
     private func stopMemoryMonitoring() {
         // Stop scheduled checks
+        memoryCheckTimer?.invalidate()
+        memoryCheckTimer = nil
     }
     
     private func scheduleMemeoryCheck() {
@@ -117,7 +134,7 @@ class PerformanceMonitor {
         sampleMemoryUsage()
         
         // Schedule next check
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+        memoryCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
             self?.scheduleMemeoryCheck()
         }
     }

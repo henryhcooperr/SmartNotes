@@ -16,8 +16,8 @@ struct PerformanceStatsOverlay: View {
     @State private var memory: Double = 0
     @State private var resolutionFactor: CGFloat = 0
     
-    // Update timer
-    let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+    // Timer for updating stats
+    @State private var timer: Timer? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -42,17 +42,36 @@ struct PerformanceStatsOverlay: View {
         .cornerRadius(8)
         .padding(.top, 40)
         .padding(.leading, 8)
-        .onReceive(timer) { _ in
+        .onAppear {
+            // Start the timer when the view appears
+            startTimer()
             updateStats()
         }
-        .onAppear {
+        .onDisappear {
+            // Stop the timer when the view disappears
+            stopTimer()
+        }
+    }
+    
+    private func startTimer() {
+        stopTimer() // Make sure any existing timer is stopped first
+        
+        // Create a new timer that fires every second
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             updateStats()
         }
     }
     
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+    
     private func updateStats() {
+        // Only update if debug mode is enabled
+        guard GlobalSettings.debugModeEnabled else { return }
+        
         // These would ideally come from your performance monitor
-        // For now, we'll use some example/simulated values
         fps = getSimulatedFPS()
         memory = getMemoryUsage()
         resolutionFactor = GlobalSettings.resolutionScaleFactor

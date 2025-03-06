@@ -484,7 +484,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 
                 // Set the tag to match what's expected in scrollToSelectedPage
                 cv.tag = index + 100
-
+                
                 // Position the canvas vertically using explicit index-based calculation
                 let totalPageHeight = parent.pageSize.height + parent.pageSpacing
                 let yPos = CGFloat(index) * totalPageHeight
@@ -542,7 +542,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 cv.addSubview(pageNumberLabel)
                 
                 // Apply the template lines/dots
-                applyTemplate(to: cv)
+                applyTemplate(to: cv, template: parent.template)
             }
             
             print("📄 Layout complete: created \(newViewsCreated) new canvas views, updated \(existingViewsUpdated) existing views")
@@ -603,7 +603,7 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         }
         
         /// Apply the template to the canvas
-        func applyTemplate(to canvasView: PKCanvasView) {
+        func applyTemplate(to canvasView: PKCanvasView, template: CanvasTemplate? = nil) {
             // First remove any existing template
             if let sublayers = canvasView.layer.sublayers {
                 for layer in sublayers where layer.name == "TemplateLayer" {
@@ -615,10 +615,16 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 subview.removeFromSuperview()
             }
             
+            // Use the provided template if available, otherwise fall back to parent.template
+            let templateToApply = template ?? parent.template
+            
+            // Debug output to track template application
+            print("🖌️ Applying template: \(templateToApply.type.rawValue) to canvas view \(String(describing: canvasView.tagID?.uuidString.prefix(8) ?? "unknown"))")
+            
             // Apply the template
             TemplateRenderer.applyTemplateToCanvas(
                 canvasView,
-                template: parent.template,
+                template: templateToApply,
                 pageSize: parent.pageSize,
                 numberOfPages: 1,
                 pageSpacing: 0
@@ -1094,6 +1100,41 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             }
         }
         
+        // Add handler for force template refresh notification
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ForceTemplateRefresh"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if self.pages.isEmpty { return }
+                
+                print("🖌️ ForceTemplateRefresh received - updating all canvas templates")
+                print("🖌️ Using template type: \(self.template.type.rawValue)")
+                
+                // Make a copy of the current template to ensure consistency
+                let templateToApply = self.template
+                
+                // Update template on all existing canvas views without removing them
+                for (_, canvasView) in context.coordinator.canvasViews {
+                    // Clear existing template
+                    if let sublayers = canvasView.layer.sublayers {
+                        for layer in sublayers where layer.name == "TemplateLayer" {
+                            layer.removeFromSuperlayer()
+                        }
+                    }
+                    
+                    // Remove any template subviews
+                    for subview in canvasView.subviews where subview.tag == 888 {
+                        subview.removeFromSuperview()
+                    }
+                    
+                    // Apply the template using our updated method
+                    context.coordinator.applyTemplate(to: canvasView, template: templateToApply)
+                }
+            }
+        }
+        
         // Listen for sidebar visibility changes
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("SidebarVisibilityChanged"),
@@ -1140,18 +1181,56 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             object: nil
         )
         
+        // Listen for template changes via notification
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("TemplateChanged"), 
+            object: nil, 
+            queue: .main
+        ) { notification in
+            print("🖌️ MultiPageUnifiedScrollView: TemplateChanged NOTIFICATION received - decoding template data")
+            
+            // Log what's in the notification userInfo
+            if let userInfo = notification.userInfo {
+                print("🖌️ TemplateChanged userInfo keys: \(userInfo.keys.map { $0 as? String ?? "unknown" }.joined(separator: ", "))")
+            } else {
+                print("🖌️ TemplateChanged notification had NO userInfo")
+            }
+            
+            if let templateData = notification.userInfo?["template"] as? Data {
+                print("🖌️ Template data found, size: \(templateData.count) bytes")
+                do {
+                    let updatedTemplate = try JSONDecoder().decode(CanvasTemplate.self, from: templateData)
+                    print("🖌️ Successfully decoded template type: \(updatedTemplate.type.rawValue)")
+                    
+                    DispatchQueue.main.async {
+                        print("🖌️ MultiPageUnifiedScrollView: Changing from template type: \(self.template.type.rawValue) to: \(updatedTemplate.type.rawValue)")
+                        
+                        // Update our template property with the new template
+                        self.template = updatedTemplate
+                        
+                        // Log the number of canvas views we're updating
+                        print("🖌️ Updating template on \(context.coordinator.canvasViews.count) canvas views")
+                        
+                        // Update template on all existing canvas views
+                        var index = 0
+                        for (_, canvasView) in context.coordinator.canvasViews {
+                            // Use the specific updatedTemplate to ensure all views get the new template
+                            context.coordinator.applyTemplate(to: canvasView, template: updatedTemplate)
+                            index += 1
+                        }
+                    }
+                } catch {
+                    print("❌ Error decoding template data: \(error)")
+                }
+            } else {
+                print("❌ No template data found in notification userInfo")
+            }
+        }
+        
         return scrollView
     }
     
     func updateUIView(_ scrollView: UIScrollView, context: Context) {
-        MultiPageUnifiedScrollView.updateCounter += 1
-        
-        // Skip updates during initial load
-        if context.coordinator.isInitialLoad {
-            return
-        }
-        
-        // Skip update if pages array is empty
         if pages.isEmpty {
             return
         }
@@ -1184,6 +1263,16 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
         
         if pagesWithoutViews.isEmpty && existingViewCount == pages.count {
             // We have all the views we need, just update templates if needed
+            
+            // Log the template we're applying
+            print("🖌️ Updating templates in updateUIView")
+            print("🖌️ Using template type: \(template.type.rawValue)")
+            
+            // Apply this template to all canvas views
+            for (_, canvasView) in context.coordinator.canvasViews {
+                // Call applyTemplate with the current template
+                context.coordinator.applyTemplate(to: canvasView, template: template)
+            }
         } else {
             // Do a full layout refresh
             context.coordinator.layoutPages()

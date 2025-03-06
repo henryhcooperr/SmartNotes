@@ -25,16 +25,16 @@ import UIKit
 import Foundation
 
 // Model for storing canvas template settings
-struct CanvasTemplate: Codable, Equatable {
-    enum TemplateType: String, CaseIterable, Identifiable, Codable {
+public struct CanvasTemplate: Codable, Equatable {
+    public enum TemplateType: String, CaseIterable, Identifiable, Codable {
         case none = "None"
         case lined = "Lined Paper"
         case graph = "Graph Paper"
         case dotted = "Dotted Paper"
         
-        var id: String { self.rawValue }
+        public var id: String { self.rawValue }
         
-        var iconName: String {
+        public var iconName: String {
             switch self {
             case .none: return "doc"
             case .lined: return "doc.text"
@@ -44,18 +44,18 @@ struct CanvasTemplate: Codable, Equatable {
         }
     }
     
-    var type: TemplateType = .none
+    public var type: TemplateType = .none
     
     // Base spacing value before scaling
     private var baseSpacing: CGFloat = 24 // Default spacing in points
     
-    var colorHex: String = "#CCCCCC" // Light gray in hex
+    public var colorHex: String = "#CCCCCC" // Light gray in hex
     
     // Base line width value before scaling
     private var baseLineWidth: CGFloat = 0.5
     
     // Computed property for spacing that accounts for the resolution scale factor
-    var spacing: CGFloat {
+    public var spacing: CGFloat {
         get {
             // Cap the resolution factor to prevent issues with extremely high values
             let safeResolutionFactor = min(GlobalSettings.resolutionScaleFactor, 4.0)
@@ -81,7 +81,7 @@ struct CanvasTemplate: Codable, Equatable {
     }
     
     // Computed property for line width that accounts for the resolution scale factor
-    var lineWidth: CGFloat {
+    public var lineWidth: CGFloat {
         get {
             // Cap the resolution factor to prevent issues with extremely high values
             let safeResolutionFactor = min(GlobalSettings.resolutionScaleFactor, 4.0)
@@ -107,7 +107,7 @@ struct CanvasTemplate: Codable, Equatable {
     }
     
     // Helper to convert hex to UIColor
-    var color: UIColor {
+    public var color: UIColor {
         let parsedColor = UIColor(hex: colorHex) ?? .lightGray
         
         // In debug mode, log the color
@@ -119,13 +119,13 @@ struct CanvasTemplate: Codable, Equatable {
     }
     
     // Predefined templates
-    static let none = CanvasTemplate(type: .none)
-    static let lined = CanvasTemplate(type: .lined, baseSpacing: 24, colorHex: "#CCCCCC")
-    static let graph = CanvasTemplate(type: .graph, baseSpacing: 20, colorHex: "#CCCCCC")
-    static let dotted = CanvasTemplate(type: .dotted, baseSpacing: 20, colorHex: "#CCCCCC")
+    public static let none = CanvasTemplate(type: .none)
+    public static let lined = CanvasTemplate(type: .lined, baseSpacing: 24, colorHex: "#CCCCCC")
+    public static let graph = CanvasTemplate(type: .graph, baseSpacing: 20, colorHex: "#CCCCCC")
+    public static let dotted = CanvasTemplate(type: .dotted, baseSpacing: 20, colorHex: "#CCCCCC")
     
     // Init with base values
-    init(type: TemplateType = .none, baseSpacing: CGFloat = 24, colorHex: String = "#CCCCCC", baseLineWidth: CGFloat = 0.5) {
+    public init(type: TemplateType = .none, baseSpacing: CGFloat = 24, colorHex: String = "#CCCCCC", baseLineWidth: CGFloat = 0.5) {
         self.type = type
         self.baseSpacing = baseSpacing
         self.colorHex = colorHex
@@ -133,7 +133,7 @@ struct CanvasTemplate: Codable, Equatable {
     }
     
     // Coding keys for Codable conformance
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case type, baseSpacing, colorHex, baseLineWidth
         
         // Add legacy keys for backward compatibility
@@ -141,7 +141,7 @@ struct CanvasTemplate: Codable, Equatable {
     }
     
     // Custom decoder to support older versions that used spacing and lineWidth
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         // Decode template type
@@ -170,7 +170,7 @@ struct CanvasTemplate: Codable, Equatable {
     }
     
     // Custom encoder to store values with new keys
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(type, forKey: .type)
         try container.encode(colorHex, forKey: .colorHex)

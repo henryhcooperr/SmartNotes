@@ -65,20 +65,18 @@ class AppSettingsModel: ObservableObject {
     // MARK: - Initialization
     
     init() {
+        // Force reset performance stats to false first
+        showPerformanceStats = false
+        
+        // Then load other settings
         loadSettings()
         
-        // Check if debug mode is enabled
-        if GlobalSettings.debugModeEnabled {
-            // If debug mode is on, respect the saved setting
-            PerformanceMonitor.shared.setMonitoringEnabled(showPerformanceStats)
-        } else {
-            // If debug mode is off, ensure monitoring is disabled
-            PerformanceMonitor.shared.setMonitoringEnabled(false)
-            
-            // If stats were enabled but debug mode is off, turn them off
-            if showPerformanceStats {
-                showPerformanceStats = false
-            }
+        // Always disable monitoring on init to be safe
+        PerformanceMonitor.shared.setMonitoringEnabled(false)
+        
+        // Only enable monitoring if explicitly requested AND debug mode is on
+        if GlobalSettings.debugModeEnabled && GlobalSettings.performanceModeEnabled && showPerformanceStats {
+            PerformanceMonitor.shared.setMonitoringEnabled(true)
         }
     }
     
@@ -88,6 +86,11 @@ class AppSettingsModel: ObservableObject {
         let defaults = UserDefaults.standard
         
         showPerformanceStats = defaults.bool(forKey: showPerformanceStatsKey)
+        
+        // Sync with GlobalSettings.performanceModeEnabled
+        if GlobalSettings.performanceModeEnabled && !showPerformanceStats {
+            showPerformanceStats = true
+        }
         
         if defaults.object(forKey: useAdaptiveResolutionKey) != nil {
             useAdaptiveResolution = defaults.bool(forKey: useAdaptiveResolutionKey)

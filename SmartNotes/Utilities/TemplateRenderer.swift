@@ -286,20 +286,27 @@ class TemplateRenderer {
         return components.last.map(String.init) ?? filePath
     }
     
-    /// Removes previously drawn layers and background images
+    /// Helper method to remove existing template layers
     private static func removeExistingTemplate(from canvasView: PKCanvasView) {
-        // Remove any existing CALayer named "TemplateLayer"
+        var templatesRemoved = 0
+        
+        // Remove any previous template layers
         if let sublayers = canvasView.layer.sublayers {
-            for layer in sublayers {
-                if layer.name == "TemplateLayer" {
-                    layer.removeFromSuperlayer()
-                }
+            for layer in sublayers where layer.name == "TemplateLayer" {
+                layer.removeFromSuperlayer()
+                templatesRemoved += 1
             }
         }
         
-        // Remove any existing background subview tagged 888
+        // Remove any template subviews
+        var subviewsRemoved = 0
         for subview in canvasView.subviews where subview.tag == 888 {
             subview.removeFromSuperview()
+            subviewsRemoved += 1
+        }
+        
+        if templatesRemoved > 0 || subviewsRemoved > 0 {
+            print("🖌️ Removed \(templatesRemoved) template layers and \(subviewsRemoved) template subviews")
         }
     }
     
