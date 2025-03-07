@@ -3,6 +3,7 @@
 //  SmartNotes
 //
 //  Created on 3/5/25
+//  Updated on 5/8/25 to integrate with EventStore architecture
 //
 //  This file contains the CoordinateSpaceManager class that centralizes
 //  all coordinate transformation logic across different coordinate spaces.
@@ -16,6 +17,25 @@
 import UIKit
 import CoreGraphics
 import PencilKit
+
+// MARK: - Coordinate Events
+
+/// Event published when coordinates are transformed
+struct CoordinateTransformEvent: Event {
+    static var description: String = "Coordinate transform was applied"
+    let fromSpace: CoordinateSpace
+    let toSpace: CoordinateSpace
+    let originalPoint: CGPoint
+    let transformedPoint: CGPoint
+}
+
+/// Event published when page bounds are calculated
+struct PageBoundsCalculatedEvent: Event {
+    static var description: String = "Page bounds were calculated"
+    let pageIndex: Int
+    let bounds: CGRect
+    let containerBounds: CGRect
+}
 
 /// Defines the different coordinate spaces used throughout the app
 enum CoordinateSpace {
@@ -47,6 +67,12 @@ class CoordinateSpaceManager {
     
     // MARK: - Properties
     
+    /// Event bus for publishing events
+    private let eventBus = EventBus.shared
+    
+    /// Subscription manager for event subscriptions
+    private let subscriptionManager = SubscriptionManager()
+    
     /// Current zoom scale of the scroll view
     private var currentZoomScale: CGFloat = 1.0
     
@@ -73,6 +99,50 @@ class CoordinateSpaceManager {
     /// The resolution scale factor from global settings
     var resolutionScaleFactor: CGFloat {
         return ResolutionManager.shared.resolutionScaleFactor
+    }
+    
+    // MARK: - EventStore Integration
+    
+    /// Configure the CoordinateSpaceManager with the EventStore
+    func configure(with eventStore: EventStore) {
+        print("📏 CoordinateSpaceManager: Configuring with EventStore")
+        
+        // Listen for resolution changes
+        subscriptionManager.subscribe(ResolutionChangedEvent.self) { [weak self] event in
+            print("📏 CoordinateSpaceManager: Resolution changed from \(event.oldFactor) to \(event.newFactor)")
+            
+            // Publish event about the updated page dimensions
+            self?.publishPageDimensionsUpdate()
+        }
+        
+        // Listen for page-related events that might affect coordinates
+        subscriptionManager.subscribe(PageAction.self) { [weak self] action in
+            if action is PageAction.reorderPages || 
+               action is PageAction.addPage ||
+               action is PageAction.deletePage {
+                // When page order changes, publish updated page positions
+                self?.publishPagePositionsUpdate()
+            }
+        }
+    }
+    
+    /// Publish an event with the current page dimensions
+    private func publishPageDimensionsUpdate() {
+        eventBus.publish(PageEvents.PageDimensionsChanged(
+            pageSize: scaledPageSize,
+            pageSpacing: pageSpacing,
+            scaleFactor: resolutionScaleFactor
+        ))
+    }
+    
+    /// Publish an event with updated page positions
+    private func publishPagePositionsUpdate() {
+        eventBus.publish(PageEvents.PagePositionsUpdated(
+            totalPageHeight: totalPageHeight,
+            pageHeight: scaledPageSize.height,
+            pageWidth: scaledPageSize.width,
+            pageSpacing: pageSpacing
+        ))
     }
     
     // MARK: - Zoom Management

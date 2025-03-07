@@ -4,6 +4,7 @@
 //
 //  Created by You on 3/5/25.
 //  Updated on 3/6/25 to apply a single note-wide template to each page
+//  Updated on 5/6/25 to migrate to EventStore architecture
 //
 
 import SwiftUI
@@ -38,11 +39,32 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
     // Track which updates are coming from where
     private static var updateCounter = 0
     
-    @Binding var pages: [Page]
-    @Binding var template: CanvasTemplate
+    // Replace Bindings with direct EventStore access
+    @EnvironmentObject var eventStore: EventStore
+    
+    // Note and Subject identification
+    let noteID: UUID
+    let subjectID: UUID
     
     // Access app settings
     @EnvironmentObject var appSettings: AppSettingsModel
+    
+    // Computed properties to access data from EventStore
+    var pages: [Page] {
+        guard let subject = eventStore.state.contentState.subjects.first(where: { $0.id == subjectID }),
+              let note = subject.notes.first(where: { $0.id == noteID }) else {
+            return []
+        }
+        return note.pages
+    }
+    
+    var template: CanvasTemplate {
+        guard let subject = eventStore.state.contentState.subjects.first(where: { $0.id == subjectID }),
+              let note = subject.notes.first(where: { $0.id == noteID }) else {
+            return CanvasTemplate.none
+        }
+        return note.noteTemplate ?? CanvasTemplate.none
+    }
     
     // Use the scaled page size from GlobalSettings
     var pageSize: CGSize {
@@ -361,8 +383,13 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
                 let drawingData = try? drawing.dataRepresentation()
                 
                 if let drawingData = drawingData {
-                    // Update the page's drawing data
-                    parent.pages[pageIndex].drawingData = drawingData
+                    // Use EventStore to update the drawing data instead of direct binding
+                    parent.eventStore.dispatch(PageAction.updateDrawingData(
+                        drawingData: drawingData,
+                        pageID: pageID,
+                        noteID: parent.noteID,
+                        subjectID: parent.subjectID
+                    ))
                     
                     // Invalidate the thumbnail for this page
                     PageThumbnailGenerator.clearCache(for: pageID)
@@ -406,8 +433,12 @@ struct MultiPageUnifiedScrollView: UIViewRepresentable {
             )
             
             DispatchQueue.main.async {
-                // Add the new page to the model
-                self.parent.pages.append(newPage)
+                // Add the new page by dispatching an action
+                self.parent.eventStore.dispatch(PageAction.addPage(
+                    page: newPage,
+                    noteID: self.parent.noteID,
+                    subjectID: self.parent.subjectID
+                ))
                 
                 // Force layout to update with the new page
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

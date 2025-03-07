@@ -89,6 +89,13 @@ struct SmartNotesApp: App {
                         // Configure the CanvasManager with EventStore
                         CanvasManager.shared.configure(with: eventStore)
                         
+                        // Configure the ResolutionManager with EventStore
+                        ResolutionManager.shared.configure(with: eventStore)
+                        
+                        // Configure the CoordinateSpaceManager with EventStore
+                        CoordinateSpaceManager.shared.configure(with: eventStore)
+                        
+                        // Initialize event listeners for various components
                         print("🔄 Component event listeners initialized")
                         
                         // Clear thumbnail cache on launch

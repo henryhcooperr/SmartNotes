@@ -113,7 +113,8 @@ struct NoteDetailView: View {
                 
                 // Unified multi-page scroll
                 ZStack {
-                    MultiPageUnifiedScrollView(pages: notePagesBinding, template: $noteTemplate)
+                    MultiPageUnifiedScrollView(noteID: note?.id ?? UUID(), subjectID: subjectID)
+                        .environmentObject(eventStore)
                         .sheet(isPresented: $showingTemplateSheet) {
                             TemplateSettingsView(
                                 noteID: note?.id,
