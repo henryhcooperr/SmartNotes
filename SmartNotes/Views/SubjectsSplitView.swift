@@ -11,9 +11,24 @@
 
 import SwiftUI
 
+// MARK: - Events for Sidebar Management
+struct SidebarEvents {
+    struct CloseSidebar: Event {
+        static var description: String = "Request to close the sidebar"
+    }
+    
+    struct SidebarVisibilityChanged: Event {
+        static var description: String = "Sidebar visibility state changed"
+        let isVisible: Bool
+    }
+}
+
 struct SubjectsSplitView: View {
     // Use the EventStore instead of direct state binding
     @EnvironmentObject var eventStore: EventStore
+    
+    // Subscription manager for events
+    private let subscriptionManager = SubscriptionManager()
     
     // State for UI interaction that doesn't need to be in global state
     @State private var selectedSubjectID: UUID?
@@ -25,6 +40,11 @@ struct SubjectsSplitView: View {
     @State private var newSubjectColor = "blue"
     @State private var newSubjectIcon = "book.closed"
     @State private var isInitialSelection = true
+    
+    // State for renaming a subject
+    @State private var isRenamingSubject = false
+    @State private var subjectToRename: Subject?
+    @State private var renamedSubjectName = ""
     
     // Color & Icon options
     let colorOptions = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "gray"]
@@ -59,6 +79,9 @@ struct SubjectsSplitView: View {
         .sheet(isPresented: $isAddingNewSubject) {
             addSubjectView
         }
+        .sheet(isPresented: $isRenamingSubject) {
+            renameSubjectView
+        }
         .onAppear {
             // Automatically select the first subject on first appearance, if available
             if isInitialSelection, !subjects.isEmpty, selectedSubjectID == nil {
@@ -66,27 +89,26 @@ struct SubjectsSplitView: View {
                 isInitialSelection = false
             }
             
-            // Listen for notifications to close the sidebar
-            NotificationCenter.default.addObserver(
-                forName: NSNotification.Name("CloseSidebar"),
-                object: nil,
-                queue: .main
-            ) { _ in
+            // Subscribe to CloseSidebar events using EventBus
+            subscriptionManager.subscribe(SidebarEvents.CloseSidebar.self) { _ in
                 // Close the sidebar by setting visibility to detailOnly
                 columnVisibility = .detailOnly
                 
-                // Report this change so scroll views can recenter
+                // Publish event that sidebar visibility changed
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("SidebarVisibilityChanged"),
-                        object: nil
-                    )
+                    EventBus.shared.publish(SidebarEvents.SidebarVisibilityChanged(isVisible: false))
                 }
             }
         }
         .onDisappear {
-            // Clean up the observer when this view disappears
-            NotificationCenter.default.removeObserver(self)
+            // Clean up subscriptions when view disappears
+            subscriptionManager.clearAll()
+        }
+        // Monitor for columnVisibility changes
+        .onChange(of: columnVisibility) { _, newValue in
+            // When visibility changes, publish an event
+            let isVisible = newValue != .detailOnly
+            EventBus.shared.publish(SidebarEvents.SidebarVisibilityChanged(isVisible: isVisible))
         }
     }
     
@@ -301,6 +323,68 @@ struct SubjectsSplitView: View {
         }
     }
     
+    // MARK: - Rename Subject View
+    private var renameSubjectView: some View {
+        NavigationView {
+            Form {
+                // Subject Name Section
+                Section {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(.systemGray6))
+                        
+                        TextField("Enter subject name...", text: $renamedSubjectName)
+                            .padding(8)
+                            .textFieldStyle(.plain)
+                            .multilineTextAlignment(.center)
+                    }
+                } header: {
+                    Text("New Subject Name")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Rename Subject")
+                        .font(.title)
+                        .fontWeight(.bold)  
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isRenamingSubject = false
+                        subjectToRename = nil
+                        renamedSubjectName = ""
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        // Implementation for renaming the subject
+                        if let subject = subjectToRename {
+                            var updatedSubject = subject
+                            updatedSubject.name = renamedSubjectName
+                            
+                            // Dispatch action to update the subject
+                            eventStore.dispatch(
+                                SubjectAction.updateSubject(updatedSubject)
+                            )
+                            
+                            // Reset UI state
+                            isRenamingSubject = false
+                            subjectToRename = nil
+                            renamedSubjectName = ""
+                        }
+                    }
+                    .disabled(renamedSubjectName.isEmpty)
+                }
+            }
+        }
+    }
+    
     // MARK: - Helpers
     
     // Filter subjects by search text
@@ -327,8 +411,10 @@ struct SubjectsSplitView: View {
     }
     
     private func renameSubject(_ subject: Subject) {
-        print("Renaming subject: \(subject.name)")
-        // TODO: Implement rename functionality with EventStore
+        // Initialize the rename dialog
+        subjectToRename = subject
+        renamedSubjectName = subject.name
+        isRenamingSubject = true
     }
 }
 
