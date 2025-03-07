@@ -7,15 +7,15 @@
 //  Updated on 2/27/25 to fix template persistence issues
 //  Updated on 4/1/25 to add PageNavigatorView sidebar
 //  Updated to use EventStore for state management
+//  Updated on 5/5/25 to completely migrate from DataManager to EventStore
 //
 
 import SwiftUI
 import PencilKit
 
 struct NoteDetailView: View {
-    // Replace direct note binding with EventStore state management
+    // Use EventStore for state management
     @EnvironmentObject var eventStore: EventStore
-    @EnvironmentObject var dataManager: DataManager // Keep for backward compatibility during transition
     
     // Note identification
     let noteIndex: Int
@@ -266,14 +266,12 @@ struct NoteDetailView: View {
                                     ))
                                     print("🔄 Dispatched NoteAction.updateNote with template \(event.template.type.rawValue)")
                                     
-                                    // MIGRATION: To be removed after migration is complete.
-                                    // The EventStore action dispatch above is sufficient.
-                                    // This direct DataManager usage is only kept for backward compatibility.
-                                    dataManager.updateNoteTemplateAndSaveImmediately(
-                                        in: subjectID,
+                                    // Also dispatch a template action to ensure all template-related components are updated
+                                    eventStore.dispatch(TemplateAction.setNoteTemplate(
+                                        event.template,
                                         noteID: currentNote.id,
-                                        template: event.template
-                                    )
+                                        subjectID: subjectID
+                                    ))
                                 }
                             } else {
                                 print("🔄 No template properties changed, skipping update")

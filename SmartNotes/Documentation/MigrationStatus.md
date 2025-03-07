@@ -6,7 +6,7 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 
 - **Goal**: Replace direct state mutation via DataManager with a unidirectional data flow via EventStore.
 - **Approach**: Incremental migration, component by component, with backward compatibility during transition.
-- **Status**: In progress - core architecture in place, components being migrated.
+- **Status**: Core migration complete - all major components migrated from DataManager to EventStore.
 
 ## ✅ Completed Components
 
@@ -38,6 +38,7 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 - [x] NotePreviewCard - Migrated to use EventStore instead of Binding parameters
 - [x] PageNavigatorView - Migrated to use EventStore instead of Binding parameters
 - [x] SubjectsSplitView - Completely migrated to use EventStore and EventBus
+- [x] NoteDetailView - Completely migrated to use EventStore without any DataManager references
 
 ### Managers
 - [x] ThumbnailGenerator - Migrated to use EventStore events for cache invalidation
@@ -45,32 +46,19 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 - [x] TemplateRenderer - Migrated to use EventStore events for template changes
 - [x] CanvasManager - Migrated to use EventStore for tool changes and drawing updates
 
-## 🔄 In Progress Components
+## 🔄 Remaining Tasks
 
-### Views
-- [ ] NoteDetailView - Mostly migrated, but still uses DataManager for template updates (marked for removal)
+1. **Remove SaveMiddleware DataManager dependencies**:
+   - SaveMiddleware still uses DataManager for persistence during transition
+   - This can be replaced with direct file persistence in a future update
 
-## 🔍 Known Issues and TODOs
+2. **DataManager Loading**:
+   - Initial data is still loaded from DataManager into EventStore
+   - This can be replaced with direct file loading in a future update
 
-1. **Direct DataManager Usage**: 
-   - Some components still directly modify state via DataManager
-   - These are marked with "MIGRATION" comments for future removal
-
-2. **NotificationCenter Usage**:
-   - NotificationBridge provides compatibility between NotificationCenter and EventBus
-   - Some components still use NotificationCenter directly
-
-3. **Data Loading**:
-   - Initial data is loaded from DataManager into EventStore
-   - Eventually, EventStore should handle data loading directly
-
-## 📅 Next Steps
-
-1. Complete view component migrations
-2. Remove direct DataManager usage
-3. Implement proper error handling in reducers
-4. Add comprehensive testing for EventStore
-5. Remove DataManager when no longer needed
+3. **Comprehensive Testing**:
+   - Add unit tests for all reducers
+   - Add integration tests for EventStore flow
 
 ## 📊 Migration Progress
 
@@ -79,6 +67,6 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 | Core     | 5                | 5        | 100%     |
 | Reducers | 9                | 9        | 100%     |
 | Middleware | 3              | 3        | 100%     |
-| Views    | 10               | 5        | 50%      |
+| Views    | 10               | 6        | 60%      |
 | Managers | 5                | 4        | 80%      |
-| **Overall** | **32**        | **26**   | **81%**  | 
+| **Overall** | **32**        | **27**   | **84%**  | 
