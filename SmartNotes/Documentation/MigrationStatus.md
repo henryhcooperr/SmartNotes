@@ -19,7 +19,7 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 - [x] App lifecycle integration with SystemActions
 
 ### Middleware
-- [x] SaveMiddleware for persistence
+- [x] SaveMiddleware for persistence - Updated to use direct file persistence
 - [x] ErrorHandlingMiddleware for centralized error management
 - [x] PerformanceMiddleware for tracking and optimization
 
@@ -33,6 +33,11 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 - [x] DrawingToolReducer for drawing tool-related state changes
 - [x] ExportReducer for export-related state changes
 - [x] SystemReducer for system-related state changes
+
+### Data Loading
+- [x] Data loading directly from file system via SaveMiddleware
+- [x] AppState initialization without DataManager
+- [x] Settings persistence without UserDefaults
 
 ### Views
 - [x] NotePreviewCard - Migrated to use EventStore instead of Binding parameters
@@ -48,17 +53,10 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 
 ## 🔄 Remaining Tasks
 
-1. **Remove SaveMiddleware DataManager dependencies**:
-   - SaveMiddleware still uses DataManager for persistence during transition
-   - This can be replaced with direct file persistence in a future update
-
-2. **DataManager Loading**:
-   - Initial data is still loaded from DataManager into EventStore
-   - This can be replaced with direct file loading in a future update
-
-3. **Comprehensive Testing**:
+1. **Testing**:
    - Add unit tests for all reducers
    - Add integration tests for EventStore flow
+   - Verify proper persistence across app restarts
 
 ## 📊 Migration Progress
 
@@ -69,4 +67,5 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 | Middleware | 3              | 3        | 100%     |
 | Views    | 10               | 6        | 60%      |
 | Managers | 5                | 4        | 80%      |
-| **Overall** | **32**        | **27**   | **84%**  | 
+| Data Loading | 1            | 1        | 100%     |
+| **Overall** | **33**        | **28**   | **85%**  | 

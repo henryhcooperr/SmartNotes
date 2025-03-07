@@ -3,9 +3,10 @@
 //  SmartNotes
 //
 //  Created on 6/12/25.
+//  Updated on 5/6/25 to remove DataManager dependencies
 //
 //  This file defines the SaveMiddleware, which is responsible for
-//  persisting state changes to UserDefaults. It debounces save operations
+//  persisting state changes to the file system. It debounces save operations
 //  to improve performance and ensures data is saved when the app
 //  is backgrounded or terminated.
 //
@@ -19,12 +20,40 @@ import Combine
 
 /// Middleware that handles saving state changes to persistent storage
 class SaveMiddleware {
-    private var dataManager: DataManager
     private var debounceTimer: Timer?
     private let debounceTime: TimeInterval = 3.0 // 3 seconds debounce
+    private let fileManager = FileManager.default
+    private let eventBus = EventBus.shared
     
-    init(dataManager: DataManager) {
-        self.dataManager = dataManager
+    // File paths
+    private let saveDirectory: URL
+    private let subjectsFilePath: URL
+    private let settingsFilePath: URL
+    
+    // Save events
+    struct SaveCompletedEvent: Event {
+        static var description: String = "State has been saved to persistent storage"
+        let timestamp: Date
+        let bytesSaved: Int
+    }
+    
+    struct SaveFailedEvent: Event {
+        static var description: String = "Failed to save state to persistent storage"
+        let timestamp: Date
+        let error: Error
+    }
+    
+    init() {
+        // Setup save directories
+        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        saveDirectory = documentsDirectory.appendingPathComponent("SmartNotes", isDirectory: true)
+        subjectsFilePath = saveDirectory.appendingPathComponent("subjects.json")
+        settingsFilePath = saveDirectory.appendingPathComponent("settings.json")
+        
+        // Create save directory if it doesn't exist
+        try? fileManager.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
+        
+        print("💾 SaveMiddleware: Initialized with save directory: \(saveDirectory.path)")
     }
     
     /// The middleware function that will be called for each action
@@ -53,10 +82,38 @@ class SaveMiddleware {
     private func performSave(state: AppState) {
         print("💾 SaveMiddleware: Performing save...")
         
-        // MIGRATION NOTE: Direct DataManager usage will be phased out when migration is complete.
-        // This is currently needed for backward compatibility until all components use the EventStore.
-        dataManager.subjects = state.contentState.subjects
-        dataManager.saveData()
+        // Create JSON encoder
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        
+        do {
+            // Save subjects data
+            let subjectsData = try encoder.encode(state.contentState.subjects)
+            try subjectsData.write(to: subjectsFilePath)
+            
+            // Save settings separately
+            let settingsData = try encoder.encode(state.settingsState)
+            try settingsData.write(to: settingsFilePath)
+            
+            // Calculate total bytes saved
+            let totalBytesSaved = subjectsData.count + settingsData.count
+            
+            // Publish save completed event
+            eventBus.publish(SaveCompletedEvent(
+                timestamp: Date(),
+                bytesSaved: totalBytesSaved
+            ))
+            
+            print("💾 SaveMiddleware: Save completed (\(totalBytesSaved) bytes)")
+        } catch {
+            print("❌ SaveMiddleware: Error saving data: \(error.localizedDescription)")
+            
+            // Publish save failed event
+            eventBus.publish(SaveFailedEvent(
+                timestamp: Date(),
+                error: error
+            ))
+        }
     }
     
     /// Force an immediate save without debouncing
@@ -83,6 +140,32 @@ class SaveMiddleware {
             
         default:
             return false
+        }
+    }
+    
+    /// Load saved data from persistent storage
+    func loadSavedData() -> (subjects: [Subject], settings: SettingsState)? {
+        let decoder = JSONDecoder()
+        
+        do {
+            // Load subjects
+            var subjects: [Subject] = []
+            if fileManager.fileExists(atPath: subjectsFilePath.path) {
+                let subjectsData = try Data(contentsOf: subjectsFilePath)
+                subjects = try decoder.decode([Subject].self, from: subjectsData)
+            }
+            
+            // Load settings
+            var settings = SettingsState()
+            if fileManager.fileExists(atPath: settingsFilePath.path) {
+                let settingsData = try Data(contentsOf: settingsFilePath)
+                settings = try decoder.decode(SettingsState.self, from: settingsData)
+            }
+            
+            return (subjects: subjects, settings: settings)
+        } catch {
+            print("❌ SaveMiddleware: Error loading data: \(error.localizedDescription)")
+            return nil
         }
     }
 } 

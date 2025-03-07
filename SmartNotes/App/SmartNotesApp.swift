@@ -3,15 +3,16 @@
 //  SmartNotes
 //
 //  Created by Henry Cooper on 2/25/25.
+//  Updated on 5/6/25 to remove DataManager dependencies
 //
 //  This is the application entry point that sets up the environment.
 //  Key responsibilities:
-//    - Creating the DataManager shared instance
+//    - Setting up the EventStore as the central state manager
 //    - Setting up the MainView as the root view
-//    - Passing the DataManager through the environment
+//    - Configuring app lifecycle observers
 //
 //  This file also contains the MainView, which integrates the
-//  SubjectsSplitView with the app's data layer.
+//  SubjectsSplitView with the app's state layer.
 //
 import SwiftUI
 import Combine
@@ -22,9 +23,6 @@ import PencilKit
 
 @main
 struct SmartNotesApp: App {
-    // Create a shared instance of DataManager that will be used throughout the app
-    @StateObject private var dataManager = DataManager()
-    
     // Create the EventStore as the central state manager
     @StateObject private var eventStore = EventStore()
     
@@ -65,17 +63,11 @@ struct SmartNotesApp: App {
             ZStack {
                 // Main app content
                 MainView()
-                    .environmentObject(dataManager)
                     .environmentObject(eventStore)
                     .environmentObject(appSettings)
                     .onAppear {
-                        // Load data from DataManager into EventStore
-                        eventStore.loadFromDataManager(dataManager)
-                        
-                        // Note: SaveMiddleware is now registered automatically in loadFromDataManager
-                        // The previous code was:
-                        // let saveMiddleware = SaveMiddleware(dataManager: dataManager)
-                        // eventStore.register(middleware: saveMiddleware.middleware())
+                        // Load initial state from SaveMiddleware
+                        eventStore.loadInitialState()
                         
                         // Set up app lifecycle observers to integrate with EventStore
                         let notificationCenter = NotificationCenter.default
@@ -99,12 +91,11 @@ struct SmartNotesApp: App {
                         
                         print("🔄 Component event listeners initialized")
                         
-                        // Force clear the thumbnail caches on app launch
-                        ThumbnailGenerator.clearCache()
-                        PageThumbnailGenerator.clearCache()
+                        // Clear thumbnail cache on launch
+                        ThumbnailGenerator.clearAllCaches()
                         
-                        // Mark the end of app launch
-                        if GlobalSettings.debugModeEnabled {
+                        // Mark the end of app launch if debug mode is enabled
+                        if GlobalSettings.debugModeEnabled && GlobalSettings.performanceModeEnabled {
                             PerformanceMonitor.shared.endOperation("App launch")
                         }
                     }
@@ -228,9 +219,6 @@ struct SmartNotesApp: App {
 struct MainView: View {
     // Access the EventStore for state management
     @EnvironmentObject var eventStore: EventStore
-    
-    // Legacy DataManager for backward compatibility
-    @EnvironmentObject var dataManager: DataManager
     
     var body: some View {
         Group {

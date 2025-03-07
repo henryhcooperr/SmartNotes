@@ -960,8 +960,46 @@ class EventStore: ObservableObject {
 // MARK: - Convenience Methods
 
 extension EventStore {
-    /// Method to load data from DataManager
+    /// Method to load data from SaveMiddleware
+    func loadInitialState() {
+        print("📥 EventStore: Loading initial state from SaveMiddleware")
+        
+        // Create SaveMiddleware instance
+        let saveMiddleware = SaveMiddleware()
+        
+        // Register the save middleware
+        register(middleware: saveMiddleware.middleware, name: "SaveMiddleware")
+        self.saveMiddleware = saveMiddleware
+        
+        // Load data from SaveMiddleware
+        if let savedData = saveMiddleware.loadSavedData() {
+            // Create a new state with the loaded subjects
+            var newState = AppState()
+            newState.contentState.subjects = savedData.subjects
+            
+            // Set default selections if available
+            if !newState.contentState.subjects.isEmpty {
+                newState.contentState.selection.selectedSubjectID = newState.contentState.subjects[0].id
+                newState.contentState.selection.selectedSubjectIndex = 0
+            }
+            
+            // Set the loaded settings
+            newState.settingsState = savedData.settings
+            
+            // Update the store's state
+            self.state = newState
+            
+            print("📥 EventStore: Loaded \(savedData.subjects.count) subjects from SaveMiddleware")
+        } else {
+            print("📥 EventStore: No saved data found, using default state")
+        }
+    }
+    
+    /// DEPRECATED: Method to load data from DataManager
+    @available(*, deprecated, message: "Use loadInitialState() instead")
     func loadFromDataManager(_ dataManager: DataManager) {
+        print("⚠️ WARNING: Using deprecated loadFromDataManager method. Use loadInitialState() instead.")
+        
         // Create a new state with the loaded subjects
         var newState = AppState()
         newState.contentState.subjects = dataManager.subjects
