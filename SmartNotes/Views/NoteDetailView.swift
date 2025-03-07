@@ -73,12 +73,8 @@ struct NoteDetailView: View {
         HStack(spacing: 0) {
             // Page Navigator Sidebar
             if isPageNavigatorVisible {
-                PageNavigatorView(
-                    pages: notePagesBinding,
-                    selectedPageIndex: $selectedPageIndex,
-                    isSelectionActive: $isPageSelectionActive
-                )
-                .transition(.move(edge: .leading))
+                PageNavigatorView(noteID: note?.id ?? UUID())
+                    .transition(.move(edge: .leading))
                 
                 Divider()
             }

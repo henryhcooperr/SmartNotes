@@ -243,24 +243,21 @@ struct PageThumbnailGenerator {
     
     /// Listen for page changes from EventStore and invalidate thumbnails accordingly
     static func setupEventListeners(eventStore: EventStore) {
-        // Listen for page updates
-        eventStore.events
-            .compactMap { $0 as? PageAction }
-            .sink { action in
-                switch action {
-                case .updatePage(let page, let noteID, _):
-                    clearCache(for: page.id, noteID: noteID)
-                case .updateDrawingData(let pageID, _, let noteID, _):
-                    clearCache(for: pageID, noteID: noteID)
-                case .clearPage(let pageID, let noteID, _):
-                    clearCache(for: pageID, noteID: noteID)
-                case .deletePage(let pageID, let noteID, _):
-                    clearCache(for: pageID, noteID: noteID)
-                default:
-                    break
-                }
+        // Set up an event subscription for PageAction
+        EventBus.shared.subscribe(PageAction.self) { action in
+            switch action {
+            case let updatePage as PageAction.updatePage:
+                clearCache(for: updatePage.page.id, noteID: updatePage.noteID)
+            case let updateDrawing as PageAction.updateDrawingData:
+                clearCache(for: updateDrawing.pageID, noteID: updateDrawing.noteID)
+            case let clearPage as PageAction.clearPage:
+                clearCache(for: clearPage.pageID, noteID: clearPage.noteID)
+            case let deletePage as PageAction.deletePage:
+                clearCache(for: deletePage.pageID, noteID: deletePage.noteID)
+            default:
+                break
             }
-            .store(in: &ResourceManager.shared.cancellables)
+        }.store(in: &cancellables)
         
         // Listen for system memory warnings to clear caches
         NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
@@ -268,17 +265,12 @@ struct PageThumbnailGenerator {
                 print("📝 Memory warning received - clearing page thumbnail caches")
                 clearCache()
             }
-            .store(in: &ResourceManager.shared.cancellables)
-    }
-}
-
-// Add extension to ResourceManager for page thumbnails
-extension ResourceManager {
-    func retrievePageThumbnail(forPage pageID: UUID) -> UIImage? {
-        return retrieveResource(forKey: pageID.uuidString, type: .pageThumbnail) as? UIImage
+            .store(in: &cancellables)
     }
     
-    func storePageThumbnail(_ image: UIImage, forPage pageID: UUID) {
-        storeResource(image, forKey: pageID.uuidString, type: .pageThumbnail)
-    }
-} 
+    // Static cancellables collection for event subscriptions
+    private static var cancellables = Set<AnyCancellable>()
+}
+
+// These methods already exist in ResourceManager.swift
+// Removed to prevent duplicate declarations 
