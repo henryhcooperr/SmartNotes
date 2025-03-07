@@ -208,7 +208,18 @@ eventStore.register(middleware: myMiddleware(), name: "LoggingMiddleware")
 
 ## Migration Path
 
-While migration is mostly complete, a few components still use the legacy DataManager for persistence. The save/load operations will be fully migrated in a future update. When creating new components, always use the EventStore architecture.
+The migration is now complete! The application has fully transitioned to the EventStore architecture with the following improvements:
+
+1. **Direct File Persistence**: The SaveMiddleware now handles persistence directly using file-based storage rather than relying on DataManager.
+2. **Event-Driven Communication**: All components now communicate through EventBus events rather than using NotificationCenter.
+3. **Unidirectional Data Flow**: All state changes flow through the EventStore's dispatch-reduce pipeline.
+4. **UI State Consistency**: All UI components now read from the same centralized state.
+
+When creating new components, always follow the EventStore architecture pattern:
+- Read state from the EventStore
+- Dispatch actions to change state
+- Subscribe to events for cross-component communication
+- Clean up subscriptions in onDisappear
 
 ## Debugging
 
