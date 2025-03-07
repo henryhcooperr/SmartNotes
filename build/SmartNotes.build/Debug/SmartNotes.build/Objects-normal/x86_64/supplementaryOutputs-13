@@ -1,0 +1,36 @@
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/LegacyTypeAliases.swift":
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.dia"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.swiftconstvalues"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.o"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventTypes.swift":
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.d"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.dia"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventStore.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.d"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.swiftconstvalues"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.o"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/NotificationBridge.swift":
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.o"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventStoreSwiftUIExtensions.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventBusSwiftUIExtensions.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.d"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.dia"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.swiftdeps"

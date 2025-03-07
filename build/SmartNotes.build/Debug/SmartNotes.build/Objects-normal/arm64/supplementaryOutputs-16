@@ -1,0 +1,30 @@
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PDFExporter.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PDFExporter.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PDFExporter.swiftconstvalues"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PDFExporter.swiftdeps"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PDFExporter.d"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PDFExporter.dia"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PreferenceKeys.swift":
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.dia"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.d"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.swiftconstvalues"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PreferenceKeys.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/ResolutionManager.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ResolutionManager.d"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ResolutionManager.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ResolutionManager.swiftconstvalues"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ResolutionManager.dia"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ResolutionManager.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PageThumbnailGenerator.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PageThumbnailGenerator.dia"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PKCanvasViewExtensions.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.swiftconstvalues"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/PKCanvasViewExtensions.dia"

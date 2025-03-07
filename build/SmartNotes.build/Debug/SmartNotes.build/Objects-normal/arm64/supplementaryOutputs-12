@@ -1,0 +1,36 @@
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Managers/CanvasManager.swift":
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CanvasManager.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CanvasManager.o"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CanvasManager.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CanvasManager.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CanvasManager.dia"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/ToolbarPosition.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.o"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ToolbarPosition.dia"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/Action.swift":
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/Action.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/Action.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/Action.dia"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/Action.swiftdeps"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/Action.d"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/CoordinateSpaceManager.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CoordinateSpaceManager.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CoordinateSpaceManager.dia"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CoordinateSpaceManager.swiftdeps"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CoordinateSpaceManager.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/CoordinateSpaceManager.d"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/DataManager.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/DataManager.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/DataManager.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/DataManager.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/DataManager.dia"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/DataManager.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/AppState.swift":
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/AppState.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/AppState.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/AppState.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/AppState.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/AppState.o"

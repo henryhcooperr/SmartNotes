@@ -3,6 +3,7 @@
 //  SmartNotes
 //
 //  Created on 4/1/25.
+//  Updated to use EventStore for state management instead of Binding parameters
 //
 
 import SwiftUI
@@ -15,16 +16,36 @@ extension NSNotification.Name {
 }
 
 struct PageNavigatorView: View {
-    @Binding var pages: [Page]
-    @Binding var selectedPageIndex: Int
-    @Binding var isSelectionActive: Bool
+    // Replace Binding parameters with EventStore
+    @EnvironmentObject private var eventStore: EventStore
+    
+    // Note identification
+    let noteID: UUID
+    
+    // Local state management
     @State private var draggedItem: Page?
     @State private var visiblePageIndex: Int = 0  // Track which page is currently visible
+    @State private var isSelectionActive: Bool = false
+    @State private var selectedPageIndex: Int = 0
     
     // Size constants for the navigator
     private let thumbnailWidth: CGFloat = 120
     private let thumbnailHeight: CGFloat = 160
     private let spacing: CGFloat = 12
+    
+    // Computed property to get the pages from EventStore
+    private var pages: [Page] {
+        guard let subjectIndex = eventStore.state.contentState.subjects.firstIndex(where: { 
+            $0.id == eventStore.state.contentState.selection.selectedSubjectID 
+        }),
+        let noteIndex = eventStore.state.contentState.subjects[subjectIndex].notes.firstIndex(where: {
+            $0.id == eventStore.state.contentState.selection.selectedNoteID
+        }) else {
+            return []
+        }
+        
+        return eventStore.state.contentState.subjects[subjectIndex].notes[noteIndex].pages
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +60,7 @@ struct PageNavigatorView: View {
                     ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
                         PageThumbnailView(
                             page: page,
+                            noteID: noteID,
                             isSelected: index == selectedPageIndex && isSelectionActive,
                             isVisible: index == visiblePageIndex,
                             onTap: {
@@ -46,11 +68,17 @@ struct PageNavigatorView: View {
                                 selectedPageIndex = index
                                 isSelectionActive = true
                                 
+                                // Dispatch a page selection action
+                                eventStore.dispatch(PageAction.selectPage(
+                                    pageIndex: index,
+                                    pageID: page.id
+                                ))
+                                
                                 // Publish event that page was explicitly selected by user
                                 EventBus.shared.publish(PageEvents.PageSelectedByUser(pageIndex: index))
                             },
                             onBookmarkToggle: {
-                                toggleBookmark(for: index)
+                                toggleBookmark(for: page, index: index)
                             }
                         )
                         .onDrag {
@@ -59,7 +87,9 @@ struct PageNavigatorView: View {
                         }
                         .onDrop(of: [.text], delegate: PageDropDelegate(
                             item: page,
-                            items: $pages,
+                            noteID: noteID,
+                            eventStore: eventStore,
+                            pages: pages,
                             draggedItem: $draggedItem)
                         )
                     }
@@ -70,27 +100,13 @@ struct PageNavigatorView: View {
         .frame(width: thumbnailWidth + 40)
         .background(Color(UIColor.systemBackground))
         .onAppear {
+            // Get current selection from EventStore
+            selectedPageIndex = eventStore.state.contentState.selection.selectedPageIndex
+            isSelectionActive = eventStore.state.uiState.isPageSelectionActive
+            
             // Force regeneration of thumbnails for all pages
             for page in pages {
-                PageThumbnailGenerator.clearCache(for: page.id)
-            }
-        }
-        .onChange(of: pages) { _, newPages in
-            // Ensure page numbers are updated correctly
-            for (index, _) in newPages.enumerated() {
-                pages[index].pageNumber = index + 1
-            }
-            
-            // If a page was selected, find its new index and maintain selection
-            if isSelectionActive && selectedPageIndex < newPages.count {
-                let selectedPageID = newPages[selectedPageIndex].id
-                if let newIndex = newPages.firstIndex(where: { $0.id == selectedPageID }),
-                   newIndex != selectedPageIndex {
-                    // Update selection if index changed
-                    selectedPageIndex = newIndex
-                    // This notification will be caught by the coordinator
-                    EventBus.shared.publish(PageEvents.PageSelected(pageIndex: newIndex))
-                }
+                PageThumbnailGenerator.clearCache(for: page.id, noteID: noteID)
             }
         }
         // Listen for page selection notifications from the scroll view
@@ -109,6 +125,9 @@ struct PageNavigatorView: View {
         .onPageSelectionDeactivated {
             // Deactivate selection when requested
             isSelectionActive = false
+            
+            // Update the EventStore
+            eventStore.dispatch(NavigationAction.updatePageSelectionActive(isActive: false))
         }
         // Add listener for visible page changes
         .onVisiblePageChanged { event in 
@@ -116,14 +135,41 @@ struct PageNavigatorView: View {
             visiblePageIndex = event.pageIndex
             print("🔍 PageNavigatorView: Visible page changed to \(event.pageIndex + 1)")
         }
+        // Listen for page selection changes from EventStore
+        .onEvent(PageAction.self) { action in
+            switch action {
+            case let selectPage as PageAction.selectPage:
+                selectedPageIndex = selectPage.pageIndex 
+                isSelectionActive = true
+            default:
+                break
+            }
+        }
+        // Listen for navigation changes from EventStore
+        .onEvent(NavigationAction.self) { action in
+            if case let NavigationAction.updatePageSelectionActive(isActive) = action {
+                isSelectionActive = isActive
+            }
+        }
     }
     
     // MARK: - Helper Methods
     
-    /// Toggles the bookmark status for a page at the given index
-    private func toggleBookmark(for index: Int) {
-        guard index < pages.count else { return }
-        pages[index].isBookmarked.toggle()
+    /// Toggles the bookmark status for a page
+    private func toggleBookmark(for page: Page, index: Int) {
+        var updatedPage = page
+        updatedPage.isBookmarked.toggle()
+        
+        // Get the current subject and note IDs from EventStore
+        if let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+           let noteID = eventStore.state.contentState.selection.selectedNoteID {
+            // Use EventStore to update the page
+            eventStore.dispatch(PageAction.updatePage(
+                updatedPage,
+                noteID: noteID,
+                subjectID: subjectID
+            ))
+        }
     }
     
     /// Adds a new page to the end of the pages array
@@ -131,18 +177,34 @@ struct PageNavigatorView: View {
         let newPage = Page(
             pageNumber: pages.count + 1
         )
-        pages.append(newPage)
         
-        // Select the newly added page
-        selectedPageIndex = pages.count - 1
-        isSelectionActive = true
-        
-        // Post notification that a new page was added
-        EventBus.shared.publish(PageEvents.PageAdded(pageId: newPage.id))
-        
-        // Also post a notification that this page is now selected
-        // This ensures the main content view will show the new page
-        EventBus.shared.publish(PageEvents.PageSelectedByUser(pageIndex: selectedPageIndex))
+        // Get the current subject and note IDs from EventStore
+        if let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+           let noteID = eventStore.state.contentState.selection.selectedNoteID {
+            // Use EventStore to add the page
+            eventStore.dispatch(PageAction.addPage(
+                newPage,
+                noteID: noteID,
+                subjectID: subjectID
+            ))
+            
+            // Select the newly added page
+            selectedPageIndex = pages.count // Since the new page will be at the end
+            isSelectionActive = true
+            
+            // Update selection in EventStore
+            eventStore.dispatch(PageAction.selectPage(
+                pageIndex: selectedPageIndex,
+                pageID: newPage.id
+            ))
+            
+            // Publish event that a new page was added
+            EventBus.shared.publish(PageEvents.PageAdded(pageId: newPage.id))
+            
+            // Also post a notification that this page is now selected
+            // This ensures the main content view will show the new page
+            EventBus.shared.publish(PageEvents.PageSelectedByUser(pageIndex: selectedPageIndex))
+        }
     }
 }
 
@@ -150,6 +212,7 @@ struct PageNavigatorView: View {
 
 struct PageThumbnailView: View {
     let page: Page
+    let noteID: UUID?
     let isSelected: Bool
     let isVisible: Bool
     let onTap: () -> Void
@@ -164,7 +227,7 @@ struct PageThumbnailView: View {
     var body: some View {
         VStack(spacing: 4) {
             ZStack(alignment: .topTrailing) {
-                Image(uiImage: thumbnail ?? PageThumbnailGenerator.generateThumbnail(from: page))
+                Image(uiImage: thumbnail ?? PageThumbnailGenerator.generateThumbnail(from: page, noteID: noteID))
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 160)
@@ -235,6 +298,24 @@ struct PageThumbnailView: View {
                     startUpdateTimer()
                 }
             }
+            
+            // Listen for thumbnail generated events
+            subscriptionManager.subscribe(PageThumbnailGeneratedEvent.self) { event in
+                if event.pageID == page.id {
+                    // Update the thumbnail when a new one is generated
+                    DispatchQueue.main.async {
+                        self.thumbnail = event.image
+                    }
+                }
+            }
+            
+            // Listen for thumbnail invalidated events
+            subscriptionManager.subscribe(PageThumbnailInvalidatedEvent.self) { event in
+                if event.pageID == page.id {
+                    // Reload the thumbnail when it's invalidated
+                    loadThumbnail(force: true)
+                }
+            }
         }
         .onDisappear {
             // Clear subscriptions when view disappears
@@ -274,6 +355,7 @@ struct PageThumbnailView: View {
         Task {
             let image = PageThumbnailGenerator.generateThumbnail(
                 from: page,
+                noteID: noteID,
                 force: force
             )
             
@@ -288,18 +370,32 @@ struct PageThumbnailView: View {
 
 struct PageDropDelegate: DropDelegate {
     let item: Page
-    @Binding var items: [Page]
+    let noteID: UUID
+    let eventStore: EventStore
+    let pages: [Page]
     @Binding var draggedItem: Page?
     
     func performDrop(info: DropInfo) -> Bool {
         guard let draggedItem = draggedItem else { return false }
         
         // Get the final indices after all drag operations are complete
-        let finalFromIndex = items.firstIndex(where: { $0.id == draggedItem.id })!
-        let finalToIndex = items.firstIndex(where: { $0.id == item.id })!
+        let finalFromIndex = pages.firstIndex(where: { $0.id == draggedItem.id })!
+        let finalToIndex = pages.firstIndex(where: { $0.id == item.id })!
         
         // Post notification about the reordering
         EventBus.shared.publish(PageEvents.PageReordering(fromIndex: finalFromIndex, toIndex: finalToIndex))
+        
+        // Also dispatch an action to EventStore
+        if let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+           let noteID = eventStore.state.contentState.selection.selectedNoteID {
+            // Use EventStore to update the page order
+            eventStore.dispatch(PageAction.reorderPages(
+                fromIndex: finalFromIndex,
+                toIndex: finalToIndex,
+                noteID: noteID,
+                subjectID: subjectID
+            ))
+        }
         
         // Reset the dragged item
         self.draggedItem = nil
@@ -311,27 +407,27 @@ struct PageDropDelegate: DropDelegate {
         guard let draggedItem = draggedItem else { return }
         
         if draggedItem.id != item.id {
-            let from = items.firstIndex(where: { $0.id == draggedItem.id })!
-            let to = items.firstIndex(where: { $0.id == item.id })!
+            let from = pages.firstIndex(where: { $0.id == draggedItem.id })!
+            let to = pages.firstIndex(where: { $0.id == item.id })!
             
             print("🔄 Moving page from position \(from+1) to \(to+1)")
             
-            if items[to].id != draggedItem.id {
-                withAnimation {
-                    items.move(fromOffsets: IndexSet(integer: from),
-                            toOffset: to > from ? to + 1 : to)
+            if pages[to].id != draggedItem.id {
+                // Since we can't modify the pages directly anymore, dispatch an action to EventStore
+                if let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+                   let noteID = eventStore.state.contentState.selection.selectedNoteID {
+                    // Use EventStore to update the page order
+                    eventStore.dispatch(PageAction.reorderPages(
+                        fromIndex: from,
+                        toIndex: to > from ? to + 1 : to,
+                        noteID: noteID,
+                        subjectID: subjectID
+                    ))
                 }
                 
                 // Log the new order for debugging
-                print("📄 New page order after move:")
-                for (i, page) in items.enumerated() {
-                    print("   \(i+1): Page ID \(page.id.uuidString.prefix(8))")
-                }
-                
-                // Update page numbers
-                for i in 0..<items.count {
-                    items[i].pageNumber = i + 1
-                }
+                print("📄 Requested page reorder:")
+                print("   From position \(from+1) to \(to+1)")
             }
         }
     }

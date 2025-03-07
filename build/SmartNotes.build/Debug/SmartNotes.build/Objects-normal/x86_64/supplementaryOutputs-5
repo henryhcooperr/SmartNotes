@@ -1,0 +1,36 @@
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Services/NotesManagementService.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/DataMigrationService.swift":
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.o"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.d"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/InMemoryNoteRepository.swift":
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.dia"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.d"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/PencilKitAdapter.swift":
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.swiftconstvalues"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.dia"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.o"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Repositories/NoteRepository.swift":
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.swiftdeps"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.o"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.swiftconstvalues"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.dia"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.d"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Repositories/SubjectRepository.swift":
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.swiftdeps"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.swiftconstvalues"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.dia"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.o"

@@ -1,0 +1,36 @@
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/ViewModels/SubjectDetailViewModel.swift":
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectDetailViewModel.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectDetailViewModel.dia"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectDetailViewModel.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectDetailViewModel.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectDetailViewModel.o"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/ViewModels/SubjectListViewModel.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectListViewModel.d"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectListViewModel.swiftconstvalues"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectListViewModel.swiftdeps"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectListViewModel.dia"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/SubjectListViewModel.o"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/NoteDetailView.swift":
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteDetailView.swiftdeps"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteDetailView.swiftconstvalues"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteDetailView.o"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteDetailView.dia"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteDetailView.d"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Utilities/ColorAdapter.swift":
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ColorAdapter.d"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ColorAdapter.dia"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ColorAdapter.o"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ColorAdapter.swiftdeps"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/ColorAdapter.swiftconstvalues"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/UserDefaultsSubjectRepository.swift":
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/UserDefaultsSubjectRepository.swiftconstvalues"
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/UserDefaultsSubjectRepository.dia"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/UserDefaultsSubjectRepository.d"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/UserDefaultsSubjectRepository.o"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/UserDefaultsSubjectRepository.swiftdeps"
+"/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/ViewModels/NoteViewModel.swift":
+  diagnostics: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteViewModel.dia"
+  object: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteViewModel.o"
+  dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteViewModel.d"
+  swift-dependencies: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteViewModel.swiftdeps"
+  const-values: "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/arm64/NoteViewModel.swiftconstvalues"

@@ -3,13 +3,32 @@
 //  SmartNotes
 //
 //  Created on 4/1/25.
+//  Updated to integrate with EventStore architecture
 //  This file generates thumbnail images from page drawing data for the page navigator.
 //
 
 import SwiftUI
 import PencilKit
+import Combine
+
+// Page thumbnail-related events
+struct PageThumbnailGeneratedEvent: Event {
+    static var description: String = "Thumbnail was generated for a page"
+    let pageID: UUID
+    let noteID: UUID
+    let image: UIImage
+}
+
+struct PageThumbnailInvalidatedEvent: Event {
+    static var description: String = "Thumbnail was invalidated for a page"
+    let pageID: UUID
+    let noteID: UUID?
+}
 
 struct PageThumbnailGenerator {
+    // The event bus for publishing events
+    private static let eventBus = EventBus.shared
+    
     // Legacy cache - to be phased out in favor of ResourceManager
     private static var legacyThumbnailCache: [UUID: UIImage] = [:]
     
@@ -19,11 +38,13 @@ struct PageThumbnailGenerator {
     /// Generates a thumbnail for a page
     /// - Parameters:
     ///   - page: The page model
+    ///   - noteID: Optional note ID for event publishing
     ///   - size: Size for the thumbnail
     ///   - force: Whether to force regeneration even if cached
     /// - Returns: UIImage thumbnail
     static func generateThumbnail(
         from page: Page,
+        noteID: UUID? = nil,
         size: CGSize = defaultSize,
         force: Bool = false
     ) -> UIImage {
@@ -46,7 +67,7 @@ struct PageThumbnailGenerator {
         // 2. Check if there's any drawing data in the page
         if page.drawingData.isEmpty {
             let placeholder = createPlaceholderImage(for: page, size: size)
-            saveThumbnailToCache(placeholder, for: page.id)
+            saveThumbnailToCache(placeholder, for: page.id, noteID: noteID)
             return placeholder
         }
         
@@ -57,7 +78,7 @@ struct PageThumbnailGenerator {
             // 4. If no strokes, return a placeholder
             if drawing.strokes.isEmpty {
                 let placeholder = createPlaceholderImage(for: page, size: size)
-                saveThumbnailToCache(placeholder, for: page.id)
+                saveThumbnailToCache(placeholder, for: page.id, noteID: noteID)
                 return placeholder
             }
             
@@ -109,29 +130,34 @@ struct PageThumbnailGenerator {
                 size: scaledSize
             ))
             
-            let result = UIGraphicsGetImageFromCurrentImageContext() ?? 
+            let result = UIGraphicsGetImageFromCurrentImageContext() ??
                 createPlaceholderImage(for: page, size: size)
             UIGraphicsEndImageContext()
             
             // Cache the image using ResourceManager
-            saveThumbnailToCache(result, for: page.id)
+            saveThumbnailToCache(result, for: page.id, noteID: noteID)
             return result
             
         } catch {
             print("Error converting drawing data: \(error)")
             let placeholder = createPlaceholderImage(for: page, size: size)
-            saveThumbnailToCache(placeholder, for: page.id)
+            saveThumbnailToCache(placeholder, for: page.id, noteID: noteID)
             return placeholder
         }
     }
     
     /// Helper method to save thumbnails to both caches
-    private static func saveThumbnailToCache(_ image: UIImage, for pageID: UUID) {
+    private static func saveThumbnailToCache(_ image: UIImage, for pageID: UUID, noteID: UUID?) {
         // Save to ResourceManager
         ResourceManager.shared.storePageThumbnail(image, forPage: pageID)
         
         // Also save to legacy cache for backward compatibility
         legacyThumbnailCache[pageID] = image
+        
+        // Publish an event that a thumbnail was generated
+        if let noteID = noteID {
+            eventBus.publish(PageThumbnailGeneratedEvent(pageID: pageID, noteID: noteID, image: image))
+        }
     }
     
     /// Creates a placeholder image for a page
@@ -202,13 +228,57 @@ struct PageThumbnailGenerator {
     }
     
     /// Clear the cache for a specific page or all pages
-    static func clearCache(for pageID: UUID? = nil) {
+    static func clearCache(for pageID: UUID? = nil, noteID: UUID? = nil) {
         if let pageID = pageID {
             legacyThumbnailCache.removeValue(forKey: pageID)
             ResourceManager.shared.removeResource(forKey: pageID.uuidString, type: .pageThumbnail)
+            
+            // Publish an event that a thumbnail was invalidated
+            eventBus.publish(PageThumbnailInvalidatedEvent(pageID: pageID, noteID: noteID))
         } else {
             legacyThumbnailCache.removeAll()
             ResourceManager.shared.removeAllResources(ofType: .pageThumbnail)
         }
+    }
+    
+    /// Listen for page changes from EventStore and invalidate thumbnails accordingly
+    static func setupEventListeners(eventStore: EventStore) {
+        // Listen for page updates
+        eventStore.events
+            .compactMap { $0 as? PageAction }
+            .sink { action in
+                switch action {
+                case .updatePage(let page, let noteID, _):
+                    clearCache(for: page.id, noteID: noteID)
+                case .updateDrawingData(let pageID, _, let noteID, _):
+                    clearCache(for: pageID, noteID: noteID)
+                case .clearPage(let pageID, let noteID, _):
+                    clearCache(for: pageID, noteID: noteID)
+                case .deletePage(let pageID, let noteID, _):
+                    clearCache(for: pageID, noteID: noteID)
+                default:
+                    break
+                }
+            }
+            .store(in: &ResourceManager.shared.cancellables)
+        
+        // Listen for system memory warnings to clear caches
+        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
+            .sink { _ in
+                print("📝 Memory warning received - clearing page thumbnail caches")
+                clearCache()
+            }
+            .store(in: &ResourceManager.shared.cancellables)
+    }
+}
+
+// Add extension to ResourceManager for page thumbnails
+extension ResourceManager {
+    func retrievePageThumbnail(forPage pageID: UUID) -> UIImage? {
+        return retrieveResource(forKey: pageID.uuidString, type: .pageThumbnail) as? UIImage
+    }
+    
+    func storePageThumbnail(_ image: UIImage, forPage pageID: UUID) {
+        storeResource(image, forKey: pageID.uuidString, type: .pageThumbnail)
     }
 } 

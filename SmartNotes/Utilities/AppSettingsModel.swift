@@ -91,7 +91,7 @@ class AppSettingsModel: ObservableObject {
         useTemplateCaching = defaults.bool(forKey: useTemplateCachingKey)
         
         // Default to true for centralized resource management if not set
-        useCentralizedResourceManagement = defaults.object(forKey: useCentralizedResourceManagementKey) != nil ? 
+        useCentralizedResourceManagement = defaults.object(forKey: useCentralizedResourceManagementKey) != nil ?
             defaults.bool(forKey: useCentralizedResourceManagementKey) : true
         
         // Load user resolution if available

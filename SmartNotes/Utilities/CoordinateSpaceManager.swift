@@ -4,7 +4,7 @@
 //
 //  Created on 3/5/25
 //
-//  This file contains the CoordinateSpaceManager class that centralizes 
+//  This file contains the CoordinateSpaceManager class that centralizes
 //  all coordinate transformation logic across different coordinate spaces.
 //  Key responsibilities:
 //    - Defining standard coordinate spaces used throughout the app

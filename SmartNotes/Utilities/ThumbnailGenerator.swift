@@ -3,6 +3,7 @@
 //  SmartNotes
 //
 //  Created on 2/25/25.
+//  Updated to integrate with EventStore architecture
 //
 //  This file generates thumbnail images from note drawing data.
 //  Key responsibilities:
@@ -10,6 +11,7 @@
 //    - Caching thumbnails for performance
 //    - Creating placeholder images for empty notes
 //    - Handling drawing data conversion errors
+//    - Publishing thumbnail events to EventBus
 //
 //  These thumbnails are used in the NotePreviewsGrid and NotePreviewCard
 //  views to show note content in the UI.
@@ -17,6 +19,19 @@
 
 import SwiftUI
 import PencilKit
+import Combine
+
+// Thumbnail-related events
+struct ThumbnailGeneratedEvent: Event {
+    static var description: String = "Thumbnail was generated for a note"
+    let noteID: UUID
+    let image: UIImage
+}
+
+struct ThumbnailInvalidatedEvent: Event {
+    static var description: String = "Thumbnail was invalidated for a note"
+    let noteID: UUID
+}
 
 // Redefine the caching structures with proper type safety
 struct CacheEntry {
@@ -25,7 +40,11 @@ struct CacheEntry {
 }
 
 struct ThumbnailGenerator { 
+    // The event bus for publishing events
+    private static let eventBus = EventBus.shared
+    
     // Legacy cache - to be phased out in favor of ResourceManager
+    // This is kept for backward compatibility during migration
     private static var legacyCache: [String: CacheEntry] = [:]
     private static let minimumGenerationInterval: TimeInterval = 1.0 // 1 second between generations
     
@@ -54,6 +73,9 @@ struct ThumbnailGenerator {
         let key = noteID.uuidString
         let entry = CacheEntry(image: image, timestamp: Date())
         legacyCache[key] = entry
+        
+        // Publish an event that a thumbnail was generated
+        eventBus.publish(ThumbnailGeneratedEvent(noteID: noteID, image: image))
     }
     
     private static func wasRecentlyGenerated(for noteID: UUID) -> Bool {
@@ -66,6 +88,9 @@ struct ThumbnailGenerator {
         if let noteID = noteID {
             legacyCache.removeValue(forKey: noteID.uuidString)
             ResourceManager.shared.removeResource(forKey: noteID.uuidString, type: .noteThumbnail)
+            
+            // Publish an event that a thumbnail was invalidated
+            eventBus.publish(ThumbnailInvalidatedEvent(noteID: noteID))
         } else {
             legacyCache.removeAll()
             ResourceManager.shared.removeAllResources(ofType: .noteThumbnail)
@@ -77,6 +102,9 @@ struct ThumbnailGenerator {
         legacyCache.removeValue(forKey: noteID.uuidString)
         ResourceManager.shared.removeResource(forKey: noteID.uuidString, type: .noteThumbnail)
         print("🖼️ Thumbnail cache invalidated for note: \(noteID)")
+        
+        // Publish an event that a thumbnail was invalidated
+        eventBus.publish(ThumbnailInvalidatedEvent(noteID: noteID))
     }
     
     // Clears all cached thumbnails - use sparingly
@@ -84,6 +112,41 @@ struct ThumbnailGenerator {
         legacyCache.removeAll()
         ResourceManager.shared.removeAllResources(ofType: .noteThumbnail)
         print("🧹 All thumbnail caches cleared")
+    }
+    
+    // Listen for note changes from EventStore and invalidate thumbnails accordingly
+    static func setupEventListeners(eventStore: EventStore) {
+        // Listen for note updates
+        eventStore.events
+            .compactMap { $0 as? NoteAction }
+            .sink { action in
+                switch action {
+                case .updateNote(let note, _), .addNote(let note, _):
+                    invalidateThumbnail(for: note.id)
+                case .deleteNote(let noteID, _):
+                    invalidateThumbnail(for: noteID)
+                default:
+                    break
+                }
+            }
+            .store(in: &ResourceManager.shared.cancellables)
+        
+        // Listen for page updates
+        eventStore.events
+            .compactMap { $0 as? PageAction }
+            .sink { action in
+                switch action {
+                case .updatePage(_, let noteID, _), 
+                     .addPage(_, let noteID, _),
+                     .deletePage(_, let noteID, _),
+                     .updateDrawingData(_, _, let noteID, _),
+                     .clearPage(_, let noteID, _):
+                    invalidateThumbnail(for: noteID)
+                default:
+                    break
+                }
+            }
+            .store(in: &ResourceManager.shared.cancellables)
     }
     
     static func generateThumbnail(
@@ -270,4 +333,43 @@ extension Image {
     init(fromUIImage uiImage: UIImage) {
         self.init(uiImage: uiImage)
     }
+}
+
+// Add extension to ResourceManager to store thumbnails
+extension ResourceManager {
+    // Cancellables for event subscribers
+    fileprivate var cancellables: Set<AnyCancellable> {
+        get {
+            if let existing = getAssociatedObject(self, key: "cancellables") as? Set<AnyCancellable> {
+                return existing
+            }
+            let newSet = Set<AnyCancellable>()
+            setAssociatedObject(self, key: "cancellables", value: newSet)
+            return newSet
+        }
+        set {
+            setAssociatedObject(self, key: "cancellables", value: newValue)
+        }
+    }
+    
+    func retrieveNoteThumbnail(forNote noteID: UUID) -> UIImage? {
+        return retrieveResource(forKey: noteID.uuidString, type: .noteThumbnail) as? UIImage
+    }
+    
+    func storeNoteThumbnail(_ image: UIImage, forNote noteID: UUID) {
+        storeResource(image, forKey: noteID.uuidString, type: .noteThumbnail)
+    }
+}
+
+// For associated object handling
+private func getAssociatedObject<T>(_ object: Any, key: String) -> T? {
+    let address = Unmanaged.passUnretained(object as AnyObject).toOpaque()
+    let keyPtr = UnsafeRawPointer(key.utf8CString.withUnsafeBufferPointer { $0.baseAddress! })
+    return objc_getAssociatedObject(address, keyPtr) as? T
+}
+
+private func setAssociatedObject<T>(_ object: Any, key: String, value: T) {
+    let address = Unmanaged.passUnretained(object as AnyObject).toOpaque()
+    let keyPtr = UnsafeRawPointer(key.utf8CString.withUnsafeBufferPointer { $0.baseAddress! })
+    objc_setAssociatedObject(address, keyPtr, value, .OBJC_ASSOCIATION_RETAIN)
 }

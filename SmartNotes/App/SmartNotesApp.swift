@@ -72,12 +72,37 @@ struct SmartNotesApp: App {
                         // Load data from DataManager into EventStore
                         eventStore.loadFromDataManager(dataManager)
                         
-                        // Register save middleware
-                        let saveMiddleware = SaveMiddleware(dataManager: dataManager)
-                        eventStore.register(middleware: saveMiddleware.middleware())
+                        // Note: SaveMiddleware is now registered automatically in loadFromDataManager
+                        // The previous code was:
+                        // let saveMiddleware = SaveMiddleware(dataManager: dataManager)
+                        // eventStore.register(middleware: saveMiddleware.middleware())
                         
-                        // Force clear the thumbnail cache on app launch
+                        // Set up app lifecycle observers to integrate with EventStore
+                        let notificationCenter = NotificationCenter.default
+                        notificationCenter.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [eventStore] _ in
+                            eventStore.dispatch(SystemAction.appWillEnterBackground)
+                            print("📱 App entering background - dispatched SystemAction.appWillEnterBackground")
+                        }
+                        
+                        notificationCenter.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [eventStore] _ in
+                            eventStore.dispatch(SystemAction.appWillEnterForeground)
+                            print("📱 App entering foreground - dispatched SystemAction.appWillEnterForeground")
+                        }
+                        
+                        // Initialize component event listeners for EventStore integration
+                        ThumbnailGenerator.setupEventListeners(eventStore: eventStore)
+                        PageThumbnailGenerator.setupEventListeners(eventStore: eventStore)
+                        TemplateRenderer.setupEventListeners(eventStore: eventStore)
+                        
+                        // Configure the CanvasManager with EventStore
+                        CanvasManager.shared.configure(with: eventStore)
+                        
+                        print("🔄 Component event listeners initialized")
+                        
+                        // Force clear the thumbnail caches on app launch
                         ThumbnailGenerator.clearCache()
+                        PageThumbnailGenerator.clearCache()
+                        
                         // Mark the end of app launch
                         if GlobalSettings.debugModeEnabled {
                             PerformanceMonitor.shared.endOperation("App launch")
@@ -308,7 +333,7 @@ struct PerformanceSettingsView: View {
                         // Add a toggle for the global performance mode
                         Toggle("Enable Performance Mode", isOn: Binding(
                             get: { GlobalSettings.performanceModeEnabled },
-                            set: { newValue in 
+                            set: { newValue in
                                 GlobalSettings.performanceModeEnabled = newValue
                                 // Sync with performance stats if needed
                                 if newValue && !appSettings.showPerformanceStats {
@@ -413,4 +438,3 @@ struct PerformanceSettingsView: View {
         NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     }
 }
-

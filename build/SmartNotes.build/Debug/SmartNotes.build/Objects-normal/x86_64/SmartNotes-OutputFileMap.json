@@ -1,0 +1,678 @@
+{
+  "" : {
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotes-master.dia",
+    "emit-module-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotes-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotes-master-emit-module.dia",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotes-master.swiftdeps"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/App/SmartNotesApp.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SmartNotesApp~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/CanvasTemplate.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasTemplate~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Application/AppSettingsModel.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppSettingsModel~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Application/DIContainer.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DIContainer~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Application/GlobalSettings.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GlobalSettings~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Application/UseCases/NoteUseCases.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteUseCases~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Application/UseCases/SubjectUseCases.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectUseCases~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Models/DrawingTool.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DrawingTool~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Models/Note.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Note~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Models/Page.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Page~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Models/Subject.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Subject~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Models/Template.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Template~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Models/TemplateType.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateType~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Repositories/NoteRepository.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteRepository~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Repositories/SubjectRepository.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRepository~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Domain/Services/NotesManagementService.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotesManagementService~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/DataMigrationService.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataMigrationService~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/InMemoryNoteRepository.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/InMemoryNoteRepository~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/PencilKitAdapter.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PencilKitAdapter~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Infrastructure/Persistence/UserDefaultsSubjectRepository.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/UserDefaultsSubjectRepository~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Utilities/ColorAdapter.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ColorAdapter~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/ViewModels/NoteViewModel.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteViewModel~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/ViewModels/SubjectDetailViewModel.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailViewModel~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/ViewModels/SubjectListViewModel.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListViewModel~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/NoteDetailView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteDetailView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/PerformanceSettingsView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceSettingsView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/PerformanceStatsOverlay.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PerformanceStatsOverlay~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/ResourceMonitorView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceMonitorView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/SubjectDetailView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectDetailView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/SubjectListView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectListView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Core/Presentation/Views/SubjectRow.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectRow~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Item.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Item~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Managers/CanvasManager.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CanvasManager~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Models/ToolbarPosition.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ToolbarPosition~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/TogglesCoordinateGridFeature.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TogglesCoordinateGridFeature~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/Action.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/Action~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/AppState.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/AppState~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/CoordinateSpaceManager.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CoordinateSpaceManager~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/DataManager.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/DataManager~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventBusSwiftUIExtensions.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventBusSwiftUIExtensions~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventStore.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStore~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventStoreSwiftUIExtensions.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventStoreSwiftUIExtensions~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/EventTypes.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/EventTypes~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/LegacyTypeAliases.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/LegacyTypeAliases~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/NotificationBridge.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotificationBridge~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PDFExporter.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PDFExporter~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PKCanvasViewExtensions.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PKCanvasViewExtensions~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PageThumbnailGenerator.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageThumbnailGenerator~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/PreferenceKeys.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PreferenceKeys~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/ResolutionManager.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResolutionManager~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/ResourceManager.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ResourceManager~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/SaveMiddleware.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SaveMiddleware~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/SharedTypes.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SharedTypes~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/TemplateRenderer.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateRenderer~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/ThumbnailGenerator.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ThumbnailGenerator~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Utilities/TypedEventBus.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TypedEventBus~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/ContentView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/ContentView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/CustomNavigationBar.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomNavigationBar~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/CustomToolbar.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/CustomToolbar~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/MultiPageUnifiedScrollView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/MultiPageUnifiedScrollView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NoteListView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NoteListView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NotePreviewCard.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewCard~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/NotePreviewsGrid.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/NotePreviewsGrid~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/PageNavigatorView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/PageNavigatorView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/SubjectsSplitView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/SubjectsSplitView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/SmartNotes/Views/TemplateSettingsView.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/TemplateSettingsView~partial.swiftmodule"
+  },
+  "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/henrycooper/Developer/SmartNotes/build/SmartNotes.build/Debug/SmartNotes.build/Objects-normal/x86_64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

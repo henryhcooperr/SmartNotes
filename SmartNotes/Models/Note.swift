@@ -58,7 +58,7 @@ struct Note: Identifiable, Codable, Hashable {
         
         // Copy over other properties
         copy.dateCreated = dateCreated ?? self.dateCreated
-        copy.lastModified = lastModified ?? self.lastModified  
+        copy.lastModified = lastModified ?? self.lastModified
         copy.pages = pages ?? self.pages
         copy.noteTemplate = noteTemplate ?? self.noteTemplate
         

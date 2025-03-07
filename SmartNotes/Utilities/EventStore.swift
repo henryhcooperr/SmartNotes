@@ -1,4 +1,4 @@
-// 
+//
 //  EventStore.swift
 //  SmartNotes
 //
@@ -25,7 +25,13 @@ class EventStore: ObservableObject {
     @Published private(set) var state: AppState
     
     /// Middleware to be applied before reducers
-    private var middleware: [Middleware<AppState>] = []
+    private var middleware: [String: Middleware<AppState>] = [:]
+    
+    /// Save middleware reference for direct access
+    private var saveMiddleware: SaveMiddleware?
+    
+    /// Event bus for publishing state changes
+    private let eventBus = EventBus.shared
     
     /// Initializes a new store with the given initial state
     /// - Parameter initialState: The initial state of the application
@@ -35,24 +41,43 @@ class EventStore: ObservableObject {
     }
     
     /// Register middleware to be run before the reducers
-    /// - Parameter middleware: The middleware to register
-    func register(middleware: @escaping Middleware<AppState>) {
-        self.middleware.append(middleware)
+    /// - Parameters:
+    ///   - middleware: The middleware function to register
+    ///   - name: A unique name for the middleware for logging and management
+    func register(middleware: @escaping Middleware<AppState>, name: String) {
+        self.middleware[name] = middleware
+        print("📄 Registered middleware: \(name)")
     }
     
     /// Set up the default middleware for logging and persistence
     private func setupDefaultMiddleware() {
         // Register the logging middleware
-        register { state, action in
+        register(middleware: { state, action in
             print("📄 Action: \(action.description)")
-        }
+        }, name: "LoggingMiddleware")
+    }
+    
+    /// Add the save middleware with a reference to a DataManager
+    /// - Parameter dataManager: The DataManager to use for persistence
+    func registerSaveMiddleware(dataManager: DataManager) {
+        let saveMiddleware = SaveMiddleware(dataManager: dataManager)
+        self.saveMiddleware = saveMiddleware
+        
+        register(middleware: { state, action in
+            saveMiddleware.middleware(state: state, action: action)
+        }, name: "SaveMiddleware")
+    }
+    
+    /// Force an immediate save of the current state
+    func forceSave() {
+        saveMiddleware?.forceSave(state: state)
     }
     
     /// Dispatch an action to the store
     /// - Parameter action: The action to dispatch
     func dispatch(_ action: Action) {
         // Run middleware before state changes
-        for mw in middleware {
+        for (_, mw) in middleware {
             mw(state, action)
         }
         
@@ -61,6 +86,67 @@ class EventStore: ObservableObject {
         
         // Update the published state with the new state
         self.state = newState
+        
+        // Publish an event for the action if needed
+        publishEventForAction(action)
+    }
+    
+    /// Publish appropriate events for certain actions
+    /// - Parameter action: The action that was dispatched
+    private func publishEventForAction(_ action: Action) {
+        switch action {
+        case let pageAction as PageAction:
+            switch pageAction {
+            case .selectPage(let pageIndex, _):
+                eventBus.publish(PageEvents.PageSelected(pageIndex: pageIndex))
+                
+            case .addPage(let page, _, _):
+                eventBus.publish(PageEvents.PageAdded(pageId: page.id))
+                
+            case .reorderPages(let fromIndex, let toIndex, _, _):
+                eventBus.publish(PageEvents.PageReordering(fromIndex: fromIndex, toIndex: toIndex))
+                
+            default:
+                break
+            }
+            
+        case let templateAction as TemplateAction:
+            switch templateAction {
+            case .setPageTemplate(let template, _, _, _), .setNoteTemplate(let template, _, _):
+                eventBus.publish(TemplateEvents.TemplateChanged(template: template))
+                
+            case .setDefaultTemplate(let template):
+                eventBus.publish(TemplateEvents.TemplateChanged(template: template))
+                
+            case .addUserTemplate, .removeUserTemplate, .addRecentTemplate:
+                // These actions don't need to publish events
+                break
+            }
+            
+        case let navigationAction as NavigationAction:
+            switch navigationAction {
+            case .updateSubjectSidebarVisibility(let isVisible):
+                eventBus.publish(UIEvents.SidebarVisibilityChanged(isVisible: isVisible))
+                
+            default:
+                break
+            }
+            
+        case let settingsAction as SettingsAction:
+            switch settingsAction {
+            case .updateDebugModeSetting(let isEnabled):
+                eventBus.publish(SystemEvents.DebugModeChanged(isEnabled: isEnabled))
+                
+            case .updateAutoScrollSetting(let isEnabled):
+                eventBus.publish(SystemEvents.AutoScrollSettingChanged(isEnabled: isEnabled))
+                
+            default:
+                break
+            }
+            
+        default:
+            break
+        }
     }
     
     /// Apply the reducer to the current state and action to produce a new state
@@ -92,6 +178,15 @@ class EventStore: ObservableObject {
         case let action as SettingsAction:
             newState.settingsState = settingsReducer(state: state.settingsState, action: action)
             newState.uiState = settingsUIReducer(state: state.uiState, action: action)
+            
+        case let action as DrawingToolAction:
+            newState.uiState.drawingToolState = drawingToolReducer(state: state.uiState.drawingToolState, action: action)
+            
+        case let action as ExportAction:
+            newState.uiState.exportState = exportReducer(state: state.uiState.exportState, action: action)
+            
+        case let action as SystemAction:
+            newState.metaState = systemReducer(state: state.metaState, action: action)
             
         default:
             // Unknown action type, return unchanged state
@@ -172,6 +267,37 @@ class EventStore: ObservableObject {
                 newState.selection.selectedPageID = nil
                 newState.selection.selectedPageIndex = 0
             }
+            
+        case .reorderSubjects(let fromIndex, let toIndex):
+            // Make sure indices are valid
+            if fromIndex != toIndex &&
+               fromIndex >= 0 && fromIndex < newState.subjects.count &&
+               toIndex >= 0 && toIndex < newState.subjects.count {
+                
+                // Remember the subject being moved
+                let subject = newState.subjects[fromIndex]
+                
+                // Remove it from the old position
+                newState.subjects.remove(at: fromIndex)
+                
+                // Insert it at the new position
+                newState.subjects.insert(subject, at: toIndex)
+                
+                // Update the selected subject index if needed
+                if let selectedIndex = newState.selection.selectedSubjectIndex {
+                    if selectedIndex == fromIndex {
+                        newState.selection.selectedSubjectIndex = toIndex
+                    } else if selectedIndex > fromIndex && selectedIndex <= toIndex {
+                        newState.selection.selectedSubjectIndex = selectedIndex - 1
+                    } else if selectedIndex < fromIndex && selectedIndex >= toIndex {
+                        newState.selection.selectedSubjectIndex = selectedIndex + 1
+                    }
+                }
+            }
+            
+        case .importSubject(let subject):
+            // Add the imported subject to the list
+            newState.subjects.append(subject)
         }
         
         return newState
@@ -254,6 +380,107 @@ class EventStore: ObservableObject {
                 newState.selection.selectedNoteIndex = nil
                 newState.selection.selectedPageID = nil
                 newState.selection.selectedPageIndex = 0
+            }
+            
+        case .reorderNotes(let fromIndex, let toIndex, let subjectID):
+            // Find the subject and reorder the notes
+            if let subjectIndex = newState.subjects.firstIndex(where: { $0.id == subjectID }) {
+                if fromIndex != toIndex &&
+                   fromIndex >= 0 && fromIndex < newState.subjects[subjectIndex].notes.count &&
+                   toIndex >= 0 && toIndex < newState.subjects[subjectIndex].notes.count {
+                    
+                    // Remember the note being moved
+                    let note = newState.subjects[subjectIndex].notes[fromIndex]
+                    
+                    // Remove it from the old position
+                    newState.subjects[subjectIndex].notes.remove(at: fromIndex)
+                    
+                    // Insert it at the new position
+                    newState.subjects[subjectIndex].notes.insert(note, at: toIndex)
+                    
+                    // Update the selected note index if needed
+                    if newState.selection.selectedSubjectID == subjectID,
+                       let selectedNoteIndex = newState.selection.selectedNoteIndex {
+                        if selectedNoteIndex == fromIndex {
+                            newState.selection.selectedNoteIndex = toIndex
+                        } else if selectedNoteIndex > fromIndex && selectedNoteIndex <= toIndex {
+                            newState.selection.selectedNoteIndex = selectedNoteIndex - 1
+                        } else if selectedNoteIndex < fromIndex && selectedNoteIndex >= toIndex {
+                            newState.selection.selectedNoteIndex = selectedNoteIndex + 1
+                        }
+                    }
+                    
+                    newState.subjects[subjectIndex].touch()
+                }
+            }
+            
+        case .moveNote(let noteID, let fromSubjectID, let toSubjectID):
+            // Find the source and destination subjects
+            if let fromSubjectIndex = newState.subjects.firstIndex(where: { $0.id == fromSubjectID }),
+               let toSubjectIndex = newState.subjects.firstIndex(where: { $0.id == toSubjectID }),
+               let noteIndex = newState.subjects[fromSubjectIndex].notes.firstIndex(where: { $0.id == noteID }) {
+                
+                // Get the note to move
+                let note = newState.subjects[fromSubjectIndex].notes[noteIndex]
+                
+                // Remove from source subject
+                newState.subjects[fromSubjectIndex].notes.remove(at: noteIndex)
+                newState.subjects[fromSubjectIndex].touch()
+                
+                // Add to destination subject
+                newState.subjects[toSubjectIndex].notes.append(note)
+                newState.subjects[toSubjectIndex].touch()
+                
+                // Update selection if needed
+                if newState.selection.selectedNoteID == noteID {
+                    // Update subject selection
+                    newState.selection.selectedSubjectID = toSubjectID
+                    newState.selection.selectedSubjectIndex = toSubjectIndex
+                    
+                    // Update note selection
+                    newState.selection.selectedNoteIndex = newState.subjects[toSubjectIndex].notes.count - 1
+                }
+            }
+            
+        case .duplicateNote(let noteID, let subjectID):
+            // Find the subject and note
+            if let subjectIndex = newState.subjects.firstIndex(where: { $0.id == subjectID }),
+               let noteIndex = newState.subjects[subjectIndex].notes.firstIndex(where: { $0.id == noteID }) {
+                
+                // Get the original note
+                let originalNote = newState.subjects[subjectIndex].notes[noteIndex]
+                
+                // Create a new note with a fresh UUID
+                let noteCopy = Note(
+                    id: UUID(),  // New UUID for the copy
+                    title: originalNote.title + " (Copy)",
+                    drawingData: originalNote.drawingData,
+                    dateCreated: Date(),
+                    lastModified: Date(),
+                    pages: [],
+                    noteTemplate: originalNote.noteTemplate
+                )
+                
+                // Create new pages with new IDs
+                var newPages: [Page] = []
+                for page in originalNote.pages {
+                    let newPage = Page(
+                        id: UUID(),  // New UUID for each page
+                        drawingData: page.drawingData,
+                        template: page.template,
+                        pageNumber: page.pageNumber,
+                        isBookmarked: page.isBookmarked
+                    )
+                    newPages.append(newPage)
+                }
+                
+                // Add pages to the copy
+                var noteWithPages = noteCopy
+                noteWithPages.pages = newPages
+                
+                // Add the copy to the subject
+                newState.subjects[subjectIndex].notes.append(noteWithPages)
+                newState.subjects[subjectIndex].touch()
             }
         }
         
@@ -389,6 +616,72 @@ class EventStore: ObservableObject {
                     }
                 }
             }
+            
+        case .updateDrawingData(let pageID, let drawingData, let noteID, let subjectID):
+            // Find the subject, note, and page, then update its drawing data
+            if let subjectIndex = newState.subjects.firstIndex(where: { $0.id == subjectID }) {
+                if let noteIndex = newState.subjects[subjectIndex].notes.firstIndex(where: { $0.id == noteID }) {
+                    if let pageIndex = newState.subjects[subjectIndex].notes[noteIndex].pages.firstIndex(where: { $0.id == pageID }) {
+                        newState.subjects[subjectIndex].notes[noteIndex].pages[pageIndex].drawingData = drawingData
+                        newState.subjects[subjectIndex].notes[noteIndex].lastModified = Date()
+                        newState.subjects[subjectIndex].touch()
+                    }
+                }
+            }
+            
+        case .duplicatePage(let pageID, let noteID, let subjectID):
+            // Find the subject, note, and page
+            if let subjectIndex = newState.subjects.firstIndex(where: { $0.id == subjectID }) {
+                if let noteIndex = newState.subjects[subjectIndex].notes.firstIndex(where: { $0.id == noteID }) {
+                    if let pageIndex = newState.subjects[subjectIndex].notes[noteIndex].pages.firstIndex(where: { $0.id == pageID }) {
+                        // Get the original page
+                        let originalPage = newState.subjects[subjectIndex].notes[noteIndex].pages[pageIndex]
+                        
+                        // Create a new page with a fresh UUID
+                        let pageCopy = Page(
+                            id: UUID(),  // New UUID for the copy
+                            drawingData: originalPage.drawingData,
+                            template: originalPage.template,
+                            pageNumber: originalPage.pageNumber,
+                            isBookmarked: originalPage.isBookmarked
+                        )
+                        
+                        // Insert the copy after the original
+                        newState.subjects[subjectIndex].notes[noteIndex].pages.insert(pageCopy, at: pageIndex + 1)
+                        
+                        // Update page numbers
+                        for (index, _) in newState.subjects[subjectIndex].notes[noteIndex].pages.enumerated() {
+                            newState.subjects[subjectIndex].notes[noteIndex].pages[index].pageNumber = index + 1
+                        }
+                        
+                        newState.subjects[subjectIndex].notes[noteIndex].lastModified = Date()
+                        newState.subjects[subjectIndex].touch()
+                    }
+                }
+            }
+            
+        case .clearPage(let pageID, let noteID, let subjectID):
+            // Find the subject, note, and page, then clear its content
+            if let subjectIndex = newState.subjects.firstIndex(where: { $0.id == subjectID }) {
+                if let noteIndex = newState.subjects[subjectIndex].notes.firstIndex(where: { $0.id == noteID }) {
+                    if let pageIndex = newState.subjects[subjectIndex].notes[noteIndex].pages.firstIndex(where: { $0.id == pageID }) {
+                        // Clear the drawing data but keep the template
+                        let template = newState.subjects[subjectIndex].notes[noteIndex].pages[pageIndex].template
+                        let pageNumber = newState.subjects[subjectIndex].notes[noteIndex].pages[pageIndex].pageNumber
+                        
+                        let emptyPage = Page(
+                            id: pageID,
+                            drawingData: Data(),
+                            template: template,
+                            pageNumber: pageNumber
+                        )
+                        
+                        newState.subjects[subjectIndex].notes[noteIndex].pages[pageIndex] = emptyPage
+                        newState.subjects[subjectIndex].notes[noteIndex].lastModified = Date()
+                        newState.subjects[subjectIndex].touch()
+                    }
+                }
+            }
         }
         
         return newState
@@ -428,6 +721,27 @@ class EventStore: ObservableObject {
         case .setDefaultTemplate(let template):
             // Set the default template for new notes
             newState.settingsState.defaultTemplate = template
+            
+        case .addUserTemplate(let template, let name):
+            // Add the template to the user templates collection
+            newState.contentState.templates.userTemplates[name] = template
+            
+        case .removeUserTemplate(let name):
+            // Remove the template from the user templates collection
+            newState.contentState.templates.userTemplates.removeValue(forKey: name)
+            
+        case .addRecentTemplate(let template):
+            // Add the template to the recent templates list
+            // Remove it first if it already exists to avoid duplicates
+            newState.contentState.templates.recentTemplates.removeAll(where: { $0 == template })
+            
+            // Add it to the beginning of the list
+            newState.contentState.templates.recentTemplates.insert(template, at: 0)
+            
+            // Limit the list to the last 10 templates
+            if newState.contentState.templates.recentTemplates.count > 10 {
+                newState.contentState.templates.recentTemplates.removeLast()
+            }
         }
         
         return newState
@@ -456,6 +770,10 @@ class EventStore: ObservableObject {
             
         case .updatePageSelectionActive(let isActive):
             newState.isPageSelectionActive = isActive
+            
+        case .openSettings, .closeSettings:
+            // These actions are handled by the app's navigation system
+            break
         }
         
         return newState
@@ -483,6 +801,31 @@ class EventStore: ObservableObject {
         case .updateSearchText:
             // This doesn't affect settings state, only UI state
             break
+            
+        case .setDefaultTemplate(let template):
+            newState.defaultTemplate = template
+            
+        case .setDefaultViewMode(let viewMode):
+            newState.defaultViewMode = viewMode
+            
+        case .setDefaultSortOption(let sortOption):
+            newState.defaultSortOption = sortOption
+            
+        case .setDefaultSortOrder(let sortOrder):
+            newState.defaultSortOrder = sortOrder
+            
+        case .setShowPageThumbnails(let isVisible):
+            newState.showPageThumbnails = isVisible
+            
+        case .setAutoSaveInterval(let intervalSeconds):
+            newState.autoSaveIntervalSeconds = intervalSeconds
+            
+        case .setShowTemplateGridLines(let isVisible):
+            newState.showTemplateGridLines = isVisible
+            
+        case .resetToDefaults:
+            // Reset all settings to their default values
+            newState = SettingsState()
         }
         
         return newState
@@ -510,6 +853,108 @@ class EventStore: ObservableObject {
         
         return newState
     }
+    
+    /// Reducer for drawing tool actions
+    /// - Parameters:
+    ///   - state: The current drawing tool state
+    ///   - action: The drawing tool action to apply
+    /// - Returns: The new drawing tool state
+    private func drawingToolReducer(state: DrawingToolState, action: DrawingToolAction) -> DrawingToolState {
+        var newState = state
+        
+        switch action {
+        case .selectTool(let tool):
+            newState.selectedTool = tool
+            // If selecting a drawing tool, disable eraser mode
+            if case .eraser = tool.type {} else {
+                newState.isEraserActive = false
+            }
+            
+        case .selectColor(let color):
+            newState.selectedColor = color
+            
+        case .setLineWidth(let width):
+            newState.lineWidth = width
+            
+        case .toggleEraser(let isActive):
+            newState.isEraserActive = isActive
+            if isActive {
+                // Store the current tool so we can switch back
+                // When eraser is active, tool remains the same but we use eraser behavior
+            }
+            
+        case .toggleToolPalette(let isExpanded):
+            newState.isToolPaletteExpanded = isExpanded
+        }
+        
+        return newState
+    }
+    
+    /// Reducer for export actions
+    /// - Parameters:
+    ///   - state: The current export state
+    ///   - action: The export action to apply
+    /// - Returns: The new export state
+    private func exportReducer(state: ExportState, action: ExportAction) -> ExportState {
+        var newState = state
+        
+        switch action {
+        case .setExportFormat(let format):
+            newState.exportFormat = format
+            
+        case .updateExportSettings(let includeSubjectName, let includeNoteTitle, let includeDate):
+            newState.includeSubjectName = includeSubjectName
+            newState.includeNoteTitle = includeNoteTitle
+            newState.includeDate = includeDate
+            
+        case .exportNote, .exportSubject:
+            // These actions don't change state, they trigger side effects
+            // which should be handled by middleware
+            break
+        }
+        
+        return newState
+    }
+    
+    /// Reducer for system actions
+    /// - Parameters:
+    ///   - state: The current meta state
+    ///   - action: The system action to apply
+    /// - Returns: The new meta state
+    private func systemReducer(state: MetaState, action: SystemAction) -> MetaState {
+        var newState = state
+        
+        switch action {
+        case .appWillEnterBackground:
+            newState.isInForeground = false
+            
+        case .appWillEnterForeground:
+            newState.isInForeground = true
+            
+        case .updateSyncStatus(let status):
+            newState.syncStatus = status
+            if case .notSyncing = status {
+                newState.lastSyncTime = Date()
+            }
+            
+        case .updateMemoryUsage(let bytes):
+            newState.performanceMetrics.memoryUsageBytes = bytes
+            
+        case .updatePerformanceMetrics(let metrics):
+            newState.performanceMetrics = metrics
+            
+        case .recordError(let message, let isCritical):
+            newState.errorState.errorCount += 1
+            newState.errorState.latestErrorMessage = message
+            newState.errorState.latestErrorTime = Date()
+            newState.errorState.hasCriticalError = isCritical
+            
+        case .clearCriticalError:
+            newState.errorState.hasCriticalError = false
+        }
+        
+        return newState
+    }
 }
 
 // MARK: - Convenience Methods
@@ -527,8 +972,32 @@ extension EventStore {
             newState.contentState.selection.selectedSubjectIndex = 0
         }
         
+        // Load settings from UserDefaults
+        loadSettingsFromUserDefaults(newState: &newState)
+        
         // Update the store's state
         self.state = newState
+        
+        // Register the save middleware with the data manager
+        registerSaveMiddleware(dataManager: dataManager)
+    }
+    
+    /// Load saved settings from UserDefaults
+    private func loadSettingsFromUserDefaults(newState: inout AppState) {
+        let defaults = UserDefaults.standard
+        
+        // Load finger drawing setting
+        if defaults.object(forKey: "disableFingerDrawing") != nil {
+            newState.settingsState.disableFingerDrawing = defaults.bool(forKey: "disableFingerDrawing")
+        }
+        
+        // Load auto-scroll setting
+        if defaults.object(forKey: "autoScrollEnabled") != nil {
+            newState.settingsState.autoScrollEnabled = defaults.bool(forKey: "autoScrollEnabled")
+        }
+        
+        // Load default template setting (would need more complex logic to decode CanvasTemplate)
+        // ... add template loading logic here ...
     }
     
     /// Method to save data to DataManager

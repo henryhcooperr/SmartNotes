@@ -2,6 +2,9 @@
 //  Action.swift
 //  SmartNotes
 //
+//  DEPRECATED: This file has been replaced by use cases and repositories in the DDD architecture.
+//  Please use the appropriate use case classes in Core/Application/UseCases instead.
+//
 //  Created on 6/12/25.
 //
 //  This file defines the Action protocol and basic action types for the EventStore.
@@ -34,6 +37,12 @@ enum SubjectAction: Action {
     /// Set the selected subject
     case selectSubject(UUID?)
     
+    /// Reorder subjects
+    case reorderSubjects(fromIndex: Int, toIndex: Int)
+    
+    /// Import subject from external source
+    case importSubject(Subject)
+    
     /// A text description of the action
     var description: String {
         switch self {
@@ -45,6 +54,10 @@ enum SubjectAction: Action {
             return "Delete subject: \(id)"
         case .selectSubject(let id):
             return "Select subject: \(String(describing: id))"
+        case .reorderSubjects(let fromIndex, let toIndex):
+            return "Reorder subjects from index \(fromIndex) to \(toIndex)"
+        case .importSubject(let subject):
+            return "Import subject: \(subject.name)"
         }
     }
 }
@@ -65,6 +78,15 @@ enum NoteAction: Action {
     /// Set the selected note
     case selectNote(noteID: UUID?, subjectID: UUID?)
     
+    /// Reorder notes within a subject
+    case reorderNotes(fromIndex: Int, toIndex: Int, subjectID: UUID)
+    
+    /// Move a note to a different subject
+    case moveNote(noteID: UUID, fromSubjectID: UUID, toSubjectID: UUID)
+    
+    /// Duplicate a note
+    case duplicateNote(noteID: UUID, subjectID: UUID)
+    
     /// A text description of the action
     var description: String {
         switch self {
@@ -76,6 +98,12 @@ enum NoteAction: Action {
             return "Delete note: \(noteID) from subject: \(subjectID)"
         case .selectNote(let noteID, let subjectID):
             return "Select note: \(String(describing: noteID)) in subject: \(String(describing: subjectID))"
+        case .reorderNotes(let fromIndex, let toIndex, let subjectID):
+            return "Reorder notes from index \(fromIndex) to \(toIndex) in subject: \(subjectID)"
+        case .moveNote(let noteID, let fromSubjectID, let toSubjectID):
+            return "Move note: \(noteID) from subject: \(fromSubjectID) to subject: \(toSubjectID)"
+        case .duplicateNote(let noteID, let subjectID):
+            return "Duplicate note: \(noteID) in subject: \(subjectID)"
         }
     }
 }
@@ -99,6 +127,15 @@ enum PageAction: Action {
     /// Set the selected page
     case selectPage(pageIndex: Int, pageID: UUID?)
     
+    /// Update the drawing data for a page
+    case updateDrawingData(pageID: UUID, drawingData: Data, noteID: UUID, subjectID: UUID)
+    
+    /// Duplicate a page
+    case duplicatePage(pageID: UUID, noteID: UUID, subjectID: UUID)
+    
+    /// Clear a page's content
+    case clearPage(pageID: UUID, noteID: UUID, subjectID: UUID)
+    
     /// A text description of the action
     var description: String {
         switch self {
@@ -112,6 +149,12 @@ enum PageAction: Action {
             return "Reorder pages from index \(fromIndex) to \(toIndex) in note: \(noteID) in subject: \(subjectID)"
         case .selectPage(let pageIndex, let pageID):
             return "Select page at index: \(pageIndex) with ID: \(String(describing: pageID))"
+        case .updateDrawingData(let pageID, _, let noteID, let subjectID):
+            return "Update drawing data for page: \(pageID) in note: \(noteID) in subject: \(subjectID)"
+        case .duplicatePage(let pageID, let noteID, let subjectID):
+            return "Duplicate page: \(pageID) in note: \(noteID) in subject: \(subjectID)"
+        case .clearPage(let pageID, let noteID, let subjectID):
+            return "Clear page: \(pageID) in note: \(noteID) in subject: \(subjectID)"
         }
     }
 }
@@ -129,6 +172,15 @@ enum TemplateAction: Action {
     /// Set the default template for new notes
     case setDefaultTemplate(template: CanvasTemplate)
     
+    /// Add a custom template
+    case addUserTemplate(template: CanvasTemplate, name: String)
+    
+    /// Remove a custom template
+    case removeUserTemplate(name: String)
+    
+    /// Add a template to recent templates
+    case addRecentTemplate(template: CanvasTemplate)
+    
     /// A text description of the action
     var description: String {
         switch self {
@@ -138,6 +190,12 @@ enum TemplateAction: Action {
             return "Set page template to: \(template.type.rawValue) for page: \(pageID) in note: \(noteID) in subject: \(subjectID)"
         case .setDefaultTemplate(let template):
             return "Set default template to: \(template.type.rawValue)"
+        case .addUserTemplate(let template, let name):
+            return "Add user template: \(name) with type: \(template.type.rawValue)"
+        case .removeUserTemplate(let name):
+            return "Remove user template: \(name)"
+        case .addRecentTemplate(let template):
+            return "Add recent template: \(template.type.rawValue)"
         }
     }
 }
@@ -161,6 +219,12 @@ enum NavigationAction: Action {
     /// Update page selection active state
     case updatePageSelectionActive(isActive: Bool)
     
+    /// Open the settings screen
+    case openSettings
+    
+    /// Close the settings screen
+    case closeSettings
+    
     /// A text description of the action
     var description: String {
         switch self {
@@ -174,6 +238,10 @@ enum NavigationAction: Action {
             return "Update subject sidebar visibility to: \(isVisible)"
         case .updatePageSelectionActive(let isActive):
             return "Update page selection active to: \(isActive)"
+        case .openSettings:
+            return "Open settings screen"
+        case .closeSettings:
+            return "Close settings screen"
         }
     }
 }
@@ -194,6 +262,30 @@ enum SettingsAction: Action {
     /// Update search text
     case updateSearchText(text: String)
     
+    /// Update default template
+    case setDefaultTemplate(template: CanvasTemplate)
+    
+    /// Update default view mode
+    case setDefaultViewMode(viewMode: Subject.ViewMode)
+    
+    /// Update default sort option
+    case setDefaultSortOption(sortOption: Subject.SortOption)
+    
+    /// Update default sort order
+    case setDefaultSortOrder(sortOrder: Subject.SortOrder)
+    
+    /// Update page thumbnails visibility
+    case setShowPageThumbnails(isVisible: Bool)
+    
+    /// Update auto-save interval
+    case setAutoSaveInterval(intervalSeconds: TimeInterval)
+    
+    /// Update template grid lines visibility
+    case setShowTemplateGridLines(isVisible: Bool)
+    
+    /// Reset all settings to defaults
+    case resetToDefaults
+    
     /// A text description of the action
     var description: String {
         switch self {
@@ -205,6 +297,142 @@ enum SettingsAction: Action {
             return "Update debug mode setting to enabled: \(isEnabled)"
         case .updateSearchText(let text):
             return "Update search text to: \(text)"
+        case .setDefaultTemplate(let template):
+            return "Set default template to: \(template.type.rawValue)"
+        case .setDefaultViewMode(let viewMode):
+            return "Set default view mode to: \(viewMode)"
+        case .setDefaultSortOption(let sortOption):
+            return "Set default sort option to: \(sortOption)"
+        case .setDefaultSortOrder(let sortOrder):
+            return "Set default sort order to: \(sortOrder)"
+        case .setShowPageThumbnails(let isVisible):
+            return "Set show page thumbnails to: \(isVisible)"
+        case .setAutoSaveInterval(let intervalSeconds):
+            return "Set auto-save interval to: \(intervalSeconds) seconds"
+        case .setShowTemplateGridLines(let isVisible):
+            return "Set show template grid lines to: \(isVisible)"
+        case .resetToDefaults:
+            return "Reset all settings to defaults"
+        }
+    }
+}
+
+// MARK: - Drawing Tool Actions
+
+/// Actions related to drawing tools
+enum DrawingToolAction: Action {
+    /// Change the selected drawing tool
+    case selectTool(tool: DrawingTool)
+    
+    /// Change the selected color
+    case selectColor(color: Color)
+    
+    /// Change the line width
+    case setLineWidth(width: CGFloat)
+    
+    /// Toggle the eraser
+    case toggleEraser(isActive: Bool)
+    
+    /// Toggle the tool palette expanded state
+    case toggleToolPalette(isExpanded: Bool)
+    
+    /// A text description of the action
+    var description: String {
+        switch self {
+        case .selectTool(let tool):
+            return "Select drawing tool: \(tool.type.rawValue)"
+        case .selectColor(let color):
+            return "Select color: \(color)"
+        case .setLineWidth(let width):
+            return "Set line width to: \(width)"
+        case .toggleEraser(let isActive):
+            return "Toggle eraser to: \(isActive)"
+        case .toggleToolPalette(let isExpanded):
+            return "Toggle tool palette expanded to: \(isExpanded)"
+        }
+    }
+}
+
+// MARK: - Export Actions
+
+/// Actions related to export
+enum ExportAction: Action {
+    /// Set export format
+    case setExportFormat(format: ExportFormat)
+    
+    /// Update export settings
+    case updateExportSettings(includeSubjectName: Bool, includeNoteTitle: Bool, includeDate: Bool)
+    
+    /// Initiate export for a note
+    case exportNote(noteID: UUID, subjectID: UUID)
+    
+    /// Initiate export for all notes in a subject
+    case exportSubject(subjectID: UUID)
+    
+    /// A text description of the action
+    var description: String {
+        switch self {
+        case .setExportFormat(let format):
+            return "Set export format to: \(format.rawValue)"
+        case .updateExportSettings(let includeSubjectName, let includeNoteTitle, let includeDate):
+            return "Update export settings: includeSubjectName=\(includeSubjectName), includeNoteTitle=\(includeNoteTitle), includeDate=\(includeDate)"
+        case .exportNote(let noteID, let subjectID):
+            return "Export note: \(noteID) in subject: \(subjectID)"
+        case .exportSubject(let subjectID):
+            return "Export all notes in subject: \(subjectID)"
+        }
+    }
+}
+
+// MARK: - System Actions
+
+/// Actions related to system operations
+enum SystemAction: Action {
+    /// Update application state when going to background
+    case appWillEnterBackground
+    
+    /// Update application state when returning to foreground
+    case appWillEnterForeground
+    
+    /// Update sync status
+    case updateSyncStatus(status: SyncStatus)
+    
+    /// Update memory usage information
+    case updateMemoryUsage(bytes: UInt64)
+    
+    /// Update performance metrics
+    case updatePerformanceMetrics(metrics: PerformanceMetrics)
+    
+    /// Record an error
+    case recordError(message: String, isCritical: Bool)
+    
+    /// Acknowledge and clear critical error
+    case clearCriticalError
+    
+    /// A text description of the action
+    var description: String {
+        switch self {
+        case .appWillEnterBackground:
+            return "App will enter background"
+        case .appWillEnterForeground:
+            return "App will enter foreground"
+        case .updateSyncStatus(let status):
+            switch status {
+            case .notSyncing:
+                return "Update sync status to: not syncing"
+            case .syncing:
+                return "Update sync status to: syncing"
+            case .error(let message):
+                return "Update sync status to error: \(message)"
+            }
+        case .updateMemoryUsage(let bytes):
+            return "Update memory usage to: \(bytes) bytes"
+        case .updatePerformanceMetrics:
+            return "Update performance metrics"
+        case .recordError(let message, let isCritical):
+            return "Record error: \(message), critical: \(isCritical)"
+        case .clearCriticalError:
+            return "Clear critical error"
         }
     }
 } 

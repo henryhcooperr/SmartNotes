@@ -3,6 +3,7 @@
 //  SmartNotes
 //
 //  Created on 2/25/25.
+//  Updated to integrate with EventStore architecture
 //
 //  This file handles rendering templates onto the canvas background.
 //  Key responsibilities:
@@ -11,6 +12,7 @@
 //    - Applying templates to PKCanvasView using layers
 //    - Handling multiple rendering approaches for compatibility
 //    - Debugging template application issues
+//    - Publishing template events to EventBus
 //
 //  This is a utility class used by TemplateCanvasView to apply
 //  templates to the drawing surface.
@@ -19,11 +21,28 @@
 import UIKit
 import SwiftUI
 import PencilKit
+import Combine
+
+/// Events related to template rendering
+struct TemplateRenderedEvent: Event {
+    static var description: String = "Template was rendered and applied to canvas"
+    let template: CanvasTemplate
+    let canvasSize: CGSize
+}
+
+struct TemplateCacheClearedEvent: Event {
+    static var description: String = "Template cache was cleared"
+}
 
 class TemplateRenderer {
+    // The event bus for publishing events
+    private static let eventBus = EventBus.shared
     
     // Legacy cache for template images to avoid redrawing - to be phased out
     private static var legacyTemplateImageCache: [String: UIImage] = [:]
+    
+    // Store cancellables for event subscriptions
+    private static var cancellables = Set<AnyCancellable>()
     
     // Generate a cache key based on template properties
     private static func cacheKeyFor(
@@ -40,6 +59,49 @@ class TemplateRenderer {
         legacyTemplateImageCache.removeAll()
         ResourceManager.shared.removeAllResources(ofType: .template)
         print("🖌️ Template cache cleared")
+        
+        // Publish an event that the cache was cleared
+        eventBus.publish(TemplateCacheClearedEvent())
+    }
+    
+    /// Setup event listeners for EventStore integration
+    static func setupEventListeners(eventStore: EventStore) {
+        // Listen for template changes from EventStore
+        eventStore.events
+            .compactMap { $0 as? TemplateAction }
+            .sink { action in
+                switch action {
+                case .setNoteTemplate(let template, _, _),
+                     .setPageTemplate(let template, _, _, _),
+                     .setDefaultTemplate(let template),
+                     .addUserTemplate(let template, _):
+                    // Clear template cache when template changes
+                    clearTemplateCache()
+                    
+                    // Relay to existing template events system
+                    eventBus.publish(TemplateEvents.TemplateChanged(template: template))
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for system memory warnings to clear caches
+        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
+            .sink { _ in
+                print("📝 Memory warning received - clearing template caches")
+                clearTemplateCache()
+            }
+            .store(in: &cancellables)
+        
+        // Listen for template refresh requests from the existing notification system
+        [TemplateEvents.RefreshTemplate.self, TemplateEvents.ForceTemplateRefresh.self].forEach { eventType in
+            eventBus.subscribe(eventType) { _ in
+                // Clear the cache on refresh requests
+                clearTemplateCache()
+            }
+            .store(in: &cancellables)
+        }
     }
     
     /// Calculate safe drawing size
@@ -106,6 +168,13 @@ class TemplateRenderer {
         if template.type == .none {
             canvasView.backgroundColor = .white
             print("🖌️ Template type is .none, setting white background only")
+            
+            // Publish event about template being rendered
+            eventBus.publish(TemplateRenderedEvent(
+                template: template,
+                canvasSize: canvasView.frame.size
+            ))
+            
             return
         }
         
@@ -209,6 +278,12 @@ class TemplateRenderer {
             width: safeSize.width,
             height: safeSize.height
         )
+        
+        // Publish event about template being rendered
+        eventBus.publish(TemplateRenderedEvent(
+            template: template,
+            canvasSize: canvasView.frame.size
+        ))
         
         // After applying, debug the state
         if GlobalSettings.debugModeEnabled {

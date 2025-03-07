@@ -3,6 +3,7 @@
 //  SmartNotes
 //
 //  Created on 5/15/25
+//  Updated to integrate with EventStore architecture
 //
 //  This file centralizes all canvas-related operations throughout the app.
 //  Key responsibilities:
@@ -11,6 +12,7 @@
 //    - Optimizing canvas performance based on interaction state
 //    - Applying templates consistently across canvases
 //    - Providing utilities for drawing state operations (undo/redo)
+//    - Publishing canvas events to EventBus
 //
 
 import Foundation
@@ -18,6 +20,32 @@ import UIKit
 import PencilKit
 import SwiftUI
 import ObjectiveC
+import Combine
+
+/// Canvas-related events
+struct CanvasRegisteredEvent: Event {
+    static var description: String = "Canvas was registered with CanvasManager"
+    let canvasID: UUID
+}
+
+struct CanvasUnregisteredEvent: Event {
+    static var description: String = "Canvas was unregistered from CanvasManager"
+    let canvasID: UUID
+}
+
+struct CanvasToolChangedEvent: Event {
+    static var description: String = "Canvas tool was changed"
+    let tool: PKInkingTool.InkType
+    let color: UIColor
+    let width: CGFloat
+}
+
+struct CanvasDrawingUpdatedEvent: Event {
+    static var description: String = "Canvas drawing was updated"
+    let canvasID: UUID
+    let pageID: UUID?
+    let drawingData: Data
+}
 
 /// Central manager for all canvas-related operations
 class CanvasManager {
@@ -28,6 +56,12 @@ class CanvasManager {
     
     // Subscription manager for event handling
     private var subscriptionManager = SubscriptionManager()
+    
+    // Store cancellables for event subscriptions
+    private var cancellables = Set<AnyCancellable>()
+    
+    // EventStore reference
+    private weak var eventStore: EventStore?
     
     // Private initialization prevents multiple instances
     private init() {
@@ -45,6 +79,106 @@ class CanvasManager {
     deinit {
         // Clean up all subscriptions
         subscriptionManager.clearAll()
+        cancellables.removeAll()
+    }
+    
+    // Configure the manager with EventStore
+    func configure(with eventStore: EventStore) {
+        self.eventStore = eventStore
+        setupEventListeners()
+    }
+    
+    // Setup event listeners for EventStore integration
+    private func setupEventListeners() {
+        guard let eventStore = eventStore else {
+            print("⚠️ CanvasManager: EventStore not available for setting up listeners")
+            return
+        }
+        
+        // Listen for drawing tool actions
+        eventStore.events
+            .compactMap { $0 as? DrawingToolAction }
+            .sink { [weak self] action in
+                guard let self = self else { return }
+                
+                switch action {
+                case .selectTool(let tool):
+                    if let inkType = self.convertToolType(tool.type) {
+                        self.setTool(inkType, color: UIColor(tool.color), width: tool.lineWidth)
+                    }
+                case .selectColor(let color):
+                    self.setTool(self.currentTool, color: UIColor(color), width: self.currentLineWidth)
+                case .setLineWidth(let width):
+                    self.setTool(self.currentTool, color: self.currentColor, width: width)
+                case .toggleEraser(let isActive):
+                    if isActive {
+                        // Use eraser
+                        self.useEraser()
+                    } else {
+                        // Revert to previous tool
+                        self.revertFromEraser()
+                    }
+                case .toggleToolPalette:
+                    // No direct action needed here
+                    break
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for page drawing updates
+        // This allows updating canvases when drawing changes are made elsewhere
+        subscriptionManager.subscribe(DrawingEvents.PageDrawingChanged.self) { [weak self] event in
+            guard let self = self, let pageID = event.pageId else { return }
+            
+            // Update canvas if we're tracking one with this ID
+            if let canvas = self.getCanvas(withID: pageID),
+               let drawingData = event.drawingData {
+                // Apply the drawing data to the canvas
+                canvas.drawing = PKDrawing.fromData(drawingData)
+            }
+        }
+        
+        // Listen for system memory warnings
+        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
+            .sink { [weak self] _ in
+                print("📝 Memory warning received - optimizing all canvases")
+                self?.optimizeAllCanvases()
+            }
+            .store(in: &cancellables)
+        
+        // Listen for template change events
+        subscriptionManager.subscribe(TemplateEvents.TemplateChanged.self) { [weak self] event in
+            // Only handle non-note-specific template changes
+            if let canvases = self?.activeCanvases {
+                for (_, reference) in canvases {
+                    if let canvas = reference.canvas {
+                        // Apply template to canvas at standard page size
+                        TemplateRenderer.applyTemplateToCanvas(
+                            canvas,
+                            template: event.template,
+                            pageSize: GlobalSettings.standardPageSize,
+                            numberOfPages: 1,
+                            pageSpacing: 0
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    // Helper method to convert tool types
+    private func convertToolType(_ type: CanvasToolType) -> PKInkingTool.InkType? {
+        switch type {
+        case .pen:
+            return .pen
+        case .marker:
+            return .marker
+        case .pencil:
+            return .pencil
+        case .eraser:
+            // Special handling for eraser
+            return nil
+        }
     }
     
     // MARK: - Canvas Tracking
@@ -88,12 +222,77 @@ class CanvasManager {
         // Immediately apply the current tool to the newly registered canvas
         applyCurrentTool(to: canvas)
         
+        // Set up drawing changed handler
+        setupDrawingChangedHandler(for: canvas, withID: id)
+        
+        // Publish canvas registered event
+        EventBus.shared.publish(CanvasRegisteredEvent(canvasID: id))
+        
         print("🖋️ CanvasManager: Registered canvas with ID \(id.uuidString.prefix(8))")
+    }
+    
+    /// Setup handler for drawing changes
+    private func setupDrawingChangedHandler(for canvas: PKCanvasView, withID id: UUID) {
+        // Add drawing changed handler to dispatch changes to EventStore
+        canvas.drawingGestureRecognizer.addTarget(self, action: #selector(handleDrawingChanged(_:)))
+    }
+    
+    /// Handle drawing changes
+    @objc private func handleDrawingChanged(_ gestureRecognizer: UIGestureRecognizer) {
+        guard let canvas = gestureRecognizer.view as? PKCanvasView,
+              let canvasID = getCanvasID(canvas) else {
+            return
+        }
+        
+        // Only process ended gestures to avoid excessive updates
+        if gestureRecognizer.state == .ended || gestureRecognizer.state == .cancelled {
+            // Get drawing data
+            guard let drawingData = canvas.getDrawingData() else { return }
+            
+            // Publish event with updated drawing
+            EventBus.shared.publish(CanvasDrawingUpdatedEvent(
+                canvasID: canvasID,
+                pageID: canvasID, // For many cases, canvasID = pageID
+                drawingData: drawingData
+            ))
+            
+            // Also dispatch drawing data to EventStore if we have a pageID
+            if let eventStore = eventStore,
+               let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+               let noteID = eventStore.state.contentState.selection.selectedNoteID {
+                // Dispatch the drawing data update
+                eventStore.dispatch(PageAction.updateDrawingData(
+                    pageID: canvasID,
+                    drawingData: drawingData,
+                    noteID: noteID,
+                    subjectID: subjectID
+                ))
+                
+                // Publish the specific event for this page
+                EventBus.shared.publish(DrawingEvents.PageDrawingChanged(
+                    pageId: canvasID,
+                    drawingData: drawingData
+                ))
+                
+                // Also publish drawing completed event
+                EventBus.shared.publish(DrawingEvents.DrawingDidComplete(pageId: canvasID))
+            }
+        } else if gestureRecognizer.state == .began {
+            // Publish drawing started event
+            EventBus.shared.publish(DrawingEvents.DrawingStarted(pageId: canvasID))
+        } else if gestureRecognizer.state == .changed {
+            // Publish live drawing update event
+            EventBus.shared.publish(DrawingEvents.LiveDrawingUpdate(pageId: canvasID))
+        }
     }
     
     /// Unregister a canvas when it's no longer needed
     func unregisterCanvas(withID id: UUID) {
         activeCanvases.removeValue(forKey: id)
+        
+        // Publish canvas unregistered event
+        EventBus.shared.publish(CanvasUnregisteredEvent(canvasID: id))
+        
         print("🖋️ CanvasManager: Unregistered canvas with ID \(id.uuidString.prefix(8))")
     }
     
@@ -117,6 +316,10 @@ class CanvasManager {
     private(set) var currentTool: PKInkingTool.InkType
     private(set) var currentColor: UIColor
     private(set) var currentLineWidth: CGFloat
+    
+    // Store the last non-eraser tool for reverting from eraser
+    private var lastNonEraserTool: PKInkingTool.InkType = .pen
+    private var lastNonEraserColor: UIColor = .black
     
     /// Create a new PKCanvasView with proper configuration
     func createCanvas(withID id: UUID? = nil, initialDrawing: Data? = nil) -> PKCanvasView {
@@ -196,6 +399,19 @@ class CanvasManager {
         
         // Force the layer to update
         canvas.setNeedsDisplay()
+    }
+    
+    /// Optimize all active canvases
+    func optimizeAllCanvases() {
+        // Clean up references first
+        cleanupCanvasReferences()
+        
+        // Optimize each canvas
+        for (_, reference) in activeCanvases {
+            if let canvas = reference.canvas {
+                optimizeCanvasForHighResolution(canvas)
+            }
+        }
     }
     
     /// Recursively sets the contentsScale on a layer and its sublayers
@@ -290,6 +506,12 @@ class CanvasManager {
     
     /// Set the current drawing tool
     func setTool(_ tool: PKInkingTool.InkType, color: UIColor, width: CGFloat) {
+        // Store last non-eraser tool (if this isn't an eraser)
+        if tool != .pen || !color.isEqual(UIColor.clear) {
+            lastNonEraserTool = tool
+            lastNonEraserColor = color
+        }
+        
         // Update current tool properties
         currentTool = tool
         currentColor = color
@@ -303,6 +525,61 @@ class CanvasManager {
         
         // Notify that tool has changed using EventBus
         notifyToolChanged()
+        
+        // Dispatch action to EventStore if available
+        if let eventStore = eventStore {
+            // Convert the UIColor to SwiftUI Color
+            let swiftUIColor = Color(currentColor)
+            
+            // Determine if this is actually an eraser
+            let isEraser = tool == .pen && color.isEqual(UIColor.clear)
+            
+            if isEraser {
+                // Dispatch eraser action
+                eventStore.dispatch(DrawingToolAction.toggleEraser(isActive: true))
+            } else {
+                // Convert PKInkingTool.InkType to DrawingTool
+                let drawingTool = DrawingTool(
+                    type: convertFromPKInkingToolType(tool),
+                    color: swiftUIColor,
+                    lineWidth: width
+                )
+                
+                // Dispatch tool selection action
+                eventStore.dispatch(DrawingToolAction.selectTool(tool: drawingTool))
+            }
+        }
+    }
+    
+    /// Helper to convert PKInkingTool.InkType to CanvasToolType
+    private func convertFromPKInkingToolType(_ tool: PKInkingTool.InkType) -> CanvasToolType {
+        switch tool {
+        case .pen:
+            return .pen
+        case .marker:
+            return .marker
+        case .pencil:
+            return .pencil
+        @unknown default:
+            return .pen
+        }
+    }
+    
+    /// Use eraser tool
+    func useEraser() {
+        // Remember current tool before switching
+        if currentTool != .pen || !currentColor.isEqual(UIColor.clear) {
+            lastNonEraserTool = currentTool
+            lastNonEraserColor = currentColor
+        }
+        
+        // Set tool to pen with clear color (eraser)
+        setTool(.pen, color: UIColor.clear, width: currentLineWidth)
+    }
+    
+    /// Revert from eraser to previous tool
+    func revertFromEraser() {
+        setTool(lastNonEraserTool, color: lastNonEraserColor, width: currentLineWidth)
     }
     
     /// Clear tool selection - sets canvases to have no active tool
@@ -400,8 +677,15 @@ class CanvasManager {
     /// Notify that tool has changed
     private func notifyToolChanged() {
         // Use EventBus with the proper publish method
-        let event = ToolEvents.ToolChanged(tool: currentTool, color: currentColor, width: currentLineWidth)
-        EventBus.shared.publish(event)
+        let toolEvent = ToolEvents.ToolChanged(tool: currentTool, color: currentColor, width: currentLineWidth)
+        EventBus.shared.publish(toolEvent)
+        
+        // Also publish our own canvas-specific event
+        EventBus.shared.publish(CanvasToolChangedEvent(
+            tool: currentTool,
+            color: currentColor,
+            width: currentLineWidth
+        ))
     }
     
     // MARK: - Template Application
@@ -437,6 +721,29 @@ class CanvasManager {
     func undo(_ canvas: PKCanvasView) {
         if canvas.undoManager?.canUndo ?? false {
             canvas.undoManager?.undo()
+            
+            // Publish drawing updated event if ID is available
+            if let canvasID = getCanvasID(canvas),
+               let drawingData = canvas.getDrawingData() {
+                // Notify that drawing was updated
+                EventBus.shared.publish(CanvasDrawingUpdatedEvent(
+                    canvasID: canvasID,
+                    pageID: canvasID,
+                    drawingData: drawingData
+                ))
+                
+                // Also dispatch to EventStore if we can
+                if let eventStore = eventStore,
+                   let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+                   let noteID = eventStore.state.contentState.selection.selectedNoteID {
+                    eventStore.dispatch(PageAction.updateDrawingData(
+                        pageID: canvasID,
+                        drawingData: drawingData,
+                        noteID: noteID,
+                        subjectID: subjectID
+                    ))
+                }
+            }
         }
     }
     
@@ -444,12 +751,57 @@ class CanvasManager {
     func redo(_ canvas: PKCanvasView) {
         if canvas.undoManager?.canRedo ?? false {
             canvas.undoManager?.redo()
+            
+            // Publish drawing updated event if ID is available
+            if let canvasID = getCanvasID(canvas),
+               let drawingData = canvas.getDrawingData() {
+                // Notify that drawing was updated
+                EventBus.shared.publish(CanvasDrawingUpdatedEvent(
+                    canvasID: canvasID,
+                    pageID: canvasID,
+                    drawingData: drawingData
+                ))
+                
+                // Also dispatch to EventStore if we can
+                if let eventStore = eventStore,
+                   let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+                   let noteID = eventStore.state.contentState.selection.selectedNoteID {
+                    eventStore.dispatch(PageAction.updateDrawingData(
+                        pageID: canvasID,
+                        drawingData: drawingData,
+                        noteID: noteID,
+                        subjectID: subjectID
+                    ))
+                }
+            }
         }
     }
     
     /// Clear all drawing content from a canvas
     func clearCanvas(_ canvas: PKCanvasView) {
         canvas.drawing = PKDrawing()
+        
+        // Publish drawing updated event if ID is available
+        if let canvasID = getCanvasID(canvas),
+           let drawingData = canvas.getDrawingData() {
+            // Notify that drawing was updated
+            EventBus.shared.publish(CanvasDrawingUpdatedEvent(
+                canvasID: canvasID,
+                pageID: canvasID,
+                drawingData: drawingData
+            ))
+            
+            // Also dispatch to EventStore if we can
+            if let eventStore = eventStore,
+               let subjectID = eventStore.state.contentState.selection.selectedSubjectID,
+               let noteID = eventStore.state.contentState.selection.selectedNoteID {
+                eventStore.dispatch(PageAction.clearPage(
+                    pageID: canvasID,
+                    noteID: noteID,
+                    subjectID: subjectID
+                ))
+            }
+        }
     }
 }
 

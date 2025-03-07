@@ -79,7 +79,7 @@ extension EventStore {
                 return NavigationAction.navigateToSubjectsList
             case .noteDetail(let noteIndex, let subjectID):
                 return NavigationAction.navigateToNote(
-                    noteIndex: noteIndex, 
+                    noteIndex: noteIndex,
                     subjectID: subjectID
                 )
             }

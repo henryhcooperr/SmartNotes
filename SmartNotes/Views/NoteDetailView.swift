@@ -266,7 +266,9 @@ struct NoteDetailView: View {
                                     ))
                                     print("🔄 Dispatched NoteAction.updateNote with template \(event.template.type.rawValue)")
                                     
-                                    // Also update the DataManager for compatibility during transition
+                                    // MIGRATION: To be removed after migration is complete.
+                                    // The EventStore action dispatch above is sufficient.
+                                    // This direct DataManager usage is only kept for backward compatibility.
                                     dataManager.updateNoteTemplateAndSaveImmediately(
                                         in: subjectID,
                                         noteID: currentNote.id,
