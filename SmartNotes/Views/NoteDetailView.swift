@@ -115,7 +115,11 @@ struct NoteDetailView: View {
                 ZStack {
                     MultiPageUnifiedScrollView(pages: notePagesBinding, template: $noteTemplate)
                         .sheet(isPresented: $showingTemplateSheet) {
-                            TemplateSettingsView(template: $noteTemplate)
+                            TemplateSettingsView(
+                                noteID: note?.id,
+                                subjectID: subjectID,
+                                currentTemplate: noteTemplate
+                            )
                         }
                         .onAppear {
                             guard let currentNote = note else {
@@ -290,7 +294,11 @@ struct NoteDetailView: View {
                         }
                         .sheet(isPresented: $showingTemplateSettings) {
                             // Present the template settings sheet
-                            TemplateSettingsView(template: $noteTemplate)
+                            TemplateSettingsView(
+                                noteID: note?.id,
+                                subjectID: subjectID,
+                                currentTemplate: noteTemplate
+                            )
                         }
                         .onDisappear {
                             // Invalidate the thumbnail when leaving the note editor

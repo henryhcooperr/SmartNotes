@@ -3,6 +3,11 @@
 //  SmartNotes
 //
 //  Created on 2/25/25.
+//  Updated on 5/6/25 to add deprecation notice
+//
+//  DEPRECATED: This file has been replaced by the EventStore architecture.
+//  All functionality has been migrated to EventStore and SaveMiddleware.
+//  This file is kept for backward compatibility during the transition but will be removed in a future update.
 //
 //  This file manages data persistence for the application.
 //  Key responsibilities:
@@ -21,6 +26,7 @@ import Combine
 import UIKit
 import PencilKit
 
+@available(*, deprecated, message: "Use EventStore instead")
 class DataManager: ObservableObject {
     @Published var subjects: [Subject] = []
     private let saveKey = "smartnotes.subjects"

@@ -57,17 +57,6 @@ class EventStore: ObservableObject {
         }, name: "LoggingMiddleware")
     }
     
-    /// Add the save middleware with a reference to a DataManager
-    /// - Parameter dataManager: The DataManager to use for persistence
-    func registerSaveMiddleware(dataManager: DataManager) {
-        let saveMiddleware = SaveMiddleware(dataManager: dataManager)
-        self.saveMiddleware = saveMiddleware
-        
-        register(middleware: { state, action in
-            saveMiddleware.middleware(state: state, action: action)
-        }, name: "SaveMiddleware")
-    }
-    
     /// Force an immediate save of the current state
     func forceSave() {
         saveMiddleware?.forceSave(state: state)
@@ -995,31 +984,6 @@ extension EventStore {
         }
     }
     
-    /// DEPRECATED: Method to load data from DataManager
-    @available(*, deprecated, message: "Use loadInitialState() instead")
-    func loadFromDataManager(_ dataManager: DataManager) {
-        print("⚠️ WARNING: Using deprecated loadFromDataManager method. Use loadInitialState() instead.")
-        
-        // Create a new state with the loaded subjects
-        var newState = AppState()
-        newState.contentState.subjects = dataManager.subjects
-        
-        // Set default selections if available
-        if !newState.contentState.subjects.isEmpty {
-            newState.contentState.selection.selectedSubjectID = newState.contentState.subjects[0].id
-            newState.contentState.selection.selectedSubjectIndex = 0
-        }
-        
-        // Load settings from UserDefaults
-        loadSettingsFromUserDefaults(newState: &newState)
-        
-        // Update the store's state
-        self.state = newState
-        
-        // Register the save middleware with the data manager
-        registerSaveMiddleware(dataManager: dataManager)
-    }
-    
     /// Load saved settings from UserDefaults
     private func loadSettingsFromUserDefaults(newState: inout AppState) {
         let defaults = UserDefaults.standard
@@ -1036,15 +1000,6 @@ extension EventStore {
         
         // Load default template setting (would need more complex logic to decode CanvasTemplate)
         // ... add template loading logic here ...
-    }
-    
-    /// Method to save data to DataManager
-    func saveToDataManager(_ dataManager: DataManager) {
-        // Update the DataManager's subjects with the store's state
-        dataManager.subjects = state.contentState.subjects
-        
-        // Schedule a save operation
-        dataManager.saveData()
     }
     
     /// Create a new note with default settings

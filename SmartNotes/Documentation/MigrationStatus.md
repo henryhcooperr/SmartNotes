@@ -44,6 +44,8 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 - [x] PageNavigatorView - Migrated to use EventStore instead of Binding parameters
 - [x] SubjectsSplitView - Completely migrated to use EventStore and EventBus
 - [x] NoteDetailView - Completely migrated to use EventStore without any DataManager references
+- [x] TemplateSettingsView - Migrated to use EventStore for template management
+- [x] NotePreviewsGrid - Already used EventStore properly
 
 ### Managers
 - [x] ThumbnailGenerator - Migrated to use EventStore events for cache invalidation
@@ -65,7 +67,7 @@ This document tracks the progress of migrating SmartNotes from the legacy DataMa
 | Core     | 5                | 5        | 100%     |
 | Reducers | 9                | 9        | 100%     |
 | Middleware | 3              | 3        | 100%     |
-| Views    | 10               | 6        | 60%      |
+| Views    | 10               | 8        | 80%      |
 | Managers | 5                | 4        | 80%      |
 | Data Loading | 1            | 1        | 100%     |
-| **Overall** | **33**        | **28**   | **85%**  | 
+| **Overall** | **33**        | **30**   | **91%**  | 

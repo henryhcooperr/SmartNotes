@@ -2,12 +2,19 @@
 //  TemplateSettingsView.swift
 //  SmartNotes
 //
+//  Updated on 5/6/25 to use EventStore instead of direct bindings
+//
 
 import SwiftUI
 
 struct TemplateSettingsView: View {
-    @Binding var template: CanvasTemplate
+    // Access to the EventStore
+    @EnvironmentObject var eventStore: EventStore
     @Environment(\.presentationMode) var presentationMode
+    
+    // Note and template identification
+    let noteID: UUID?
+    let subjectID: UUID?
     
     // Temporary state for editing
     @State private var selectedType: CanvasTemplate.TemplateType
@@ -27,13 +34,14 @@ struct TemplateSettingsView: View {
         "#00FF00"  // Green
     ]
     
-    init(template: Binding<CanvasTemplate>) {
-        self._template = template
-        self._selectedType = State(initialValue: template.wrappedValue.type)
+    init(noteID: UUID?, subjectID: UUID?, currentTemplate: CanvasTemplate) {
+        self.noteID = noteID
+        self.subjectID = subjectID
+        self._selectedType = State(initialValue: currentTemplate.type)
         // Use baseSpacing and baseLineWidth directly to avoid resolution factor multiplication
-        self._spacing = State(initialValue: Double(template.wrappedValue.baseSpacing))
-        self._lineWidth = State(initialValue: Double(template.wrappedValue.baseLineWidth))
-        self._colorHex = State(initialValue: template.wrappedValue.colorHex)
+        self._spacing = State(initialValue: Double(currentTemplate.baseSpacing))
+        self._lineWidth = State(initialValue: Double(currentTemplate.baseLineWidth))
+        self._colorHex = State(initialValue: currentTemplate.colorHex)
     }
     
     var body: some View {
@@ -50,53 +58,53 @@ struct TemplateSettingsView: View {
                     .pickerStyle(MenuPickerStyle())
                 }
                 
-                // Only show spacing/line config if a template is selected
-                if selectedType != .none {
-                    
-                    Section(header: Text("Line Spacing")) {
-                        HStack {
-                            Text("Spacing: \(Int(spacing)) pts")
-                            Spacer()
-                            Slider(value: $spacing, in: 4...25, step: 1)
-                                .frame(width: 180)
-                        }
-                    }
-                    
-                    Section(header: Text("Line Style")) {
-                        HStack {
-                            Text("Thickness: \(lineWidth, specifier: "%.2f") pt")
-                            Spacer()
-                            Slider(value: $lineWidth, in: 0.1...2.0, step: 0.05)
-                                .frame(width: 180)
+                // Template properties
+                if selectedType != .none && selectedType != .blank {
+                    Section(header: Text("Properties")) {
+                        // Line spacing
+                        VStack(alignment: .leading) {
+                            HStack {
+                                Text("Spacing: \(Int(spacing))")
+                                Spacer()
+                                Text(getReadableSpacingDescription())
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Slider(value: $spacing, in: getSpacingRange())
                         }
                         
-                        Picker("Color", selection: $colorHex) {
-                            ForEach(colorOptions, id: \.self) { hex in
-                                HStack {
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(Color(UIColor(hex: hex) ?? .gray))
-                                        .frame(width: 20, height: 20)
-                                    Text(colorName(for: hex))
-                                        .tag(hex)
+                        // Line color
+                        VStack(alignment: .leading) {
+                            Text("Line Color")
+                            
+                            HStack {
+                                ForEach(colorOptions, id: \.self) { color in
+                                    let swiftUIColor = colorFromHex(color)
+                                    Circle()
+                                        .fill(swiftUIColor)
+                                        .frame(width: 30, height: 30)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(color == colorHex ? Color.blue : Color.clear, lineWidth: 2)
+                                        )
+                                        .onTapGesture {
+                                            colorHex = color
+                                        }
                                 }
                             }
                         }
-                        .pickerStyle(MenuPickerStyle())
-                    }
-                    
-                    Section(header: Text("Preview")) {
-                        templatePreview
-                            .frame(height: 100)
-                            .background(Color.white)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                            )
-                            .padding(.vertical, 8)
-                    }
-                    
-                    // Quick presets
-                    Section(header: Text("Presets")) {
+                        
+                        // Line width
+                        VStack(alignment: .leading) {
+                            Text("Line Width: \(String(format: "%.1f", lineWidth))")
+                            
+                            Slider(value: $lineWidth, in: 0.1...2.0, step: 0.1)
+                        }
+                        
+                        // Presets
+                        Text("Presets").bold()
+                        
                         HStack {
                             Button("College Ruled") {
                                 spacing = 24
@@ -142,6 +150,10 @@ struct TemplateSettingsView: View {
                 // Pencil only toggle
                 Section(header: Text("Pencil Only")) {
                     Toggle("Disable Finger Drawing", isOn: $disableFingerDrawing)
+                        .onChange(of: disableFingerDrawing) { _, newValue in
+                            // Dispatch action to update the setting in EventStore
+                            eventStore.dispatch(SettingsAction.updateFingerDrawingSetting(isDisabled: newValue))
+                        }
                 }
             }
             .navigationTitle("Template Settings")
@@ -151,192 +163,114 @@ struct TemplateSettingsView: View {
                 },
                 trailing: Button("Apply") {
                     // Log current vs new template values before applying
-                    print("🖌️ Before apply - Current template: \(template.type.rawValue), New selection: \(selectedType.rawValue)")
+                    print("🖌️ Before apply - Selected template type: \(selectedType.rawValue)")
                     
-                    // Apply changes to the template binding
-                    applyChanges()
-                    print("🖌️ After applyChanges() - Template is now: \(template.type.rawValue)")
+                    // Create the new template
+                    let newTemplate = createUpdatedTemplate()
                     
-                    // Force immediate template refresh with improved three-step approach and more delay between steps
-                    DispatchQueue.main.async {
-                        print("🖌️ Step 1: Publishing TemplateChanged event with template type: \(template.type.rawValue)")
-                        // 1. Publish template changed event with the new template
-                        EventBus.shared.publish(TemplateEvents.TemplateChanged(template: template))
-                        
-                        // 2. Post notification to trigger layoutPages() - longer delay to ensure event is processed first
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            print("🖌️ Step 2: Posting RefreshTemplate notification")
-                            NotificationCenter.default.post(
-                                name: NSNotification.Name("RefreshTemplate"),
-                                object: nil
-                            )
-                            
-                            // 3. Post a second notification after a longer delay to ensure refresh
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                print("🖌️ Step 3: Posting ForceTemplateRefresh notification")
-                                NotificationCenter.default.post(
-                                    name: NSNotification.Name("ForceTemplateRefresh"),
-                                    object: nil
-                                )
-                                
-                                // 4. Finally dismiss the sheet after a significant delay to ensure changes are applied
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    print("🖌️ Step 4: Dismissing TemplateSettingsView")
-                                    presentationMode.wrappedValue.dismiss()
-                                }
-                            }
-                        }
+                    // Apply either as a note-wide or default template
+                    if let noteID = noteID, let subjectID = subjectID {
+                        // Apply as a note template
+                        applyNoteTemplate(noteID: noteID, subjectID: subjectID, template: newTemplate)
+                    } else {
+                        // Apply as a default template
+                        applyDefaultTemplate(template: newTemplate)
                     }
+                    
+                    // Dismiss the view
+                    presentationMode.wrappedValue.dismiss()
                 }
             )
         }
     }
     
-    private func applyChanges() {
-        print("📝 Applying template changes: type=\(selectedType.rawValue), spacing=\(spacing), lineWidth=\(lineWidth), color=\(colorHex)")
-        print("📝 BEFORE: Current template type=\(template.type.rawValue), spacing=\(template.spacing), lineWidth=\(template.lineWidth)")
-        
-        // Create a fresh template rather than modifying the existing one
-        let newTemplate = CanvasTemplate(
+    // MARK: - Helper Methods
+    
+    /// Create a new template with the current settings
+    private func createUpdatedTemplate() -> CanvasTemplate {
+        return CanvasTemplate(
             type: selectedType,
             baseSpacing: CGFloat(spacing),
-            colorHex: colorHex,
-            baseLineWidth: CGFloat(lineWidth)
+            baseLineWidth: CGFloat(lineWidth),
+            colorHex: colorHex
         )
+    }
+    
+    /// Apply the template to a specific note
+    private func applyNoteTemplate(noteID: UUID, subjectID: UUID, template: CanvasTemplate) {
+        // Dispatch action to set the note template
+        eventStore.dispatch(TemplateAction.setNoteTemplate(
+            template,
+            noteID: noteID,
+            subjectID: subjectID
+        ))
         
-        // Now copy the values to our binding
-        template = newTemplate
+        print("🖌️ Applied template to note \(noteID) with type: \(template.type.rawValue)")
+    }
+    
+    /// Apply the template as the default for new notes
+    private func applyDefaultTemplate(template: CanvasTemplate) {
+        // Dispatch action to set the default template
+        eventStore.dispatch(TemplateAction.setDefaultTemplate(template))
         
-        print("📝 AFTER: Updated template type=\(template.type.rawValue), spacing=\(template.spacing), lineWidth=\(template.lineWidth)")
-        
-        // Also publish a debug notification with the raw template data so we can inspect it
-        if GlobalSettings.debugModeEnabled {
-            if let data = try? JSONEncoder().encode(template) {
-                print("📝 Template encoded to \(data.count) bytes")
-                if let json = String(data: data, encoding: .utf8) {
-                    print("📝 Template JSON: \(json)")
-                }
+        print("🖌️ Applied template as default with type: \(template.type.rawValue)")
+    }
+    
+    /// Get a readable description of the current spacing
+    private func getReadableSpacingDescription() -> String {
+        switch selectedType {
+        case .lined:
+            if spacing < 15 {
+                return "Narrow"
+            } else if spacing < 25 {
+                return "Medium"
+            } else {
+                return "Wide"
             }
+        case .graph, .dotted:
+            if spacing < 10 {
+                return "Fine"
+            } else if spacing < 20 {
+                return "Medium"
+            } else {
+                return "Large"
+            }
+        default:
+            return ""
         }
     }
     
-    // Convert hex to a color name
-    private func colorName(for hex: String) -> String {
-        switch hex {
-        case "#CCCCCC": return "Light Gray"
-        case "#000000": return "Black"
-        case "#0000FF": return "Blue"
-        case "#FF0000": return "Red"
-        case "#00FF00": return "Green"
-        default: return "Custom"
+    /// Get the appropriate spacing range based on template type
+    private func getSpacingRange() -> ClosedRange<Double> {
+        switch selectedType {
+        case .lined:
+            return 10.0...40.0
+        case .graph, .dotted:
+            return 5.0...40.0
+        default:
+            return 10.0...40.0
         }
     }
     
-    // A preview of the template lines/dots
-    private var templatePreview: some View {
-        Canvas { context, size in
-            let color = UIColor(hex: colorHex) ?? .lightGray
-            let lineSize = CGFloat(lineWidth)
-            let gap = CGFloat(spacing)
-            
-            switch selectedType {
-            case .lined:
-                // Calculate how many lines we can fit and center them
-                let totalLines = Int(size.height / gap)
-                let remainingSpace = size.height - (CGFloat(totalLines) * gap)
-                let offsetY = remainingSpace / 2
-                
-                for i in 0...totalLines {
-                    let y = offsetY + (CGFloat(i) * gap)
-                    if y >= 0 && y <= size.height {
-                        context.stroke(
-                            Path { path in
-                                path.move(to: CGPoint(x: 0, y: y))
-                                path.addLine(to: CGPoint(x: size.width, y: y))
-                            },
-                            with: .color(Color(color)),
-                            lineWidth: lineSize
-                        )
-                    }
-                }
-                
-            case .graph:
-                // Calculate offsets for horizontal and vertical lines
-                let totalHLines = Int(size.height / gap)
-                let remainingHSpace = size.height - (CGFloat(totalHLines) * gap)
-                let offsetY = remainingHSpace / 2
-                
-                let totalVLines = Int(size.width / gap)
-                let remainingVSpace = size.width - (CGFloat(totalVLines) * gap)
-                let offsetX = remainingVSpace / 2
-                
-                // Draw horizontal lines (centered)
-                for i in 0...totalHLines {
-                    let y = offsetY + (CGFloat(i) * gap)
-                    if y >= 0 && y <= size.height {
-                        context.stroke(
-                            Path { path in
-                                path.move(to: CGPoint(x: 0, y: y))
-                                path.addLine(to: CGPoint(x: size.width, y: y))
-                            },
-                            with: .color(Color(color)),
-                            lineWidth: lineSize
-                        )
-                    }
-                }
-                
-                // Draw vertical lines (centered)
-                for i in 0...totalVLines {
-                    let x = offsetX + (CGFloat(i) * gap)
-                    if x >= 0 && x <= size.width {
-                        context.stroke(
-                            Path { path in
-                                path.move(to: CGPoint(x: x, y: 0))
-                                path.addLine(to: CGPoint(x: x, y: size.height))
-                            },
-                            with: .color(Color(color)),
-                            lineWidth: lineSize
-                        )
-                    }
-                }
-                
-            case .dotted:
-                // Calculate offsets for rows and columns of dots
-                let totalRows = Int(size.height / gap)
-                let remainingVSpace = size.height - (CGFloat(totalRows) * gap)
-                let offsetY = remainingVSpace / 2
-                
-                let totalCols = Int(size.width / gap)
-                let remainingHSpace = size.width - (CGFloat(totalCols) * gap)
-                let offsetX = remainingHSpace / 2
-                
-                // Draw dots at intersections (centered grid)
-                for row in 0...totalRows {
-                    let y = offsetY + (CGFloat(row) * gap)
-                    if y >= 0 && y <= size.height {
-                        for col in 0...totalCols {
-                            let x = offsetX + (CGFloat(col) * gap)
-                            if x >= 0 && x <= size.width {
-                                context.fill(
-                                    Path { path in
-                                        let rect = CGRect(
-                                            x: x - lineSize,
-                                            y: y - lineSize,
-                                            width: lineSize * 2,
-                                            height: lineSize * 2
-                                        )
-                                        path.addEllipse(in: rect)
-                                    },
-                                    with: .color(Color(color))
-                                )
-                            }
-                        }
-                    }
-                }
-                
-            case .none:
-                break
-            }
+    /// Convert a hex color to a SwiftUI color
+    private func colorFromHex(_ hex: String) -> Color {
+        var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        
+        if hexString.hasPrefix("#") {
+            hexString.remove(at: hexString.startIndex)
         }
+        
+        if hexString.count != 6 {
+            return .gray
+        }
+        
+        var rgbValue: UInt64 = 0
+        Scanner(string: hexString).scanHexInt64(&rgbValue)
+        
+        return Color(
+            red: Double((rgbValue & 0xFF0000) >> 16) / 255.0,
+            green: Double((rgbValue & 0x00FF00) >> 8) / 255.0,
+            blue: Double(rgbValue & 0x0000FF) / 255.0
+        )
     }
 }
